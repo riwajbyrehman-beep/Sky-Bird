@@ -70,23 +70,44 @@ function defaultPaymentAccounts() {
   };
 }
 
-const ALLOWED_SOUND_PRESETS = ['cyber-flight', 'casino-chime', 'turbo-arcade', 'stealth-minimal'];
+const ALLOWED_SOUND_PRESETS = [
+  'aviator-jet',
+  'cyber-flight',
+  'casino-chime',
+  'turbo-arcade',
+  'stealth-minimal',
+];
+
+const ALLOWED_PROFIT_MODES = ['balanced', 'house-edge', 'low-crash', 'generous'];
 
 function defaultAudioConfig() {
   return {
     bgmEnabled: true,
-    soundPreset: 'cyber-flight',
+    soundPreset: 'aviator-jet',
     masterVolume: 75,
+  };
+}
+
+function defaultProfitControl() {
+  return {
+    mode: 'balanced',
+    houseEdgePct: 4,
+    maxCrashCap: 100,
   };
 }
 
 function defaultSettingsObj() {
   return {
     key: 'global',
+    whatsappSupportEnabled: true,
     whatsappSupportNumber: '923001234567',
+    whatsappChannelEnabled: true,
     whatsappChannelUrl: 'https://whatsapp.com/channel/0029VaSkyWingOfficial',
+    telegramChannelEnabled: true,
+    telegramChannelUrl: 'https://t.me/SkyWingOfficial',
     paymentAccounts: defaultPaymentAccounts(),
     audioConfig: defaultAudioConfig(),
+    profitControl: defaultProfitControl(),
     dailyProfitTarget: 30000,
     varianceTolerancePct: 8,
     welcomeBonusCredits: 1000,
@@ -125,6 +146,10 @@ function loadLocalStore() {
           audioConfig: {
             ...defaultAudioConfig(),
             ...(parsed.settings?.audioConfig || {}),
+          },
+          profitControl: {
+            ...defaultProfitControl(),
+            ...(parsed.settings?.profitControl || {}),
           },
         },
       };
@@ -249,6 +274,10 @@ const db = {
         ...defaultAudioConfig(),
         ...(obj.audioConfig || {}),
       };
+      obj.profitControl = {
+        ...defaultProfitControl(),
+        ...(obj.profitControl || {}),
+      };
       return obj;
     }
 
@@ -270,6 +299,10 @@ const db = {
       audioConfig: {
         ...defaultAudioConfig(),
         ...(localStore.settings.audioConfig || {}),
+      },
+      profitControl: {
+        ...defaultProfitControl(),
+        ...(localStore.settings.profitControl || {}),
       },
     };
   },
@@ -620,6 +653,11 @@ function sanitizeUser(user) {
   const totalWonReal = Math.round(Number(user.totalWonReal ?? 0) * 100) / 100;
   const totalDeposited = Math.round(Number(user.totalDeposited ?? 0) * 100) / 100;
   const totalWithdrawn = Math.round(Number(user.totalWithdrawn ?? 0) * 100) / 100;
+  const remainingWagering = Math.max(
+    0,
+    Math.round((totalDeposited - totalWageredReal) * 100) / 100
+  );
+  const wageringRequirementMet = totalWageredReal >= totalDeposited;
 
   return {
     id: String(user._id),
@@ -634,6 +672,8 @@ function sanitizeUser(user) {
     totalWonFun: Math.round(Number(user.totalWonFun ?? 0) * 100) / 100,
     totalWageredReal,
     totalWonReal,
+    remainingWagering,
+    wageringRequirementMet,
     netProfitLoss: Math.round((totalWonReal - totalWageredReal) * 100) / 100,
     totalWagered: Math.round(Number(user.totalWagered ?? 0) * 100) / 100,
     totalWon: Math.round(Number(user.totalWon ?? 0) * 100) / 100,
@@ -753,13 +793,17 @@ app.get(['/admin', '/admin/*'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Public Settings (WhatsApp Channel + Support Helpline + Payment Accounts + Audio Config)
+// Public Settings (WhatsApp + Telegram Toggles + Payment Accounts + Audio Config)
 app.get('/api/public-settings', async (req, res) => {
   try {
     const settings = await db.getSettings();
     res.json({
+      whatsappSupportEnabled: settings.whatsappSupportEnabled !== false,
       whatsappSupportNumber: settings.whatsappSupportNumber,
+      whatsappChannelEnabled: settings.whatsappChannelEnabled !== false,
       whatsappChannelUrl: settings.whatsappChannelUrl,
+      telegramChannelEnabled: settings.telegramChannelEnabled !== false,
+      telegramChannelUrl: settings.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
       welcomeBonusCredits: settings.welcomeBonusCredits,
       paymentAccounts: settings.paymentAccounts,
       audioConfig: settings.audioConfig || defaultAudioConfig(),
@@ -890,8 +934,12 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   res.json({
     user: sanitizeUser(req.user),
     publicSettings: {
+      whatsappSupportEnabled: settings.whatsappSupportEnabled !== false,
       whatsappSupportNumber: settings.whatsappSupportNumber,
+      whatsappChannelEnabled: settings.whatsappChannelEnabled !== false,
       whatsappChannelUrl: settings.whatsappChannelUrl,
+      telegramChannelEnabled: settings.telegramChannelEnabled !== false,
+      telegramChannelUrl: settings.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
       paymentAccounts: settings.paymentAccounts,
       audioConfig: settings.audioConfig || defaultAudioConfig(),
     },
@@ -973,6 +1021,23 @@ app.post('/api/transactions/withdraw', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Enter your Bank Name.' });
     }
 
+    // Strict Mandatory 1x Wagering (Rollover) Check: totalWageredReal >= totalDeposited
+    const freshUser = await db.findUserById(String(req.user._id));
+    if (!freshUser) {
+      return res.status(401).json({ error: 'User account not found.' });
+    }
+    const totalDep = Math.round(Number(freshUser.totalDeposited || 0) * 100) / 100;
+    const totalWagered = Math.round(Number(freshUser.totalWageredReal || 0) * 100) / 100;
+    if (totalWagered < totalDep) {
+      const remaining = Math.round((totalDep - totalWagered) * 100) / 100;
+      return res.status(400).json({
+        error: `1x Wagering Requirement not met. Wagered ${totalWagered.toLocaleString()} PKR of ${totalDep.toLocaleString()} PKR deposited. Please wager ${remaining.toLocaleString()} PKR more in Real Mode before withdrawing.`,
+        remainingWagering: remaining,
+        totalDeposited: totalDep,
+        totalWageredReal: totalWagered,
+      });
+    }
+
     // Atomically deduct from realBalance upon request (refunded if rejected)
     const updatedUser = await db.adjustBalanceAtomic(String(req.user._id), 'real', -amount);
     if (!updatedUser) {
@@ -1037,12 +1102,19 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
     const target = Number(settings.dailyProfitTarget || 0);
     const protectedFloor = Math.round(target * (1 - tolerance / 100));
 
+    const realActiveBets = gameState.bets.filter((b) => !b.isBot);
+
     res.json({
       settings: {
+        whatsappSupportEnabled: settings.whatsappSupportEnabled !== false,
         whatsappSupportNumber: settings.whatsappSupportNumber,
+        whatsappChannelEnabled: settings.whatsappChannelEnabled !== false,
         whatsappChannelUrl: settings.whatsappChannelUrl,
+        telegramChannelEnabled: settings.telegramChannelEnabled !== false,
+        telegramChannelUrl: settings.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
         paymentAccounts: settings.paymentAccounts,
         audioConfig: settings.audioConfig || defaultAudioConfig(),
+        profitControl: settings.profitControl || defaultProfitControl(),
         dailyProfitTarget: target,
         varianceTolerancePct: tolerance,
         welcomeBonusCredits: settings.welcomeBonusCredits,
@@ -1058,11 +1130,13 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
       pendingCounts,
       live: {
         onlineSockets: io.engine.clientsCount,
+        displayedOnline: getDisplayedOnlineCount(),
         roundNumber: gameState.roundNumber,
         phase: gameState.phase,
         multiplier: gameState.currentMultiplier,
-        activeBetCount: gameState.bets.length,
+        activeBetCount: realActiveBets.length,
         activeRoundWager: gameState.totalRoundBet,
+        nextRoundForcedCrash: gameState.nextRoundForcedCrash,
         serverSeedHash: gameState.serverSeedHash,
         clientSeed: gameState.clientSeed,
         nonce: gameState.nonce,
@@ -1081,11 +1155,26 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
 app.put('/api/admin/settings', requireAdmin, async (req, res) => {
   try {
     const current = await db.getSettings();
+    const whatsappSupportEnabled =
+      req.body.whatsappSupportEnabled !== undefined
+        ? Boolean(req.body.whatsappSupportEnabled)
+        : current.whatsappSupportEnabled !== false;
     const whatsappSupportNumber = sanitizeSupportPhone(
       req.body.whatsappSupportNumber ?? current.whatsappSupportNumber
     );
+    const whatsappChannelEnabled =
+      req.body.whatsappChannelEnabled !== undefined
+        ? Boolean(req.body.whatsappChannelEnabled)
+        : current.whatsappChannelEnabled !== false;
     const whatsappChannelUrl = String(
       req.body.whatsappChannelUrl ?? current.whatsappChannelUrl
+    ).trim();
+    const telegramChannelEnabled =
+      req.body.telegramChannelEnabled !== undefined
+        ? Boolean(req.body.telegramChannelEnabled)
+        : current.telegramChannelEnabled !== false;
+    const telegramChannelUrl = String(
+      req.body.telegramChannelUrl ?? current.telegramChannelUrl ?? 'https://t.me/SkyWingOfficial'
     ).trim();
     const dailyProfitTarget = Math.max(
       0,
@@ -1148,7 +1237,7 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
       ? incomingAudio.soundPreset
       : ALLOWED_SOUND_PRESETS.includes(curAudio.soundPreset)
         ? curAudio.soundPreset
-        : 'cyber-flight';
+        : 'aviator-jet';
     const rawVol =
       incomingAudio.masterVolume !== undefined
         ? Number(incomingAudio.masterVolume)
@@ -1162,16 +1251,46 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
       masterVolume: Number.isFinite(rawVol) ? Math.min(100, Math.max(0, Math.round(rawVol))) : 75,
     };
 
+    const incomingProfit = req.body.profitControl || {};
+    const curProfit = current.profitControl || defaultProfitControl();
+    const nextProfitMode = ALLOWED_PROFIT_MODES.includes(incomingProfit.mode)
+      ? incomingProfit.mode
+      : ALLOWED_PROFIT_MODES.includes(curProfit.mode)
+        ? curProfit.mode
+        : 'balanced';
+    const rawEdge =
+      incomingProfit.houseEdgePct !== undefined
+        ? Number(incomingProfit.houseEdgePct)
+        : Number(curProfit.houseEdgePct ?? 4);
+    const rawCap =
+      incomingProfit.maxCrashCap !== undefined
+        ? Number(incomingProfit.maxCrashCap)
+        : Number(curProfit.maxCrashCap ?? 100);
+    const profitControl = {
+      mode: nextProfitMode,
+      houseEdgePct: Number.isFinite(rawEdge)
+        ? Math.min(25, Math.max(0, Math.round(rawEdge * 10) / 10))
+        : 4,
+      maxCrashCap: Number.isFinite(rawCap)
+        ? Math.min(100, Math.max(1.05, Math.round(rawCap * 100) / 100))
+        : 100,
+    };
+
     const carryForwardPool = Math.max(
       0,
       Math.round((Number(current.dailyNetProfit || 0) - dailyProfitTarget) * 100) / 100
     );
 
     const updated = await db.updateSettings({
+      whatsappSupportEnabled,
       whatsappSupportNumber: whatsappSupportNumber || current.whatsappSupportNumber,
+      whatsappChannelEnabled,
       whatsappChannelUrl: whatsappChannelUrl || current.whatsappChannelUrl,
+      telegramChannelEnabled,
+      telegramChannelUrl: telegramChannelUrl || current.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
       paymentAccounts,
       audioConfig,
+      profitControl,
       dailyProfitTarget,
       varianceTolerancePct,
       welcomeBonusCredits,
@@ -1179,8 +1298,12 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
     });
 
     io.emit('settings:updated', {
+      whatsappSupportEnabled: updated.whatsappSupportEnabled !== false,
       whatsappSupportNumber: updated.whatsappSupportNumber,
+      whatsappChannelEnabled: updated.whatsappChannelEnabled !== false,
       whatsappChannelUrl: updated.whatsappChannelUrl,
+      telegramChannelEnabled: updated.telegramChannelEnabled !== false,
+      telegramChannelUrl: updated.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
       paymentAccounts: updated.paymentAccounts,
       audioConfig: updated.audioConfig || audioConfig,
     });
@@ -1190,6 +1313,60 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
     console.error('[Admin Settings Update Error]', err);
     res.status(500).json({ error: 'Failed to update settings' });
   }
+});
+
+// Admin Profit Control & Multiplier Override Endpoints
+app.put('/api/admin/profit-control', requireAdmin, async (req, res) => {
+  try {
+    const current = await db.getSettings();
+    const curProfit = current.profitControl || defaultProfitControl();
+    const mode = ALLOWED_PROFIT_MODES.includes(req.body.mode) ? req.body.mode : curProfit.mode;
+    const rawEdge =
+      req.body.houseEdgePct !== undefined ? Number(req.body.houseEdgePct) : Number(curProfit.houseEdgePct ?? 4);
+    const rawCap =
+      req.body.maxCrashCap !== undefined ? Number(req.body.maxCrashCap) : Number(curProfit.maxCrashCap ?? 100);
+
+    const profitControl = {
+      mode,
+      houseEdgePct: Number.isFinite(rawEdge)
+        ? Math.min(25, Math.max(0, Math.round(rawEdge * 10) / 10))
+        : 4,
+      maxCrashCap: Number.isFinite(rawCap)
+        ? Math.min(100, Math.max(1.05, Math.round(rawCap * 100) / 100))
+        : 100,
+    };
+
+    const updated = await db.updateSettings({ profitControl });
+    res.json({ profitControl: updated.profitControl || profitControl });
+  } catch (err) {
+    console.error('[Admin Profit Control Error]', err);
+    res.status(500).json({ error: 'Failed to update profit control settings' });
+  }
+});
+
+app.post('/api/admin/profit-control/override', requireAdmin, (req, res) => {
+  const raw = req.body.forcedCrash;
+  if (raw === null || raw === undefined || raw === '') {
+    gameState.nextRoundForcedCrash = null;
+    io.to('admins').emit('admin:profit_override', { nextRoundForcedCrash: null });
+    return res.json({ nextRoundForcedCrash: null });
+  }
+  const val = Math.round(Number(raw) * 100) / 100;
+  if (!Number.isFinite(val) || val < 1.0 || val > 100.0) {
+    return res.status(400).json({ error: 'Multiplier override must be between 1.00x and 100.00x.' });
+  }
+  gameState.nextRoundForcedCrash = val;
+  io.to('admins').emit('admin:profit_override', { nextRoundForcedCrash: val });
+  return res.json({ nextRoundForcedCrash: val });
+});
+
+app.post('/api/admin/profit-control/crash-now', requireAdmin, async (req, res) => {
+  if (gameState.phase !== 'FLYING') {
+    return res.status(400).json({ error: 'No active flight in progress right now.' });
+  }
+  const crashAt = Math.max(1.0, gameState.currentMultiplier);
+  await triggerCrash(crashAt);
+  return res.json({ ok: true, crashedAt: crashAt });
 });
 
 app.post('/api/admin/reset-daily-stats', requireAdmin, async (req, res) => {
@@ -1224,6 +1401,26 @@ app.get('/api/admin/transactions', requireAdmin, async (req, res) => {
 app.post('/api/admin/transactions/:id/approve', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const existingTx = await db.findTransactionById(id);
+    if (!existingTx || existingTx.status !== 'pending') {
+      return res.status(409).json({ error: 'Transaction not found or already reviewed.' });
+    }
+
+    if (existingTx.type === 'withdrawal') {
+      const targetUser = await db.findUserById(existingTx.userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: 'User account not found.' });
+      }
+      const totalDep = Math.round(Number(targetUser.totalDeposited || 0) * 100) / 100;
+      const totalWagered = Math.round(Number(targetUser.totalWageredReal || 0) * 100) / 100;
+      if (totalWagered < totalDep) {
+        const remaining = Math.round((totalDep - totalWagered) * 100) / 100;
+        return res.status(400).json({
+          error: `Cannot approve withdrawal: user has not met 1x wagering rule (Wagered ${totalWagered.toLocaleString()} / ${totalDep.toLocaleString()} PKR; ${remaining.toLocaleString()} PKR remaining). Reject or wait until wagered.`,
+        });
+      }
+    }
+
     const resolved = await db.resolveTransactionIfPending(id, 'approved', '');
     if (!resolved) {
       return res.status(409).json({ error: 'Transaction not found or already reviewed.' });
@@ -1421,11 +1618,114 @@ function emitUserBalances(user) {
   });
 }
 
+const BOT_PLAYER_NAMES = [
+  'Ali_Khan',
+  'Bilal786',
+  'Zara_Pk',
+  'KingOfSky',
+  'Hamza_Lhr',
+  'UsmanPro',
+  'Sana_KHI',
+  'Faisal_77',
+  'AyeshaSky',
+  'Noman_ISB',
+  'TariqFly',
+  'Hira_RWP',
+  'Saad_99',
+  'ZainabPK',
+  'HassanJet',
+  'Mahnoor_X',
+  'Kashif_512',
+  'Omer_FSD',
+  'Raza_King',
+  'Imran_Fly',
+  'FarhanPK',
+  'Sadia_786',
+  'Kamran_Ace',
+  'Danish_Jet',
+  'Ahsan_92',
+  'NadiaFly',
+  'Waqar_PK',
+  'TaimoorSky',
+];
+
+let simulatedOnlineCrowd = 48;
+let botBetTimers = [];
+
+function getDisplayedOnlineCount() {
+  return io.engine.clientsCount + simulatedOnlineCrowd;
+}
+
+function clearBotBetTimers() {
+  for (const t of botBetTimers) clearTimeout(t);
+  botBetTimers = [];
+}
+
+function scheduleSimulatedRoundBets(roundNum) {
+  clearBotBetTimers();
+  const count = 11 + Math.floor(Math.random() * 8); // 11..18 simulated bets per flight
+  const shuffled = BOT_PLAYER_NAMES.slice().sort(() => Math.random() - 0.5).slice(0, count);
+  const realStakes = [50, 100, 150, 200, 250, 500, 750, 1000, 1500, 2000, 3000, 5000];
+  const funStakes = [25, 50, 100, 250, 500, 1000, 2500];
+
+  shuffled.forEach((name, idx) => {
+    const delayMs = 220 + Math.floor((idx / count) * 3900) + Math.floor(Math.random() * 320);
+    const timer = setTimeout(() => {
+      if (gameState.phase !== 'BETTING' || gameState.roundNumber !== roundNum) return;
+
+      const currencyMode = Math.random() < 0.6 ? 'real' : 'fun';
+      const pool = currencyMode === 'real' ? realStakes : funStakes;
+      const amount = pool[Math.floor(Math.random() * pool.length)];
+
+      // Realistic cashout curve (some low scalps, some mid, occasional high riders)
+      const r = Math.random();
+      let botTargetMult;
+      if (r < 0.52) botTargetMult = 1.15 + Math.random() * 0.8;
+      else if (r < 0.84) botTargetMult = 1.95 + Math.random() * 2.1;
+      else botTargetMult = 4.1 + Math.random() * 7.5;
+      botTargetMult = Math.round(botTargetMult * 100) / 100;
+
+      const botBet = {
+        id: `${roundNum}-sim-${idx + 1}`,
+        userId: `sim-${idx + 1}-${name}`,
+        displayName: name,
+        slot: 1,
+        currencyMode,
+        amount,
+        autoCashout: null,
+        botTargetMult,
+        isBot: true,
+        cashedOut: false,
+        cashoutMultiplier: null,
+        payout: 0,
+      };
+
+      gameState.bets.push(botBet);
+      io.emit('bet:placed', {
+        id: botBet.id,
+        userId: botBet.userId,
+        player: botBet.displayName,
+        slot: botBet.slot,
+        currencyMode: botBet.currencyMode,
+        amount: botBet.amount,
+        autoCashout: null,
+        cashedOut: false,
+        cashoutMultiplier: null,
+        payout: 0,
+      });
+    }, delayMs);
+
+    botBetTimers.push(timer);
+  });
+}
+
 const gameState = {
   phase: 'BETTING',
   roundNumber: 1001,
   nonce: 1001,
   clientSeed: `skywing-${getTodayKey()}`,
+  nextClientSeedOverride: '',
+  nextRoundForcedCrash: null,
   serverSeed: '',
   serverSeedHash: '',
   bettingEndsAt: Date.now() + BETTING_DURATION_MS,
@@ -1448,7 +1748,7 @@ let phaseTimer = null;
 function generateProvablyFairSeeds(nonce) {
   const serverSeed = crypto.randomBytes(32).toString('hex');
   const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
-  const clientSeed = `skywing-${getTodayKey()}`;
+  const clientSeed = gameState.nextClientSeedOverride || `skywing-${getTodayKey()}`;
   return { serverSeed, serverSeedHash, clientSeed, nonce };
 }
 
@@ -1484,18 +1784,20 @@ function publicHistoryList() {
 }
 
 function broadcastOnlineCount() {
-  io.emit('players:online', { count: io.engine.clientsCount });
+  io.emit('players:online', { count: getDisplayedOnlineCount() });
 }
 
 async function startBettingPhase() {
   clearTimeout(phaseTimer);
   clearInterval(tickTimer);
+  clearBotBetTimers();
 
   const settings = await db.getSettings();
   const nextRound = Number(settings.roundCounter || 1000) + 1;
   await db.updateSettings({ roundCounter: nextRound });
 
   const seeds = generateProvablyFairSeeds(nextRound);
+  simulatedOnlineCrowd = Math.min(96, Math.max(36, simulatedOnlineCrowd + Math.floor(Math.random() * 9) - 4));
 
   gameState.phase = 'BETTING';
   gameState.roundNumber = nextRound;
@@ -1535,6 +1837,10 @@ async function startBettingPhase() {
     bets: [],
     history: publicHistoryList(),
   });
+  broadcastOnlineCount();
+
+  // Launch realistic simulated players placing staggered bets
+  scheduleSimulatedRoundBets(nextRound);
 
   phaseTimer = setTimeout(() => {
     startFlyingPhase().catch((err) => console.error('[Flight Start Error]', err));
@@ -1544,10 +1850,13 @@ async function startBettingPhase() {
 async function startFlyingPhase() {
   clearTimeout(phaseTimer);
   clearInterval(tickTimer);
+  clearBotBetTimers();
 
   const settings = await db.getSettings();
-  const totalRoundBet = gameState.bets.reduce((sum, b) => sum + b.amount, 0);
-  const totalRealRoundBet = gameState.bets
+  // STRICT REAL DATA: Only genuine non-bot player bets count toward pool/accounting
+  const realUserBets = gameState.bets.filter((b) => !b.isBot);
+  const totalRoundBet = realUserBets.reduce((sum, b) => sum + b.amount, 0);
+  const totalRealRoundBet = realUserBets
     .filter((b) => b.currencyMode === 'real')
     .reduce((sum, b) => sum + b.amount, 0);
 
@@ -1556,7 +1865,7 @@ async function startFlyingPhase() {
   gameState.totalRoundPayouts = 0;
   gameState.totalRealRoundPayouts = 0;
 
-  // Record Real Money PKR bets in Daily House Profit Pool (or fallback to total if only fun bets)
+  // Record Real Money PKR bets in Daily House Profit Pool
   const poolBetDelta = gameState.totalRealRoundBet;
   const updatedDailyBets =
     Math.round((Number(settings.dailyTotalBets || 0) + poolBetDelta) * 100) / 100;
@@ -1576,6 +1885,26 @@ async function startFlyingPhase() {
     gameState.nonce
   );
 
+  const profitCtrl = settings.profitControl || defaultProfitControl();
+  const maxCrashCap = Math.min(100, Math.max(1.05, Number(profitCtrl.maxCrashCap ?? 100)));
+  const houseEdgePct = Math.min(25, Math.max(0, Number(profitCtrl.houseEdgePct ?? 4)));
+
+  if (gameState.nextRoundForcedCrash !== null) {
+    crashPoint = Math.min(100, Math.max(1.0, gameState.nextRoundForcedCrash));
+    gameState.nextRoundForcedCrash = null;
+    io.to('admins').emit('admin:profit_override', { nextRoundForcedCrash: null });
+  } else {
+    if (Math.random() * 100 < houseEdgePct) {
+      crashPoint = Math.min(crashPoint, Math.round((1.0 + Math.random() * 0.25) * 100) / 100);
+    }
+    if (profitCtrl.mode === 'low-crash') {
+      crashPoint = Math.min(crashPoint, Math.round((1.05 + Math.random() * 0.78) * 100) / 100);
+    } else if (profitCtrl.mode === 'house-edge') {
+      crashPoint = Math.max(1.0, Math.round((1 + (crashPoint - 1) * 0.68) * 100) / 100);
+    }
+    crashPoint = Math.min(maxCrashCap, crashPoint);
+  }
+
   const target = Number(settings.dailyProfitTarget || 0);
   const tolerancePct = Math.min(10, Math.max(5, Number(settings.varianceTolerancePct || 8)));
   const protectedFloor = Math.max(0, target * (1 - tolerancePct / 100));
@@ -1585,9 +1914,15 @@ async function startFlyingPhase() {
   let protectionActive = false;
 
   if (gameState.totalRealRoundBet > 0) {
-    if (surplusPool > 0 && target > 0) {
+    if (profitCtrl.mode === 'generous' && surplusPool > 0 && target > 0) {
       const boostRatio = Math.min(surplusPool / gameState.totalRealRoundBet, 8.0);
-      const boostedFloor = Math.min(25.0, Math.max(crashPoint, 1.45 + boostRatio));
+      const boostedFloor = Math.min(maxCrashCap, Math.max(crashPoint, 1.45 + boostRatio));
+      crashPoint = Math.round(boostedFloor * 100) / 100;
+      maxAllowedRoundPayout = Math.max(0, projectedDailyNet - protectedFloor);
+      protectionActive = true;
+    } else if (surplusPool > 0 && target > 0) {
+      const boostRatio = Math.min(surplusPool / gameState.totalRealRoundBet, 6.0);
+      const boostedFloor = Math.min(maxCrashCap, Math.max(crashPoint, 1.35 + boostRatio));
       crashPoint = Math.round(boostedFloor * 100) / 100;
       maxAllowedRoundPayout = Math.max(0, projectedDailyNet - protectedFloor);
       protectionActive = true;
@@ -1631,7 +1966,7 @@ async function startFlyingPhase() {
 }
 
 async function processCashout(bet, multiplier) {
-  if (bet.cashedOut || gameState.phase !== 'FLYING') return null;
+  if (bet.cashedOut || bet.isBot || gameState.phase !== 'FLYING') return null;
 
   bet.cashedOut = true;
   const cleanMult = Math.floor(multiplier * 100) / 100;
@@ -1698,7 +2033,7 @@ async function runFlightTick() {
   // 1. Check real-time pool protection ceiling for Real Money PKR bets
   if (gameState.protectionActive && gameState.totalRealRoundBet > 0) {
     const uncashedRealBets = gameState.bets.filter(
-      (b) => !b.cashedOut && b.currencyMode === 'real'
+      (b) => !b.isBot && !b.cashedOut && b.currencyMode === 'real'
     );
     const activeLiability = uncashedRealBets.reduce((sum, b) => sum + b.amount * currentMult, 0);
     const totalPotential = gameState.totalRealRoundPayouts + activeLiability;
@@ -1719,8 +2054,27 @@ async function runFlightTick() {
     return;
   }
 
-  // 3. Trigger Auto-Cashouts ONLY when bet.autoCashout is explicitly enabled (>= 1.01)
+  // 3. Trigger Simulated Crowd Cashouts & Genuine Auto-Cashouts
   for (const bet of gameState.bets) {
+    if (bet.isBot) {
+      if (!bet.cashedOut && bet.botTargetMult && currentMult >= bet.botTargetMult) {
+        bet.cashedOut = true;
+        bet.cashoutMultiplier = bet.botTargetMult;
+        bet.payout = Math.round(bet.amount * bet.botTargetMult * 100) / 100;
+        io.emit('bet:cashedOut', {
+          betId: bet.id,
+          userId: bet.userId,
+          slot: bet.slot,
+          currencyMode: bet.currencyMode,
+          player: bet.displayName,
+          amount: bet.amount,
+          cashoutMultiplier: bet.cashoutMultiplier,
+          payout: bet.payout,
+          profit: Math.round((bet.payout - bet.amount) * 100) / 100,
+        });
+      }
+      continue;
+    }
     if (!bet.cashedOut && bet.autoCashout !== null && bet.autoCashout >= 1.01) {
       if (currentMult >= bet.autoCashout) {
         await processCashout(bet, bet.autoCashout);
@@ -1740,12 +2094,14 @@ async function triggerCrash(finalMultiplier) {
   if (gameState.phase !== 'FLYING') return;
   clearInterval(tickTimer);
   clearTimeout(phaseTimer);
+  clearBotBetTimers();
 
   gameState.phase = 'CRASHED';
   const crashPoint = Math.max(1.0, Math.round(finalMultiplier * 100) / 100);
   gameState.currentMultiplier = crashPoint;
 
-  const losingBets = gameState.bets.filter((b) => !b.cashedOut);
+  // Strictly only record losses for genuine registered users (never bots)
+  const losingBets = gameState.bets.filter((b) => !b.isBot && !b.cashedOut);
   for (const bet of losingBets) {
     await db.updateUserById(bet.userId, {
       $push: {
@@ -1868,7 +2224,19 @@ io.on('connection', async (socket) => {
     nonce: gameState.nonce,
     bets: publicBetsList(),
     history: publicHistoryList(),
-    onlineCount: io.engine.clientsCount,
+    onlineCount: getDisplayedOnlineCount(),
+  });
+
+  // Update next-round Provably Fair client seed
+  socket.on('fair:setClientSeed', ({ clientSeed }, cb) => {
+    const clean = String(clientSeed || '')
+      .replace(/[^a-zA-Z0-9_-]/g, '')
+      .slice(0, 32);
+    if (clean.length < 4) {
+      return cb?.({ ok: false, error: 'Client seed must be 4-32 alphanumeric characters.' });
+    }
+    gameState.nextClientSeedOverride = clean;
+    cb?.({ ok: true, clientSeed: clean });
   });
 
   // Admin socket subscription for real-time deposit & withdrawal pop-up alerts

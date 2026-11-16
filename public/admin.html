@@ -5,160 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SkyWing Operations Console — Admin</title>
     <link rel="stylesheet" href="/style.css" />
-    <style>
-      .admin-shell {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 20px 16px 48px;
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-      }
-      .login-wrapper {
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-      }
-      .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-        gap: 12px;
-      }
-      .kpi-card {
-        background: var(--bg-panel);
-        border: 1px solid var(--border-hairline);
-        border-radius: var(--radius-md);
-        padding: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-      }
-      .kpi-label {
-        font-size: 0.76rem;
-        color: var(--text-muted);
-      }
-      .kpi-value {
-        font-family: var(--font-mono);
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--text-primary);
-      }
-      .panel-card {
-        background: var(--bg-panel);
-        border: 1px solid var(--border-hairline);
-        border-radius: var(--radius-lg);
-        padding: 18px;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-      }
-      .panel-title {
-        margin: 0;
-        font-family: var(--font-display);
-        font-size: 1.12rem;
-        font-weight: 700;
-      }
-      .settings-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 12px;
-      }
-      .table-wrap {
-        width: 100%;
-        overflow-x: auto;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.84rem;
-      }
-      th,
-      td {
-        text-align: left;
-        padding: 10px 9px;
-        border-bottom: 1px solid var(--border-hairline);
-        white-space: nowrap;
-      }
-      th {
-        color: var(--text-muted);
-        font-weight: 600;
-        font-size: 0.76rem;
-      }
-      .action-group {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-      .btn-xs {
-        padding: 5px 9px;
-        font-size: 0.74rem;
-        border-radius: 7px;
-      }
-      .status-text {
-        font-size: 0.76rem;
-        font-weight: 700;
-      }
-      .status-active {
-        color: #34d399;
-      }
-      .status-pending {
-        color: #fbbf24;
-      }
-      .status-banned {
-        color: #f87171;
-      }
-      .pay-config-box {
-        padding: 12px;
-        border-radius: 10px;
-        background: rgba(6, 9, 19, 0.55);
-        border: 1px solid var(--border-hairline);
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      .preset-reason-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-      .live-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #10b981;
-        display: inline-block;
-        box-shadow: 0 0 8px #10b981;
-      }
-      .audio-controls-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 14px;
-        align-items: end;
-      }
-      .audio-test-bench {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 8px;
-        padding: 12px;
-        border-radius: 10px;
-        background: rgba(6, 9, 19, 0.55);
-        border: 1px solid var(--border-hairline);
-      }
-      .isolated-badge {
-        font-size: 0.72rem;
-        font-weight: 700;
-        padding: 4px 9px;
-        border-radius: 6px;
-        background: rgba(56, 189, 248, 0.14);
-        border: 1px solid rgba(56, 189, 248, 0.35);
-        color: #7dd3fc;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-      }
-    </style>
   </head>
   <body>
     <!-- Admin Login View (Strictly Isolated) -->
@@ -185,30 +31,152 @@
       </div>
     </div>
 
-    <!-- Admin Dashboard View (Strictly Isolated Operations Console) -->
-    <div id="adminDashboardView" class="hidden">
-      <header class="topbar">
-        <div class="brand-mark" style="cursor: default;">
-          <span>SkyWing Admin Console</span>
-        </div>
-        <div class="nav-links" style="display: flex; align-items: center; gap: 12px;">
-          <span class="isolated-badge">Isolated Operations</span>
-          <span style="font-size: 0.78rem; color: #34d399; display: inline-flex; align-items: center; gap: 6px;">
-            <span class="live-dot"></span> Real-Time Alerts Active
-          </span>
-        </div>
-        <div class="header-actions">
-          <button type="button" class="btn btn-secondary" id="refreshDashBtn">Refresh Data</button>
-          <button type="button" class="btn btn-danger" id="adminLogoutBtn">Log Out</button>
-        </div>
-      </header>
+    <!-- Admin Dashboard View (Strictly Isolated Two-Column Layout with Fixed Sidebar) -->
+    <div id="adminDashboardView" class="admin-layout hidden">
+      <div id="adminSidebarBackdrop" class="admin-sidebar-backdrop"></div>
 
-      <main class="admin-shell">
-        <div id="adminToast" class="alert-success hidden"></div>
-        <div id="mongoNoticeBanner" class="alert-error hidden"></div>
+      <!-- Fixed Non-Scrolling Left Separator Sidebar -->
+      <aside id="adminSidebar" class="admin-sidebar" aria-label="Admin Navigation">
+        <div class="admin-sidebar-top">
+          <div class="admin-sidebar-brand">
+            <div>
+              <div class="admin-sidebar-brand-title">SkyWing Admin</div>
+              <div class="admin-sidebar-brand-sub">Isolated Operations Console</div>
+            </div>
+            <button
+              type="button"
+              class="admin-sidebar-close"
+              id="adminSidebarCloseBtn"
+              aria-label="Close Navigation Menu"
+            >
+              ×
+            </button>
+          </div>
 
-        <!-- KPI Summary Strip -->
-        <section class="kpi-grid">
+          <div>
+            <div class="admin-nav-group-label">Console Sections</div>
+            <nav class="admin-nav-list">
+              <button type="button" class="admin-nav-link active" data-target="secOverview" data-title="Overview & KPIs">
+                <span class="admin-nav-link-inner">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                  </svg>
+                  <span>Overview &amp; KPIs</span>
+                </span>
+              </button>
+
+              <button type="button" class="admin-nav-link" data-target="secTransactions" data-title="Deposits & Withdrawals">
+                <span class="admin-nav-link-inner">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                  <span>Deposits &amp; Withdrawals</span>
+                </span>
+                <span class="admin-nav-badge hidden" id="navPendingBadge">0</span>
+              </button>
+
+              <button type="button" class="admin-nav-link" data-target="secProfitControl" data-title="Profit & Multiplier Control">
+                <span class="admin-nav-link-inner">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M3 3v18h18" />
+                    <path d="m19 9-5 5-4-4-3 3" />
+                  </svg>
+                  <span>Profit &amp; Multiplier</span>
+                </span>
+              </button>
+
+              <button type="button" class="admin-nav-link" data-target="audioControlSection" data-title="Game Audio & Sound">
+                <span class="admin-nav-link-inner">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                  </svg>
+                  <span>Game Audio &amp; Sound</span>
+                </span>
+              </button>
+
+              <button type="button" class="admin-nav-link" data-target="secSettings" data-title="Accounts & Pool Engine">
+                <span class="admin-nav-link-inner">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.02 1.4 1.13H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
+                  <span>Accounts &amp; Pool Engine</span>
+                </span>
+              </button>
+
+              <button type="button" class="admin-nav-link" data-target="secMembers" data-title="Member Management">
+                <span class="admin-nav-link-inner">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  <span>Member Management</span>
+                </span>
+              </button>
+
+              <button type="button" class="admin-nav-link" data-target="secRounds" data-title="Rounds Audit Log">
+                <span class="admin-nav-link-inner">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                  </svg>
+                  <span>Rounds Audit Log</span>
+                </span>
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        <div class="admin-sidebar-footer">
+          <div class="admin-status-box">
+            <span style="font-size: 0.76rem; color: #34d399; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+              <span class="live-dot"></span> Real-Time Alerts Active
+            </span>
+            <span style="font-size: 0.72rem; color: var(--text-muted);" id="sidebarDbMode">Connecting...</span>
+          </div>
+          <button type="button" class="btn btn-secondary" id="sidebarRefreshBtn" style="width: 100%;">Refresh Data</button>
+          <button type="button" class="btn btn-danger" id="sidebarLogoutBtn" style="width: 100%;">Log Out</button>
+        </div>
+      </aside>
+
+      <!-- Scrollable Right Main Workspace -->
+      <div id="adminWorkspace" class="admin-workspace">
+        <header class="admin-topbar">
+          <div class="admin-topbar-left">
+            <button
+              type="button"
+              class="admin-menu-btn"
+              id="adminMenuToggleBtn"
+              aria-label="Open Navigation Menu"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <h1 class="admin-topbar-title" id="adminTopbarTitle">Overview &amp; KPIs</h1>
+            <span class="isolated-badge">Isolated Operations</span>
+          </div>
+
+          <div class="header-actions">
+            <button type="button" class="btn btn-secondary" id="refreshDashBtn">Refresh Data</button>
+            <button type="button" class="btn btn-danger" id="adminLogoutBtn">Log Out</button>
+          </div>
+        </header>
+
+        <main class="admin-shell">
+          <div id="adminToast" class="alert-success hidden"></div>
+          <div id="mongoNoticeBanner" class="alert-error hidden"></div>
+
+          <!-- KPI Summary Strip -->
+          <section class="kpi-grid admin-section" id="secOverview">
           <div class="kpi-card">
             <span class="kpi-label">Daily Real Profit (PKR)</span>
             <span class="kpi-value tabular-nums" id="kpiNetProfit">0.00 PKR</span>
@@ -236,7 +204,7 @@
         </section>
 
         <!-- Deposit & Withdrawal Verification Queue -->
-        <section class="panel-card">
+        <section class="panel-card admin-section" id="secTransactions">
           <div class="modal-header" style="flex-wrap: wrap;">
             <h2 class="panel-title">Deposits & Withdrawals Queue (Real Money PKR)</h2>
             <div class="segmented-control">
@@ -268,13 +236,89 @@
           </div>
         </section>
 
-        <!-- Game Audio & Sound Controls (Global Sync + Live Test Bench) -->
-        <section class="panel-card" id="audioControlSection">
+        <!-- Customer Profit & Multiplier Control Panel -->
+        <section class="panel-card admin-section" id="secProfitControl">
           <div class="modal-header" style="flex-wrap: wrap;">
             <div>
-              <h2 class="panel-title">Game Audio & Sound Controls</h2>
+              <h2 class="panel-title">Customer Profit &amp; Multiplier Control</h2>
               <span style="font-size: 0.78rem; color: var(--text-muted);">
-                Configure synthesized background music, sound preset, and global master volume for all players.
+                Control house edge, max multiplier cap, next-round forced crash point, or force immediate crash on active flights.
+              </span>
+            </div>
+            <span class="isolated-badge" id="armedOverrideBadge" style="background: rgba(16, 185, 129, 0.14); border-color: rgba(16, 185, 129, 0.35); color: #34d399;">
+              Next Round: Algorithmic
+            </span>
+          </div>
+
+          <div class="settings-grid">
+            <div class="form-group">
+              <label class="form-label" for="profitModeSelect">Profit Algorithm Mode</label>
+              <select class="form-input" id="profitModeSelect">
+                <option value="balanced">Balanced (Fair + Daily Profit Guard)</option>
+                <option value="house-edge">House Edge Boost (Tighter Multipliers)</option>
+                <option value="low-crash">Low Crash Guard (Frequent 1.05x–1.80x)</option>
+                <option value="generous">Generous Flight (Higher Payouts)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="profitHouseEdge">House Edge Boost (%)</label>
+              <input type="number" class="form-input" id="profitHouseEdge" min="0" max="25" step="0.5" value="4" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="profitMaxCap">Max Multiplier Cap (x)</label>
+              <input type="number" class="form-input" id="profitMaxCap" min="1.05" max="100" step="0.5" value="100" />
+            </div>
+
+            <div class="form-group" style="justify-content: flex-end;">
+              <button type="button" class="btn btn-primary" id="saveProfitControlBtn" style="width: 100%; padding: 11px;">
+                Save Profit Policy
+              </button>
+            </div>
+          </div>
+
+          <div class="pay-config-box">
+            <div class="modal-header" style="flex-wrap: wrap;">
+              <strong style="color: var(--accent-gold-bright);">Next-Round Crash Override &amp; Emergency Stop</strong>
+              <button type="button" class="btn btn-danger btn-xs" id="crashNowBtn">
+                Force Crash NOW!
+              </button>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+              <input
+                type="number"
+                class="form-input"
+                id="forcedCrashInput"
+                min="1.00"
+                max="100.00"
+                step="0.01"
+                placeholder="Target multiplier (1.00 - 100.00)"
+                style="flex: 1; min-width: 190px;"
+              />
+              <button type="button" class="btn btn-emerald" id="armForcedCrashBtn">Lock Next Round</button>
+              <button type="button" class="btn btn-secondary" id="clearForcedCrashBtn">Clear</button>
+            </div>
+
+            <div class="preset-reason-row">
+              <span style="font-size: 0.74rem; color: var(--text-muted); align-self: center;">Quick Presets:</span>
+              <button type="button" class="btn btn-secondary btn-xs quick-crash-preset" data-mult="1.00">1.00x (Instant)</button>
+              <button type="button" class="btn btn-secondary btn-xs quick-crash-preset" data-mult="1.20">1.20x</button>
+              <button type="button" class="btn btn-secondary btn-xs quick-crash-preset" data-mult="1.50">1.50x</button>
+              <button type="button" class="btn btn-secondary btn-xs quick-crash-preset" data-mult="2.50">2.50x</button>
+              <button type="button" class="btn btn-secondary btn-xs quick-crash-preset" data-mult="10.00">10.00x</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Game Audio & Sound Controls (Global Sync + Live Test Bench) -->
+        <section class="panel-card admin-section" id="audioControlSection">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <div>
+              <h2 class="panel-title">Game Audio &amp; Sound Controls</h2>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">
+                Configure synthesized background music, Aviator/Avtix turbine sound preset, and global master volume for all players.
               </span>
             </div>
             <button type="button" class="btn btn-emerald" id="saveAudioBtn">Save &amp; Sync Audio Globally</button>
@@ -298,6 +342,7 @@
             <div class="form-group">
               <label class="form-label" for="audioPreset">Global Sound Preset</label>
               <select class="form-input" id="audioPreset">
+                <option value="aviator-jet">Aviator Jet &amp; Propeller (Avtix Style)</option>
                 <option value="cyber-flight">Cyber Flight Synth</option>
                 <option value="casino-chime">High-Energy Casino Chime</option>
                 <option value="turbo-arcade">Turbo Arcade Pulse</option>
@@ -328,6 +373,7 @@
             </span>
             <button type="button" class="btn btn-primary btn-xs" id="testBgmBtn">▶ Test BGM</button>
             <button type="button" class="btn btn-secondary btn-xs" id="stopBgmBtn">⏹ Stop BGM</button>
+            <button type="button" class="btn btn-primary btn-xs" id="testJetTakeoffBtn">Jet Takeoff &amp; Ticks</button>
             <button type="button" class="btn btn-secondary btn-xs" id="testCyberBtn">Cyber Flight</button>
             <button type="button" class="btn btn-secondary btn-xs" id="testChimeBtn">Casino Chime</button>
             <button type="button" class="btn btn-emerald btn-xs" id="testVictoryBtn">Victory Arpeggio</button>
@@ -336,7 +382,7 @@
         </section>
 
         <!-- Payment Accounts + Profit-Pool Engine & WhatsApp Settings -->
-        <section class="panel-card">
+        <section class="panel-card admin-section" id="secSettings">
           <div class="modal-header" style="flex-wrap: wrap;">
             <h2 class="panel-title">Payment Accounts, Pool Engine & WhatsApp Settings</h2>
             <button type="button" class="btn btn-secondary btn-xs" id="resetDailyBtn">Reset Daily Counters</button>
@@ -418,16 +464,61 @@
                 <label class="form-label" for="setWelcomeBonus">New User Welcome Bonus (Fun FC)</label>
                 <input type="number" class="form-input" id="setWelcomeBonus" min="0" step="50" required />
               </div>
+            </div>
 
-              <div class="form-group">
-                <label class="form-label" for="setSupportPhone">WhatsApp Helpline Number (Forgot PW)</label>
-                <input type="text" class="form-input" id="setSupportPhone" placeholder="e.g. 923001234567" required />
-                <span class="form-hint">Digits with country code (923XXXXXXXXX).</span>
+            <div class="settings-grid">
+              <!-- WhatsApp Support / Help Toggle -->
+              <div class="pay-config-box">
+                <div class="modal-header">
+                  <strong style="color: #34d399;">WhatsApp Support / Help Link</strong>
+                  <label class="toggle-label">
+                    <span class="switch">
+                      <input type="checkbox" id="setWhatsappSupportEnabled" checked />
+                      <span class="slider"></span>
+                    </span>
+                    <span id="whatsappSupportStateText" style="font-weight:700;">Available</span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="setSupportPhone">Support Helpline Number (923XX)</label>
+                  <input type="text" class="form-input" id="setSupportPhone" placeholder="e.g. 923001234567" required />
+                </div>
               </div>
 
-              <div class="form-group" style="grid-column: span 2;">
-                <label class="form-label" for="setChannelUrl">Official WhatsApp Channel URL</label>
-                <input type="url" class="form-input" id="setChannelUrl" placeholder="https://whatsapp.com/channel/..." required />
+              <!-- Official WhatsApp Channel Toggle -->
+              <div class="pay-config-box">
+                <div class="modal-header">
+                  <strong style="color: #6ee7b7;">Official WhatsApp Channel</strong>
+                  <label class="toggle-label">
+                    <span class="switch">
+                      <input type="checkbox" id="setWhatsappChannelEnabled" checked />
+                      <span class="slider"></span>
+                    </span>
+                    <span id="whatsappChannelStateText" style="font-weight:700;">Available</span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="setChannelUrl">WhatsApp Channel URL</label>
+                  <input type="url" class="form-input" id="setChannelUrl" placeholder="https://whatsapp.com/channel/..." required />
+                </div>
+              </div>
+
+              <!-- Official Telegram Channel Toggle -->
+              <div class="pay-config-box">
+                <div class="modal-header">
+                  <strong style="color: #38bdf8;">Telegram Channel Link</strong>
+                  <label class="toggle-label">
+                    <span class="switch">
+                      <input type="checkbox" id="setTelegramEnabled" checked />
+                      <span class="slider"></span>
+                    </span>
+                    <span id="telegramStateText" style="font-weight:700;">Available</span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="setTelegramUrl">Telegram Channel URL</label>
+                  <input type="url" class="form-input" id="setTelegramUrl" placeholder="https://t.me/SkyWingOfficial" required />
+                </div>
               </div>
             </div>
 
@@ -438,16 +529,15 @@
         </section>
 
         <!-- Comprehensive Member Management Table -->
-        <section class="panel-card">
+        <section class="panel-card admin-section" id="secMembers">
           <div class="modal-header" style="flex-wrap: wrap;">
             <h2 class="panel-title">Member Management (Fun FC, Real PKR, Deposits, Withdrawals & P/L)</h2>
-            <form id="userSearchForm" style="display: flex; gap: 8px;">
+            <form id="userSearchForm" class="admin-user-search-form">
               <input
                 type="text"
-                class="form-input"
+                class="form-input admin-user-search-input"
                 id="userSearchInput"
                 placeholder="Search by 03XX mobile or name..."
-                style="width: 240px; padding: 8px 12px;"
               />
               <button type="submit" class="btn btn-secondary">Search</button>
             </form>
@@ -478,7 +568,7 @@
         </section>
 
         <!-- Recent Rounds Audit Log -->
-        <section class="panel-card">
+        <section class="panel-card admin-section" id="secRounds">
           <h2 class="panel-title">Recent Rounds Audit & Provably Fair Seeds</h2>
           <div class="table-wrap">
             <table>
@@ -501,6 +591,7 @@
           </div>
         </section>
       </main>
+      </div>
     </div>
 
     <!-- Real-Time Incoming Deposit Alert Pop-Up Modal -->
@@ -521,7 +612,7 @@
           />
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="deposit-alert-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <button type="button" class="btn btn-emerald" id="alertApproveBtn" style="padding: 12px;">
             Approve & Credit PKR
           </button>
@@ -732,6 +823,10 @@
             loadDashboard();
             loadUsers(document.getElementById('userSearchInput').value);
           });
+
+          adminSocket.on('admin:profit_override', ({ nextRoundForcedCrash }) => {
+            updateArmedOverrideUI(nextRoundForcedCrash);
+          });
         }
 
         function openDepositAlertPopup(tx) {
@@ -770,9 +865,65 @@
           openRejectModal(activeAlertTx.id);
         });
 
+        const sidebarEl = document.getElementById('adminSidebar');
+        const sidebarBackdrop = document.getElementById('adminSidebarBackdrop');
+        const workspaceEl = document.getElementById('adminWorkspace');
+        const topbarTitleEl = document.getElementById('adminTopbarTitle');
+        const navLinks = Array.from(document.querySelectorAll('.admin-nav-link[data-target]'));
+
+        function setSidebarOpen(open) {
+          sidebarEl?.classList.toggle('open', open);
+          sidebarBackdrop?.classList.toggle('open', open);
+        }
+
+        document.getElementById('adminMenuToggleBtn')?.addEventListener('click', () => setSidebarOpen(true));
+        document.getElementById('adminSidebarCloseBtn')?.addEventListener('click', () => setSidebarOpen(false));
+        sidebarBackdrop?.addEventListener('click', () => setSidebarOpen(false));
+
+        function setActiveNavLink(targetId) {
+          navLinks.forEach((btn) => {
+            const match = btn.dataset.target === targetId;
+            btn.classList.toggle('active', match);
+            if (match && topbarTitleEl && btn.dataset.title) {
+              topbarTitleEl.textContent = btn.dataset.title;
+            }
+          });
+        }
+
+        navLinks.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const target = document.getElementById(btn.dataset.target);
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              setActiveNavLink(btn.dataset.target);
+            }
+            setSidebarOpen(false);
+          });
+        });
+
+        function handleWorkspaceScroll() {
+          const sections = navLinks
+            .map((btn) => document.getElementById(btn.dataset.target))
+            .filter(Boolean);
+          if (!sections.length) return;
+          const threshold = window.innerWidth <= 960 ? 120 : 140;
+          let activeId = sections[0].id;
+          for (const sec of sections) {
+            const rect = sec.getBoundingClientRect();
+            if (rect.top <= threshold) {
+              activeId = sec.id;
+            }
+          }
+          setActiveNavLink(activeId);
+        }
+
+        workspaceEl?.addEventListener('scroll', handleWorkspaceScroll, { passive: true });
+        window.addEventListener('scroll', handleWorkspaceScroll, { passive: true });
+
         function showLogin() {
           adminAudio?.stopBGM();
           adminAudio?.stopTension();
+          setSidebarOpen(false);
           loginView.classList.remove('hidden');
           dashView.classList.add('hidden');
         }
@@ -813,16 +964,24 @@
           }
         });
 
-        document.getElementById('adminLogoutBtn').addEventListener('click', () => {
+        function performAdminLogout() {
           adminToken = '';
           localStorage.removeItem('skywing_admin_token');
           showLogin();
-        });
+        }
 
-        document.getElementById('refreshDashBtn').addEventListener('click', () => {
+        function performAdminRefresh() {
           loadDashboard();
           loadTransactions();
           loadUsers(document.getElementById('userSearchInput').value);
+        }
+
+        document.getElementById('adminLogoutBtn').addEventListener('click', performAdminLogout);
+        document.getElementById('sidebarLogoutBtn')?.addEventListener('click', performAdminLogout);
+        document.getElementById('refreshDashBtn').addEventListener('click', performAdminRefresh);
+        document.getElementById('sidebarRefreshBtn')?.addEventListener('click', () => {
+          performAdminRefresh();
+          setSidebarOpen(false);
         });
 
         async function loadDashboard() {
@@ -838,7 +997,18 @@
             document.getElementById('kpiPendingTx').textContent = `${p.deposits} Dep / ${p.withdrawals} Wd`;
             document.getElementById('kpiSurplus').textContent = fmtPKR(s.carryForwardPool);
             document.getElementById('kpiBetsPayouts').textContent = `${Number(s.dailyTotalBets).toFixed(0)} / ${Number(s.dailyTotalPayouts).toFixed(0)} PKR`;
-            document.getElementById('kpiLive').textContent = `#${live.roundNumber} (${live.phase}) · ${live.onlineSockets} Online`;
+            document.getElementById('kpiLive').textContent = `#${live.roundNumber} (${live.phase}) · ${live.onlineSockets} Real (${live.displayedOnline || live.onlineSockets} Crowd) · ${live.activeBetCount || 0} Real Bets`;
+
+            const totalPending = Number(p.deposits || 0) + Number(p.withdrawals || 0);
+            const navBadge = document.getElementById('navPendingBadge');
+            if (navBadge) {
+              navBadge.textContent = String(totalPending);
+              navBadge.classList.toggle('hidden', totalPending <= 0);
+            }
+            const dbModeEl = document.getElementById('sidebarDbMode');
+            if (dbModeEl) {
+              dbModeEl.textContent = live.databaseMode || 'Connected';
+            }
 
             const mongoBanner = document.getElementById('mongoNoticeBanner');
             if (live.mongoNotice) {
@@ -851,8 +1021,21 @@
             document.getElementById('setDailyTarget').value = s.dailyProfitTarget;
             document.getElementById('setVariancePct').value = s.varianceTolerancePct;
             document.getElementById('setWelcomeBonus').value = s.welcomeBonusCredits;
-            document.getElementById('setSupportPhone').value = s.whatsappSupportNumber;
-            document.getElementById('setChannelUrl').value = s.whatsappChannelUrl;
+
+            const waSuppOn = s.whatsappSupportEnabled !== false;
+            document.getElementById('setWhatsappSupportEnabled').checked = waSuppOn;
+            document.getElementById('whatsappSupportStateText').textContent = waSuppOn ? 'Available' : 'Not Available';
+            document.getElementById('setSupportPhone').value = s.whatsappSupportNumber || '';
+
+            const waChanOn = s.whatsappChannelEnabled !== false;
+            document.getElementById('setWhatsappChannelEnabled').checked = waChanOn;
+            document.getElementById('whatsappChannelStateText').textContent = waChanOn ? 'Available' : 'Not Available';
+            document.getElementById('setChannelUrl').value = s.whatsappChannelUrl || '';
+
+            const tgOn = s.telegramChannelEnabled !== false;
+            document.getElementById('setTelegramEnabled').checked = tgOn;
+            document.getElementById('telegramStateText').textContent = tgOn ? 'Available' : 'Not Available';
+            document.getElementById('setTelegramUrl').value = s.telegramChannelUrl || 'https://t.me/SkyWingOfficial';
 
             const pa = s.paymentAccounts || {};
             document.getElementById('epEnabled').checked = pa.easypaisa?.enabled !== false;
@@ -868,10 +1051,16 @@
             document.getElementById('bkTitle').value = pa.bank?.accountTitle || '';
             document.getElementById('bkNumber').value = pa.bank?.accountNumber || '';
 
-            const ac = s.audioConfig || { bgmEnabled: true, soundPreset: 'cyber-flight', masterVolume: 75 };
+            const pc = s.profitControl || { mode: 'balanced', houseEdgePct: 4, maxCrashCap: 100 };
+            document.getElementById('profitModeSelect').value = pc.mode || 'balanced';
+            document.getElementById('profitHouseEdge').value = Number(pc.houseEdgePct ?? 4);
+            document.getElementById('profitMaxCap').value = Number(pc.maxCrashCap ?? 100);
+            updateArmedOverrideUI(live.nextRoundForcedCrash);
+
+            const ac = s.audioConfig || { bgmEnabled: true, soundPreset: 'aviator-jet', masterVolume: 75 };
             document.getElementById('audioBgmEnabled').checked = ac.bgmEnabled !== false;
             document.getElementById('audioBgmStateText').textContent = ac.bgmEnabled !== false ? 'ON' : 'OFF';
-            document.getElementById('audioPreset').value = ac.soundPreset || 'cyber-flight';
+            document.getElementById('audioPreset').value = ac.soundPreset || 'aviator-jet';
             document.getElementById('audioMasterVolume').value = Number(ac.masterVolume ?? 75);
             document.getElementById('audioMasterVolumeVal').textContent = `${Number(ac.masterVolume ?? 75)}%`;
             if (adminAudio) {
@@ -1073,6 +1262,106 @@
         });
 
         // ====================================================================
+        // Customer Profit & Multiplier Control
+        // ====================================================================
+        function updateArmedOverrideUI(nextRoundForcedCrash) {
+          const badge = document.getElementById('armedOverrideBadge');
+          const input = document.getElementById('forcedCrashInput');
+          if (!badge) return;
+          if (nextRoundForcedCrash !== null && nextRoundForcedCrash !== undefined) {
+            const val = Number(nextRoundForcedCrash).toFixed(2);
+            badge.textContent = `Next Round Locked: ${val}x`;
+            badge.style.background = 'rgba(245, 158, 11, 0.18)';
+            badge.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+            badge.style.color = '#fde047';
+            if (input && document.activeElement !== input) {
+              input.value = val;
+            }
+          } else {
+            badge.textContent = 'Next Round: Algorithmic';
+            badge.style.background = 'rgba(16, 185, 129, 0.14)';
+            badge.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+            badge.style.color = '#34d399';
+          }
+        }
+
+        document.getElementById('saveProfitControlBtn').addEventListener('click', async () => {
+          try {
+            const res = await apiFetch('/api/admin/profit-control', {
+              method: 'PUT',
+              body: JSON.stringify({
+                mode: document.getElementById('profitModeSelect').value,
+                houseEdgePct: Number(document.getElementById('profitHouseEdge').value),
+                maxCrashCap: Number(document.getElementById('profitMaxCap').value),
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Failed to update profit policy.', true);
+              return;
+            }
+            showToast('Profit & multiplier policy saved!');
+            loadDashboard();
+          } catch {
+            showToast('Failed to update profit policy.', true);
+          }
+        });
+
+        async function setForcedCrashOverride(val) {
+          try {
+            const res = await apiFetch('/api/admin/profit-control/override', {
+              method: 'POST',
+              body: JSON.stringify({ forcedCrash: val }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Invalid override multiplier.', true);
+              return;
+            }
+            updateArmedOverrideUI(data.nextRoundForcedCrash);
+            if (data.nextRoundForcedCrash !== null) {
+              showToast(`Next flight locked to crash at ${Number(data.nextRoundForcedCrash).toFixed(2)}x`);
+            } else {
+              document.getElementById('forcedCrashInput').value = '';
+              showToast('Next-round crash override cleared.');
+            }
+          } catch {
+            showToast('Failed to update override.', true);
+          }
+        }
+
+        document.getElementById('armForcedCrashBtn').addEventListener('click', () => {
+          const val = document.getElementById('forcedCrashInput').value;
+          setForcedCrashOverride(val);
+        });
+
+        document.getElementById('clearForcedCrashBtn').addEventListener('click', () => {
+          setForcedCrashOverride(null);
+        });
+
+        document.querySelectorAll('.quick-crash-preset').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            document.getElementById('forcedCrashInput').value = btn.dataset.mult;
+            setForcedCrashOverride(btn.dataset.mult);
+          });
+        });
+
+        document.getElementById('crashNowBtn').addEventListener('click', async () => {
+          try {
+            const res = await apiFetch('/api/admin/profit-control/crash-now', { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Cannot force crash right now.', true);
+              return;
+            }
+            showToast(`Flight force-crashed at ${Number(data.crashedAt).toFixed(2)}x!`);
+            loadDashboard();
+          } catch {
+            showToast('Emergency crash request failed.', true);
+          }
+        });
+
+        // ====================================================================
         // Game Audio & Sound Controls + Live Test Bench
         // ====================================================================
         function getAdminAudioConfig() {
@@ -1113,6 +1402,16 @@
         document.getElementById('stopBgmBtn').addEventListener('click', () => {
           adminAudio?.stopBGM();
           adminAudio?.stopTension();
+        });
+
+        document.getElementById('testJetTakeoffBtn')?.addEventListener('click', () => {
+          syncAdminTestEngine(false);
+          adminAudio?.ensureContext();
+          if (adminAudio?.playTakeoffPreview) {
+            adminAudio.playTakeoffPreview();
+          } else {
+            adminAudio?.playWingFlap();
+          }
         });
 
         document.getElementById('testCyberBtn').addEventListener('click', () => {
@@ -1160,8 +1459,18 @@
         });
 
         // ====================================================================
-        // Settings Form Submission (Including Payment Accounts & Audio)
+        // Settings Form Submission (Including Payment Accounts, Social Toggles & Audio)
         // ====================================================================
+        [
+          ['setWhatsappSupportEnabled', 'whatsappSupportStateText'],
+          ['setWhatsappChannelEnabled', 'whatsappChannelStateText'],
+          ['setTelegramEnabled', 'telegramStateText'],
+        ].forEach(([chkId, labelId]) => {
+          document.getElementById(chkId)?.addEventListener('change', (e) => {
+            document.getElementById(labelId).textContent = e.target.checked ? 'Available' : 'Not Available';
+          });
+        });
+
         document.getElementById('settingsForm').addEventListener('submit', async (e) => {
           e.preventDefault();
           try {
@@ -1171,8 +1480,12 @@
                 dailyProfitTarget: Number(document.getElementById('setDailyTarget').value),
                 varianceTolerancePct: Number(document.getElementById('setVariancePct').value),
                 welcomeBonusCredits: Number(document.getElementById('setWelcomeBonus').value),
+                whatsappSupportEnabled: document.getElementById('setWhatsappSupportEnabled').checked,
                 whatsappSupportNumber: document.getElementById('setSupportPhone').value,
+                whatsappChannelEnabled: document.getElementById('setWhatsappChannelEnabled').checked,
                 whatsappChannelUrl: document.getElementById('setChannelUrl').value,
+                telegramChannelEnabled: document.getElementById('setTelegramEnabled').checked,
+                telegramChannelUrl: document.getElementById('setTelegramUrl').value,
                 audioConfig: getAdminAudioConfig(),
                 paymentAccounts: {
                   easypaisa: {
@@ -1235,13 +1548,19 @@
             tbody.innerHTML = data.users
               .map((u) => {
                 const pl = Number(u.netProfitLoss || 0);
+                const rolloverMet = Number(u.totalWageredReal || 0) >= Number(u.totalDeposited || 0);
                 return `
                   <tr>
                     <td class="tabular-nums"><strong>${escapeHtml(u.phoneNumber)}</strong></td>
                     <td>${escapeHtml(u.displayName || '-')}</td>
                     <td class="tabular-nums" style="color: var(--accent-gold-bright); font-weight: 700;">${fmtFC(u.funBalance)}</td>
                     <td class="tabular-nums" style="color: #34d399; font-weight: 700;">${fmtPKR(u.realBalance)}</td>
-                    <td class="tabular-nums">${Number(u.totalDeposited || 0).toLocaleString()} PKR</td>
+                    <td class="tabular-nums">
+                      ${Number(u.totalDeposited || 0).toLocaleString()} PKR
+                      <div style="font-size: 0.68rem; color: ${rolloverMet ? '#34d399' : '#fbbf24'};">
+                        1x Wager: ${Number(u.totalWageredReal || 0).toFixed(0)}/${Number(u.totalDeposited || 0).toFixed(0)}
+                      </div>
+                    </td>
                     <td class="tabular-nums">${Number(u.totalWithdrawn || 0).toLocaleString()} PKR</td>
                     <td class="tabular-nums" style="color: ${pl >= 0 ? '#34d399' : '#f87171'}; font-weight: 700;">${pl >= 0 ? '+' : ''}${pl.toFixed(0)} PKR</td>
                     <td>

@@ -9,19 +9,24 @@
       this.muted = false;
       this.config = {
         bgmEnabled: true,
-        soundPreset: 'cyber-flight',
+        soundPreset: 'aviator-jet',
         masterVolume: 75,
       };
 
       this.tensionOsc = null;
       this.tensionHarmonic = null;
+      this.tensionSub = null;
       this.tensionFilter = null;
       this.tensionGain = null;
+      this.jetNoiseSrc = null;
+      this.jetNoiseFilter = null;
+      this.jetNoiseGain = null;
 
       this.bgmTimer = null;
       this.bgmStep = 0;
       this.bgmRunning = false;
       this.lastFlapAt = 0;
+      this.lastTickMult = 1.0;
     }
 
     ensureContext() {
@@ -78,7 +83,7 @@
       const prevBgm = this.config.bgmEnabled;
       this.config = {
         bgmEnabled: nextConfig.bgmEnabled !== undefined ? Boolean(nextConfig.bgmEnabled) : this.config.bgmEnabled,
-        soundPreset: nextConfig.soundPreset || this.config.soundPreset || 'cyber-flight',
+        soundPreset: nextConfig.soundPreset || this.config.soundPreset || 'aviator-jet',
         masterVolume:
           nextConfig.masterVolume !== undefined
             ? Math.max(0, Math.min(100, Number(nextConfig.masterVolume)))
@@ -94,7 +99,7 @@
     }
 
     // ========================================================================
-    // Background Music Sequencer (4 Synthesized Presets)
+    // Background Music Sequencer (5 Synthesized Presets incl. Aviator Jet)
     // ========================================================================
     startBGM(forcePreset = null) {
       if (this.muted) return;
@@ -112,9 +117,11 @@
           ? 140
           : this.config.soundPreset === 'casino-chime'
             ? 165
-            : this.config.soundPreset === 'stealth-minimal'
-              ? 240
-              : 175;
+            : this.config.soundPreset === 'aviator-jet'
+              ? 185
+              : this.config.soundPreset === 'stealth-minimal'
+                ? 240
+                : 175;
 
       const tick = () => {
         if (!this.bgmRunning || this.muted || !this.ctx || this.ctx.state !== 'running') return;
@@ -140,7 +147,23 @@
       const t = ctx.currentTime + 0.015;
       const preset = this.config.soundPreset;
 
-      if (preset === 'cyber-flight') {
+      if (preset === 'aviator-jet') {
+        // Authentic Aviator / Avtix Lounge Groove: Warm sub pulse + aviation cockpit chimes
+        const bass = [98.0, 98.0, 110.0, 130.81, 123.47, 110.0, 98.0, 87.31];
+        const shimmer = [392.0, 493.88, 587.33, 659.25, 587.33, 493.88, 440.0, 392.0];
+        if (step % 2 === 0) {
+          this.playTone(bass[(step / 2) % bass.length], 'triangle', t, 0.24, 0.048, 340);
+        }
+        if (step % 4 === 0) {
+          this.playKick(t, 0.055);
+        }
+        if (step % 2 === 1) {
+          this.playHiHat(t, 0.012);
+        }
+        if (step % 4 === 2) {
+          this.playTone(shimmer[(step / 2) % shimmer.length], 'sine', t, 0.22, 0.025);
+        }
+      } else if (preset === 'cyber-flight') {
         // Cyber Flight Synth: Pulsing sci-fi bass + crystalline arpeggio
         const bassNotes = [110, 110, 130.81, 164.81, 146.83, 146.83, 130.81, 98.0];
         const arpNotes = [220, 261.63, 329.63, 392.0, 440, 392.0, 329.63, 293.66];
@@ -244,7 +267,7 @@
     }
 
     // ========================================================================
-    // Game Sound Effects
+    // Authentic Aviator / Avtix Game Sound Effects
     // ========================================================================
     playClick() {
       if (this.muted) return;
@@ -255,8 +278,8 @@
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(620, now);
-      osc.frequency.exponentialRampToValueAtTime(310, now + 0.05);
+      osc.frequency.setValueAtTime(640, now);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.05);
       gain.gain.setValueAtTime(0.09, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
       osc.connect(gain).connect(dest);
@@ -264,19 +287,31 @@
       osc.stop(now + 0.065);
     }
 
-    // High-Energy Casino Chime (Bet placed / Admin test)
+    // Crisp High-Energy Casino Chime (Bet Placed)
     playCasinoChime() {
       if (this.muted) return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
       const now = ctx.currentTime;
-      const notes = [880, 1174.66, 1318.51];
+      const notes = [880, 1174.66, 1318.51, 1760];
       notes.forEach((freq, i) => {
-        const start = now + i * 0.055;
-        this.playTone(freq, 'sine', start, 0.24, 0.11);
-        this.playTone(freq * 2, 'triangle', start, 0.14, 0.035);
+        const start = now + i * 0.048;
+        this.playTone(freq, 'sine', start, 0.22, 0.1);
+        this.playTone(freq * 2, 'triangle', start, 0.12, 0.032);
       });
+    }
+
+    // Crisp Tension Tick as Multiplier Climbs
+    playTensionTick(mult = 1.0) {
+      if (this.muted) return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      const tickFreq = Math.min(2200, 920 + (mult - 1) * 95);
+      this.playTone(tickFreq, 'triangle', t, 0.045, 0.055);
+      this.playTone(tickFreq * 1.5, 'sine', t, 0.03, 0.025);
     }
 
     playWingFlap() {
@@ -285,11 +320,11 @@
       const dest = this.getDestination();
       if (!ctx || !dest) return;
       const nowMs = performance.now();
-      if (nowMs - this.lastFlapAt < 310) return;
+      if (nowMs - this.lastFlapAt < 300) return;
       this.lastFlapAt = nowMs;
 
       const t = ctx.currentTime;
-      const bufferSize = Math.floor(ctx.sampleRate * 0.11);
+      const bufferSize = Math.floor(ctx.sampleRate * 0.1);
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
@@ -301,13 +336,13 @@
 
       const filter = ctx.createBiquadFilter();
       filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(540, t);
-      filter.frequency.exponentialRampToValueAtTime(280, t + 0.1);
+      filter.frequency.setValueAtTime(560, t);
+      filter.frequency.exponentialRampToValueAtTime(290, t + 0.095);
       filter.Q.value = 1.8;
 
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.075, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+      gain.gain.setValueAtTime(0.06, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
 
       noise.connect(filter).connect(gain).connect(dest);
       noise.start(t);
@@ -316,60 +351,106 @@
       const thumpGain = ctx.createGain();
       thump.type = 'sine';
       thump.frequency.setValueAtTime(115, t);
-      thump.frequency.exponentialRampToValueAtTime(56, t + 0.07);
-      thumpGain.gain.setValueAtTime(0.04, t);
-      thumpGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      thump.frequency.exponentialRampToValueAtTime(56, t + 0.065);
+      thumpGain.gain.setValueAtTime(0.032, t);
+      thumpGain.gain.exponentialRampToValueAtTime(0.001, t + 0.075);
       thump.connect(thumpGain).connect(dest);
       thump.start(t);
-      thump.stop(t + 0.09);
+      thump.stop(t + 0.085);
     }
 
+    // Rising Jet Turbine / Propeller Acceleration Pitch + Air Rush
     startTension() {
       if (this.muted) return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
       this.stopTension();
+      this.lastTickMult = 1.0;
 
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const harmonic = ctx.createOscillator();
+      const sub = ctx.createOscillator();
       const filter = ctx.createBiquadFilter();
       const gain = ctx.createGain();
 
-      osc.type = this.config.soundPreset === 'turbo-arcade' ? 'sawtooth' : 'triangle';
-      osc.frequency.setValueAtTime(165, now);
+      const isAviator = this.config.soundPreset === 'aviator-jet';
+      osc.type = isAviator || this.config.soundPreset === 'turbo-arcade' ? 'sawtooth' : 'triangle';
+      osc.frequency.setValueAtTime(isAviator ? 135 : 165, now);
 
       harmonic.type = 'sine';
-      harmonic.frequency.setValueAtTime(330, now);
+      harmonic.frequency.setValueAtTime(isAviator ? 270 : 330, now);
+
+      sub.type = 'triangle';
+      sub.frequency.setValueAtTime(68, now);
 
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(480, now);
-      filter.Q.value = 2.4;
+      filter.frequency.setValueAtTime(420, now);
+      filter.Q.value = isAviator ? 3.2 : 2.2;
 
       gain.gain.setValueAtTime(0.001, now);
-      gain.gain.linearRampToValueAtTime(0.042, now + 0.25);
+      gain.gain.linearRampToValueAtTime(0.044, now + 0.25);
 
       osc.connect(filter);
       harmonic.connect(filter);
+      sub.connect(filter);
       filter.connect(gain).connect(dest);
 
       osc.start(now);
       harmonic.start(now);
+      sub.start(now);
+
+      // Filtered jet afterburner air rush noise layer
+      const noiseLen = ctx.sampleRate * 2;
+      const noiseBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
+      const nData = noiseBuf.getChannelData(0);
+      for (let i = 0; i < noiseLen; i++) {
+        nData[i] = Math.random() * 2 - 1;
+      }
+      const noiseSrc = ctx.createBufferSource();
+      noiseSrc.buffer = noiseBuf;
+      noiseSrc.loop = true;
+
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = 'bandpass';
+      noiseFilter.frequency.setValueAtTime(380, now);
+      noiseFilter.Q.value = 1.4;
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.001, now);
+      noiseGain.gain.linearRampToValueAtTime(isAviator ? 0.032 : 0.018, now + 0.3);
+
+      noiseSrc.connect(noiseFilter).connect(noiseGain).connect(dest);
+      noiseSrc.start(now);
+
       this.tensionOsc = osc;
       this.tensionHarmonic = harmonic;
+      this.tensionSub = sub;
       this.tensionFilter = filter;
       this.tensionGain = gain;
+      this.jetNoiseSrc = noiseSrc;
+      this.jetNoiseFilter = noiseFilter;
+      this.jetNoiseGain = noiseGain;
     }
 
     updateTension(mult) {
       if (!this.tensionOsc || !this.ctx || this.muted) return;
       const t = this.ctx.currentTime;
-      const baseFreq = Math.min(720, 165 + (mult - 1) * 46);
-      const cutoff = Math.min(2900, 480 + (mult - 1) * 235);
+      const baseFreq = Math.min(820, 140 + (mult - 1) * 52);
+      const cutoff = Math.min(3400, 440 + (mult - 1) * 260);
       this.tensionOsc.frequency.setTargetAtTime(baseFreq, t, 0.05);
-      this.tensionHarmonic?.frequency.setTargetAtTime(baseFreq * 1.5, t, 0.05);
+      this.tensionHarmonic?.frequency.setTargetAtTime(baseFreq * 1.98, t, 0.05);
+      this.tensionSub?.frequency.setTargetAtTime(Math.min(220, 68 + (mult - 1) * 14), t, 0.06);
       this.tensionFilter?.frequency.setTargetAtTime(cutoff, t, 0.06);
+      this.jetNoiseFilter?.frequency.setTargetAtTime(Math.min(2800, 380 + (mult - 1) * 185), t, 0.06);
+
+      // Trigger crisp Aviator tension tick on key multiplier climb intervals
+      const step = mult < 3 ? 0.25 : mult < 10 ? 0.5 : 1.0;
+      if (mult - this.lastTickMult >= step) {
+        this.lastTickMult = Math.floor(mult / step) * step;
+        this.playTensionTick(mult);
+      }
     }
 
     stopTension() {
@@ -377,25 +458,47 @@
         try {
           const t = this.ctx.currentTime;
           this.tensionGain.gain.setTargetAtTime(0.0001, t, 0.03);
+          this.jetNoiseGain?.gain.setTargetAtTime(0.0001, t, 0.03);
           this.tensionOsc?.stop(t + 0.09);
           this.tensionHarmonic?.stop(t + 0.09);
+          this.tensionSub?.stop(t + 0.09);
+          this.jetNoiseSrc?.stop(t + 0.09);
         } catch {
           // ignore
         }
       }
       this.tensionOsc = null;
       this.tensionHarmonic = null;
+      this.tensionSub = null;
       this.tensionFilter = null;
       this.tensionGain = null;
+      this.jetNoiseSrc = null;
+      this.jetNoiseFilter = null;
+      this.jetNoiseGain = null;
     }
 
-    // Victory Arpeggio (Cashout Win)
+    // Live Preview of Aviator Jet Takeoff Acceleration (Admin Test Bench)
+    playTakeoffPreview() {
+      if (this.muted) return;
+      this.startTension();
+      let simMult = 1.0;
+      const iv = setInterval(() => {
+        simMult += 0.22;
+        this.updateTension(simMult);
+        if (simMult >= 3.2) {
+          clearInterval(iv);
+          this.stopTension();
+        }
+      }, 95);
+    }
+
+    // Victory Arpeggio / Avtix Cashout Chime
     playCashout() {
       if (this.muted) return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
-      const notes = [523.25, 659.25, 783.99, 987.77, 1174.66, 1567.98];
+      const notes = [523.25, 659.25, 783.99, 1046.5, 1318.51, 1567.98];
       const base = ctx.currentTime;
       notes.forEach((freq, idx) => {
         const osc = ctx.createOscillator();
@@ -403,7 +506,7 @@
         const gain = ctx.createGain();
         osc.type = 'sine';
         shimmer.type = 'triangle';
-        const start = base + idx * 0.042;
+        const start = base + idx * 0.038;
         osc.frequency.setValueAtTime(freq, start);
         shimmer.frequency.setValueAtTime(freq * 2, start);
         gain.gain.setValueAtTime(0.11, start);
@@ -418,7 +521,7 @@
       });
     }
 
-    // Crash Explosion 2.0 (4-layer fly-away blast)
+    // Multi-Stage Dynamic Crash Explosion
     playCrash() {
       this.stopTension();
       if (this.muted) return;
@@ -427,52 +530,54 @@
       if (!ctx || !dest) return;
       const t = ctx.currentTime;
 
-      // 1. Sub-bass impact drop
+      // Stage 1: Heavy Sub-Bass Concussion Impact
       const sub = ctx.createOscillator();
       const subGain = ctx.createGain();
       sub.type = 'sine';
-      sub.frequency.setValueAtTime(165, t);
-      sub.frequency.exponentialRampToValueAtTime(30, t + 0.44);
-      subGain.gain.setValueAtTime(0.28, t);
-      subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.48);
+      sub.frequency.setValueAtTime(175, t);
+      sub.frequency.exponentialRampToValueAtTime(28, t + 0.48);
+      subGain.gain.setValueAtTime(0.32, t);
+      subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.52);
       sub.connect(subGain).connect(dest);
       sub.start(t);
-      sub.stop(t + 0.5);
+      sub.stop(t + 0.54);
 
-      // 2. Filtered explosion roar burst
-      const bufferSize = Math.floor(ctx.sampleRate * 0.42);
+      // Stage 2: Roaring Afterburner Blast Burst
+      const bufferSize = Math.floor(ctx.sampleRate * 0.48);
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 1.35);
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 1.25);
       }
       const noise = ctx.createBufferSource();
       noise.buffer = buffer;
       const noiseFilter = ctx.createBiquadFilter();
       noiseFilter.type = 'lowpass';
-      noiseFilter.frequency.setValueAtTime(2400, t);
-      noiseFilter.frequency.exponentialRampToValueAtTime(140, t + 0.4);
+      noiseFilter.frequency.setValueAtTime(2800, t);
+      noiseFilter.frequency.exponentialRampToValueAtTime(120, t + 0.46);
       const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.2, t);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+      noiseGain.gain.setValueAtTime(0.22, t);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.48);
       noise.connect(noiseFilter).connect(noiseGain).connect(dest);
       noise.start(t);
 
-      // 3. Descending turbine fly-away sweep
+      // Stage 3: Secondary Shockwave Thump (+75ms)
+      this.playTone(95, 'triangle', t + 0.075, 0.24, 0.14, 240);
+
+      // Stage 4: Descending Jet Turbine Spool-Down & Debris Shimmer
       const sweep = ctx.createOscillator();
       const sweepGain = ctx.createGain();
       sweep.type = 'sawtooth';
-      sweep.frequency.setValueAtTime(480, t);
-      sweep.frequency.exponentialRampToValueAtTime(52, t + 0.48);
-      sweepGain.gain.setValueAtTime(0.095, t);
-      sweepGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      sweep.frequency.setValueAtTime(540, t + 0.03);
+      sweep.frequency.exponentialRampToValueAtTime(46, t + 0.54);
+      sweepGain.gain.setValueAtTime(0.095, t + 0.03);
+      sweepGain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
       sweep.connect(sweepGain).connect(dest);
-      sweep.start(t);
-      sweep.stop(t + 0.52);
+      sweep.start(t + 0.03);
+      sweep.stop(t + 0.56);
 
-      // 4. Metallic shatter transient
-      [1480, 1975].forEach((freq, idx) => {
-        this.playTone(freq, 'triangle', t + idx * 0.02, 0.14, 0.06);
+      [1560, 2090, 1240].forEach((freq, idx) => {
+        this.playTone(freq, 'triangle', t + idx * 0.025, 0.14, 0.055);
       });
     }
   }

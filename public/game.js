@@ -13,12 +13,16 @@
     user: null,
     currencyMode: localStorage.getItem('skywing_mode') === 'real' ? 'real' : 'fun',
     publicSettings: {
+      whatsappSupportEnabled: true,
       whatsappSupportNumber: '923001234567',
+      whatsappChannelEnabled: true,
       whatsappChannelUrl: 'https://whatsapp.com/channel/0029VaSkyWingOfficial',
+      telegramChannelEnabled: true,
+      telegramChannelUrl: 'https://t.me/SkyWingOfficial',
       paymentAccounts: null,
       audioConfig: {
         bgmEnabled: true,
-        soundPreset: 'cyber-flight',
+        soundPreset: 'aviator-jet',
         masterVolume: 75,
       },
     },
@@ -131,6 +135,7 @@
     // Deposit Modal
     depositModal: document.getElementById('depositModal'),
     depositAccountsList: document.getElementById('depositAccountsList'),
+    depGatewayCards: document.getElementById('depGatewayCards'),
     depositErrorBox: document.getElementById('depositErrorBox'),
     depositSuccessBox: document.getElementById('depositSuccessBox'),
     depositForm: document.getElementById('depositForm'),
@@ -146,6 +151,12 @@
     // Withdraw Modal
     withdrawModal: document.getElementById('withdrawModal'),
     withdrawAvailBalance: document.getElementById('withdrawAvailBalance'),
+    withdrawRolloverBox: document.getElementById('withdrawRolloverBox'),
+    withdrawRolloverTitle: document.getElementById('withdrawRolloverTitle'),
+    withdrawRolloverRatio: document.getElementById('withdrawRolloverRatio'),
+    withdrawRolloverBar: document.getElementById('withdrawRolloverBar'),
+    withdrawRolloverHint: document.getElementById('withdrawRolloverHint'),
+    wdGatewayCards: document.getElementById('wdGatewayCards'),
     withdrawErrorBox: document.getElementById('withdrawErrorBox'),
     withdrawSuccessBox: document.getElementById('withdrawSuccessBox'),
     withdrawForm: document.getElementById('withdrawForm'),
@@ -155,14 +166,24 @@
     wdBankName: document.getElementById('wdBankName'),
     wdAccountTitle: document.getElementById('wdAccountTitle'),
     wdAccountNumber: document.getElementById('wdAccountNumber'),
+    wdCopyNumBtn: document.getElementById('wdCopyNumBtn'),
     wdSubmitBtn: document.getElementById('wdSubmitBtn'),
 
     channelModal: document.getElementById('channelModal'),
     whatsappChannelDirectLink: document.getElementById('whatsappChannelDirectLink'),
+    telegramChannelDirectLink: document.getElementById('telegramChannelDirectLink'),
+    whatsappSupportDirectLink: document.getElementById('whatsappSupportDirectLink'),
 
     fairModal: document.getElementById('fairModal'),
     fairRoundHeading: document.getElementById('fairRoundHeading'),
     fairSeedDetails: document.getElementById('fairSeedDetails'),
+    fairClientSeedInput: document.getElementById('fairClientSeedInput'),
+    saveClientSeedBtn: document.getElementById('saveClientSeedBtn'),
+    fairClientSeedStatus: document.getElementById('fairClientSeedStatus'),
+    verifyServerSeedInput: document.getElementById('verifyServerSeedInput'),
+    verifyClientSeedInput: document.getElementById('verifyClientSeedInput'),
+    verifyNonceInput: document.getElementById('verifyNonceInput'),
+    verifyHmacBtn: document.getElementById('verifyHmacBtn'),
     fairVerifyResult: document.getElementById('fairVerifyResult'),
 
     howToModal: document.getElementById('howToModal'),
@@ -375,8 +396,12 @@
       if (res.ok) {
         const data = await res.json();
         state.publicSettings = {
+          whatsappSupportEnabled: data.whatsappSupportEnabled !== false,
           whatsappSupportNumber: data.whatsappSupportNumber || '923001234567',
+          whatsappChannelEnabled: data.whatsappChannelEnabled !== false,
           whatsappChannelUrl: data.whatsappChannelUrl || '#',
+          telegramChannelEnabled: data.telegramChannelEnabled !== false,
+          telegramChannelUrl: data.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
           paymentAccounts: data.paymentAccounts || null,
           audioConfig: data.audioConfig || state.publicSettings.audioConfig,
         };
@@ -390,10 +415,150 @@
   }
 
   function syncChannelLinks() {
-    el.whatsappChannelDirectLink.href = state.publicSettings.whatsappChannelUrl || '#';
+    const waChanOn = state.publicSettings.whatsappChannelEnabled !== false;
+    const tgChanOn = state.publicSettings.telegramChannelEnabled !== false;
+    const waSuppOn = state.publicSettings.whatsappSupportEnabled !== false;
+
+    if (el.whatsappChannelDirectLink) {
+      el.whatsappChannelDirectLink.href = waChanOn
+        ? state.publicSettings.whatsappChannelUrl || '#'
+        : '#';
+      el.whatsappChannelDirectLink.textContent = waChanOn
+        ? 'Open Official WhatsApp Channel'
+        : 'WhatsApp Channel — Not Available';
+      el.whatsappChannelDirectLink.classList.toggle('btn-social-unavailable', !waChanOn);
+      el.whatsappChannelDirectLink.dataset.available = waChanOn ? '1' : '0';
+    }
+
+    if (el.telegramChannelDirectLink) {
+      el.telegramChannelDirectLink.href = tgChanOn
+        ? state.publicSettings.telegramChannelUrl || '#'
+        : '#';
+      el.telegramChannelDirectLink.textContent = tgChanOn
+        ? 'Join Official Telegram Channel'
+        : 'Telegram Channel — Not Available';
+      el.telegramChannelDirectLink.classList.toggle('btn-social-unavailable', !tgChanOn);
+      el.telegramChannelDirectLink.dataset.available = tgChanOn ? '1' : '0';
+    }
+
+    const supportNum = String(state.publicSettings.whatsappSupportNumber || '923001234567').replace(
+      /\D/g,
+      ''
+    );
+    if (el.whatsappSupportDirectLink) {
+      el.whatsappSupportDirectLink.href = waSuppOn
+        ? `https://wa.me/${supportNum}?text=${encodeURIComponent('Hello SkyWing Support, I need assistance.')}`
+        : '#';
+      el.whatsappSupportDirectLink.textContent = waSuppOn
+        ? 'WhatsApp Support / Help Desk'
+        : 'WhatsApp Support — Not Available';
+      el.whatsappSupportDirectLink.classList.toggle('btn-social-unavailable', !waSuppOn);
+      el.whatsappSupportDirectLink.dataset.available = waSuppOn ? '1' : '0';
+    }
+
+    if (el.forgotPasswordBtn) {
+      el.forgotPasswordBtn.textContent = waSuppOn
+        ? 'Forgot Password? (WhatsApp Helpline)'
+        : 'WhatsApp Support — Currently Not Available';
+      el.forgotPasswordBtn.classList.toggle('btn-social-unavailable', !waSuppOn);
+    }
+  }
+
+  [el.whatsappChannelDirectLink, el.telegramChannelDirectLink, el.whatsappSupportDirectLink].forEach(
+    (linkEl) => {
+      linkEl?.addEventListener('click', (e) => {
+        if (linkEl.dataset.available === '0') {
+          e.preventDefault();
+          showToast('This channel is currently set to Not Available by Admin.', true);
+        }
+      });
+    }
+  );
+
+  function getGatewayBrandMeta(method) {
+    if (method === 'EasyPaisa') {
+      return {
+        value: 'EasyPaisa',
+        name: 'EasyPaisa',
+        badge: 'MOBILE WALLET',
+        sub: 'Instant Wallet',
+        cls: 'brand-easypaisa',
+        color: '#34d399',
+        icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 7v5c0 5.25 3.4 9.74 8 11 4.6-1.26 8-5.75 8-11V7l-8-5z"/><path d="M9 12l2 2 4-4"/></svg>`,
+      };
+    }
+    if (method === 'JazzCash') {
+      return {
+        value: 'JazzCash',
+        name: 'JazzCash',
+        badge: 'MOBILE WALLET',
+        sub: 'Fast Transfer',
+        cls: 'brand-jazzcash',
+        color: '#fca5a5',
+        icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+      };
+    }
+    return {
+      value: 'Bank Account',
+      name: 'Bank Transfer',
+      badge: 'IBAN / BANK',
+      sub: 'PK Bank / Raast',
+      cls: 'brand-bank',
+      color: '#7dd3fc',
+      icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v3"/><path d="M12 14v3"/><path d="M16 14v3"/></svg>`,
+    };
+  }
+
+  function renderGatewaySelector(containerEl, selectEl) {
+    if (!containerEl || !selectEl) return;
+    const methods = ['EasyPaisa', 'JazzCash', 'Bank Account'];
+    const currentVal = selectEl.value || 'EasyPaisa';
+
+    containerEl.innerHTML = methods
+      .map((m) => {
+        const meta = getGatewayBrandMeta(m);
+        const active = meta.value === currentVal ? 'active' : '';
+        return `
+          <button type="button" class="gateway-chip ${meta.cls} ${active}" data-gateway="${meta.value}">
+            <span class="gateway-icon-box ${meta.cls}" aria-hidden="true">${meta.icon}</span>
+            <span class="gateway-chip-name">${meta.name}</span>
+            <span class="gateway-chip-sub">${meta.sub}</span>
+          </button>
+        `;
+      })
+      .join('');
+
+    containerEl.querySelectorAll('.gateway-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        selectEl.value = chip.dataset.gateway;
+        selectEl.dispatchEvent(new Event('change'));
+        renderGatewaySelector(containerEl, selectEl);
+      });
+    });
+  }
+
+  el.depMethod?.addEventListener('change', () => {
+    renderGatewaySelector(el.depGatewayCards, el.depMethod);
+  });
+
+  async function copyValueWithButton(btn, val, label = 'Copied!') {
+    try {
+      await navigator.clipboard.writeText(val);
+      const prev = btn.textContent;
+      btn.textContent = label;
+      showToast(`Copied: ${val}`);
+      setTimeout(() => {
+        btn.textContent = prev;
+      }, 1500);
+    } catch {
+      showToast(`Account: ${val}`);
+    }
   }
 
   function renderPaymentAccounts() {
+    renderGatewaySelector(el.depGatewayCards, el.depMethod);
+    renderGatewaySelector(el.wdGatewayCards, el.wdMethod);
+
     const acc = state.publicSettings.paymentAccounts;
     if (!acc) {
       el.depositAccountsList.innerHTML =
@@ -404,26 +569,26 @@
     const cards = [];
     if (acc.easypaisa?.enabled) {
       cards.push({
+        meta: getGatewayBrandMeta('EasyPaisa'),
         label: 'EasyPaisa',
         title: acc.easypaisa.accountTitle,
         number: acc.easypaisa.accountNumber,
-        color: '#34d399',
       });
     }
     if (acc.jazzcash?.enabled) {
       cards.push({
+        meta: getGatewayBrandMeta('JazzCash'),
         label: 'JazzCash',
         title: acc.jazzcash.accountTitle,
         number: acc.jazzcash.accountNumber,
-        color: '#f87171',
       });
     }
     if (acc.bank?.enabled) {
       cards.push({
-        label: acc.bank.bankName ? `Bank (${acc.bank.bankName})` : 'Bank Account',
+        meta: getGatewayBrandMeta('Bank Account'),
+        label: acc.bank.bankName ? `Bank (${acc.bank.bankName})` : 'Bank Transfer',
         title: acc.bank.accountTitle,
         number: acc.bank.accountNumber,
-        color: '#38bdf8',
       });
     }
 
@@ -438,12 +603,23 @@
         (c) => `
       <div class="pay-account-card">
         <div class="pay-account-row">
-          <strong style="color: ${c.color}; font-size: 0.88rem;">${escapeHtml(c.label)}</strong>
-          <span style="font-size: 0.78rem; color: var(--text-secondary);">Title: <strong style="color: var(--text-primary);">${escapeHtml(c.title)}</strong></span>
+          <div class="pay-account-brand">
+            <span class="gateway-icon-box ${c.meta.cls}" style="width:28px;height:28px;" aria-hidden="true">${c.meta.icon}</span>
+            <div>
+              <strong style="color: ${c.meta.color}; font-size: 0.88rem; display:block; line-height:1.15;">${escapeHtml(c.label)}</strong>
+              <span class="gateway-badge ${c.meta.cls}">${c.meta.badge}</span>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); display:block;">Account Title</span>
+            <strong style="font-size: 0.8rem; color: var(--text-primary);">${escapeHtml(c.title)}</strong>
+          </div>
         </div>
-        <div class="pay-account-row">
-          <span class="tabular-nums" style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary);">${escapeHtml(c.number)}</span>
-          <button type="button" class="copy-btn" data-copy="${escapeHtml(c.number)}">Copy</button>
+        <div class="pay-account-row" style="margin-top:2px; padding-top:6px; border-top: 1px solid rgba(148,163,184,0.12);">
+          <span class="tabular-nums" style="font-size: 0.92rem; font-weight: 700; color: var(--text-primary);">${escapeHtml(c.number)}</span>
+          <div style="display:flex; gap:6px;">
+            <button type="button" class="copy-btn" data-copy="${escapeHtml(c.number)}">Copy Number</button>
+          </div>
         </div>
       </div>
     `
@@ -451,18 +627,7 @@
       .join('');
 
     el.depositAccountsList.querySelectorAll('.copy-btn[data-copy]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const val = btn.dataset.copy;
-        try {
-          await navigator.clipboard.writeText(val);
-          btn.textContent = 'Copied!';
-          setTimeout(() => {
-            btn.textContent = 'Copy';
-          }, 1400);
-        } catch {
-          showToast(`Account: ${val}`);
-        }
-      });
+      btn.addEventListener('click', () => copyValueWithButton(btn, btn.dataset.copy));
     });
   }
 
@@ -483,8 +648,86 @@
   });
 
   // ==========================================================================
-  // Provably Fair Verification Modal
+  // Provably Fair Verification Modal (SHA-256 + HMAC-SHA256 + Client Seed)
   // ==========================================================================
+  let activeFairHash = '';
+
+  async function computeSha256HexBrowser(text) {
+    const enc = new TextEncoder();
+    const digest = await crypto.subtle.digest('SHA-256', enc.encode(text));
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  async function computeHmacCrashPointBrowser(serverSeed, clientSeed, nonce) {
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      enc.encode(serverSeed),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    const sig = await crypto.subtle.sign('HMAC', key, enc.encode(`${clientSeed}:${nonce}`));
+    const hmacHex = Array.from(new Uint8Array(sig))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    const intVal = parseInt(hmacHex.slice(0, 13), 16);
+    if (intVal % 33 === 0) {
+      return { hmacHex, crashPoint: 1.0 };
+    }
+    const e = Math.pow(2, 52);
+    const raw = Math.floor((100 * e - intVal) / (e - intVal)) / 100;
+    return {
+      hmacHex,
+      crashPoint: Math.min(100, Math.max(1.01, raw)),
+    };
+  }
+
+  async function runFairVerification(expectedHash = '') {
+    const serverSeed = String(el.verifyServerSeedInput?.value || '').trim();
+    const clientSeed = String(el.verifyClientSeedInput?.value || '').trim();
+    const nonce = String(el.verifyNonceInput?.value || '').trim();
+
+    if (!serverSeed) {
+      el.fairVerifyResult.textContent = 'Server Seed is hidden until the flight ends. Enter a revealed Server Seed to verify.';
+      el.fairVerifyResult.className = 'alert-error';
+      el.fairVerifyResult.classList.remove('hidden');
+      return;
+    }
+
+    if (!window.crypto?.subtle) {
+      el.fairVerifyResult.textContent = 'Web Crypto API unavailable in this browser context.';
+      el.fairVerifyResult.className = 'alert-error';
+      el.fairVerifyResult.classList.remove('hidden');
+      return;
+    }
+
+    try {
+      const sha256Hex = await computeSha256HexBrowser(serverSeed);
+      const { hmacHex, crashPoint } = await computeHmacCrashPointBrowser(
+        serverSeed,
+        clientSeed,
+        nonce
+      );
+
+      const hasExpected = Boolean(expectedHash);
+      const hashMatches = hasExpected ? sha256Hex === expectedHash : true;
+
+      el.fairVerifyResult.innerHTML = `
+        <div><strong>${hasExpected ? (hashMatches ? 'SHA-256 Commitment Verified' : 'SHA-256 Hash Mismatch') : 'SHA-256 Digest Computed'}:</strong> <span class="tabular-nums" style="word-break:break-all;">${sha256Hex}</span></div>
+        <div style="margin-top:4px;"><strong>HMAC-SHA256 Result:</strong> <span class="tabular-nums">${crashPoint.toFixed(2)}x</span> <span style="opacity:0.75;">(${hmacHex.slice(0, 16)}...)</span></div>
+      `;
+      el.fairVerifyResult.className = hashMatches ? 'alert-success' : 'alert-error';
+      el.fairVerifyResult.classList.remove('hidden');
+    } catch {
+      el.fairVerifyResult.textContent = 'Unable to compute verification digest.';
+      el.fairVerifyResult.className = 'alert-error';
+      el.fairVerifyResult.classList.remove('hidden');
+    }
+  }
+
   async function inspectFairRound(roundObj) {
     const r = roundObj || {
       roundNumber: state.game.roundNumber,
@@ -495,36 +738,61 @@
       crashPoint: state.game.phase === 'CRASHED' ? state.game.crashPoint : null,
     };
 
+    activeFairHash = r.serverSeedHash || '';
     el.fairRoundHeading.textContent = `Flight #${r.roundNumber || '---'}`;
     el.fairSeedDetails.innerHTML = `
-      <div><strong>Server Seed Hash (SHA-256):</strong><br/>${r.serverSeedHash || '---'}</div>
-      <div style="margin-top:8px;"><strong>Revealed Server Seed:</strong><br/>${r.serverSeed || 'Hidden until flight finishes'}</div>
-      <div style="margin-top:8px;"><strong>Client Seed:</strong> ${r.clientSeed || '---'}</div>
-      <div style="margin-top:4px;"><strong>Nonce:</strong> ${r.nonce || '---'}</div>
+      <div><strong>Server Seed Hash (SHA-256):</strong><br/>${escapeHtml(r.serverSeedHash || '---')}</div>
+      <div style="margin-top:8px;"><strong>Revealed Server Seed:</strong><br/>${escapeHtml(r.serverSeed || 'Hidden until flight finishes')}</div>
+      <div style="margin-top:8px;"><strong>Client Seed:</strong> ${escapeHtml(r.clientSeed || '---')}</div>
+      <div style="margin-top:4px;"><strong>Nonce:</strong> ${escapeHtml(r.nonce || '---')}</div>
       ${r.crashPoint ? `<div style="margin-top:4px;"><strong>Crash Point:</strong> ${Number(r.crashPoint).toFixed(2)}x</div>` : ''}
     `;
 
+    if (el.fairClientSeedInput && !el.fairClientSeedInput.value) {
+      el.fairClientSeedInput.value = state.game.clientSeed || '';
+    }
+    if (el.fairClientSeedStatus) {
+      el.fairClientSeedStatus.classList.add('hidden');
+    }
+    if (el.verifyServerSeedInput) el.verifyServerSeedInput.value = r.serverSeed || '';
+    if (el.verifyClientSeedInput) el.verifyClientSeedInput.value = r.clientSeed || '';
+    if (el.verifyNonceInput) el.verifyNonceInput.value = r.nonce || '';
+
     el.fairVerifyResult.classList.add('hidden');
     if (r.serverSeed && window.crypto?.subtle) {
-      try {
-        const enc = new TextEncoder();
-        const digest = await crypto.subtle.digest('SHA-256', enc.encode(r.serverSeed));
-        const hexHash = Array.from(new Uint8Array(digest))
-          .map((b) => b.toString(16).padStart(2, '0'))
-          .join('');
-        const matched = hexHash === r.serverSeedHash;
-        el.fairVerifyResult.textContent = matched
-          ? 'Verified: SHA-256(ServerSeed) matches the pre-round commitment hash.'
-          : 'Hash mismatch detected.';
-        el.fairVerifyResult.className = matched ? 'alert-success' : 'alert-error';
-        el.fairVerifyResult.classList.remove('hidden');
-      } catch {
-        // ignore if non-secure context
-      }
+      await runFairVerification(r.serverSeedHash);
     }
 
     openModal('fairModal');
   }
+
+  el.verifyHmacBtn?.addEventListener('click', () => {
+    const useExpected =
+      el.verifyServerSeedInput.value.trim() &&
+      activeFairHash &&
+      el.fairSeedDetails.textContent.includes(el.verifyServerSeedInput.value.trim())
+        ? activeFairHash
+        : '';
+    runFairVerification(useExpected);
+  });
+
+  el.saveClientSeedBtn?.addEventListener('click', () => {
+    const val = String(el.fairClientSeedInput?.value || '').trim();
+    socket.emit('fair:setClientSeed', { clientSeed: val }, (res) => {
+      if (!el.fairClientSeedStatus) return;
+      if (!res?.ok) {
+        el.fairClientSeedStatus.textContent = res?.error || 'Invalid client seed.';
+        el.fairClientSeedStatus.style.color = '#f87171';
+        el.fairClientSeedStatus.classList.remove('hidden');
+        return;
+      }
+      el.fairClientSeedInput.value = res.clientSeed;
+      el.fairClientSeedStatus.textContent = `Applied "${res.clientSeed}" for upcoming flights.`;
+      el.fairClientSeedStatus.style.color = '#34d399';
+      el.fairClientSeedStatus.classList.remove('hidden');
+      showToast(`Next-round Client Seed set: ${res.clientSeed}`);
+    });
+  });
 
   document.getElementById('openFairBtn').addEventListener('click', () => inspectFairRound(null));
   document.getElementById('footerFairBtn').addEventListener('click', () => inspectFairRound(null));
@@ -741,6 +1009,10 @@
   });
 
   el.forgotPasswordBtn.addEventListener('click', () => {
+    if (state.publicSettings.whatsappSupportEnabled === false) {
+      showToast('WhatsApp Support is currently set to Not Available by Admin.', true);
+      return;
+    }
     const cleanPhone = normalizePakPhone(el.loginPhone.value);
     const supportNum = String(state.publicSettings.whatsappSupportNumber || '923001234567').replace(
       /\D/g,
@@ -764,8 +1036,34 @@
   });
 
   // ==========================================================================
-  // Real Money PKR Deposit & Withdrawal Flows
+  // Real Money PKR Deposit & Withdrawal Flows + 1x Wagering Rollover Check
   // ==========================================================================
+  function updateWithdrawRolloverUI() {
+    if (!state.user || !el.withdrawRolloverBox) return;
+    const totalDep = Math.max(0, Number(state.user.totalDeposited || 0));
+    const totalWagered = Math.max(0, Number(state.user.totalWageredReal || 0));
+    const remaining = Math.max(0, Math.round((totalDep - totalWagered) * 100) / 100);
+    const met = totalWagered >= totalDep;
+    const pct = totalDep > 0 ? Math.min(100, Math.round((totalWagered / totalDep) * 100)) : 100;
+
+    el.withdrawRolloverBox.classList.toggle('cleared', met);
+    el.withdrawRolloverBox.classList.toggle('pending', !met);
+    el.withdrawRolloverRatio.textContent = `${totalWagered.toLocaleString()} / ${totalDep.toLocaleString()} PKR`;
+    el.withdrawRolloverBar.style.width = `${pct}%`;
+    el.withdrawRolloverBar.style.background = met ? '#10b981' : '#f59e0b';
+
+    if (met) {
+      el.withdrawRolloverTitle.textContent = '1x Wagering Rollover Completed';
+      el.withdrawRolloverTitle.style.color = '#34d399';
+      el.withdrawRolloverHint.textContent =
+        'Your Real Money balance is unlocked for withdrawal.';
+    } else {
+      el.withdrawRolloverTitle.textContent = '1x Wagering Requirement Incomplete';
+      el.withdrawRolloverTitle.style.color = '#fbbf24';
+      el.withdrawRolloverHint.textContent = `Wager ${remaining.toLocaleString()} PKR more in Real Money Mode before submitting a withdrawal.`;
+    }
+  }
+
   function openDepositFlow() {
     if (!state.user) {
       openModal('authModal');
@@ -777,14 +1075,17 @@
     openModal('depositModal');
   }
 
-  function openWithdrawFlow() {
+  async function openWithdrawFlow() {
     if (!state.user) {
       openModal('authModal');
       return;
     }
+    await fetchCurrentUser();
     el.withdrawErrorBox.classList.add('hidden');
     el.withdrawSuccessBox.classList.add('hidden');
     el.withdrawAvailBalance.textContent = fmtMoney(state.user.realBalance, 'real');
+    renderGatewaySelector(el.wdGatewayCards, el.wdMethod);
+    updateWithdrawRolloverUI();
     openModal('withdrawModal');
   }
 
@@ -896,12 +1197,36 @@
     const isBank = el.wdMethod.value === 'Bank Account';
     el.wdBankNameGroup.classList.toggle('hidden', !isBank);
     el.wdBankName.required = isBank;
+    renderGatewaySelector(el.wdGatewayCards, el.wdMethod);
+  });
+
+  el.wdCopyNumBtn?.addEventListener('click', () => {
+    const val = el.wdAccountNumber.value.trim();
+    if (!val) {
+      showToast('Enter an Account Number or IBAN first.', true);
+      return;
+    }
+    copyValueWithButton(el.wdCopyNumBtn, val);
   });
 
   el.withdrawForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     el.withdrawErrorBox.classList.add('hidden');
     el.withdrawSuccessBox.classList.add('hidden');
+
+    if (state.user) {
+      const totalDep = Number(state.user.totalDeposited || 0);
+      const totalWagered = Number(state.user.totalWageredReal || 0);
+      if (totalWagered < totalDep) {
+        const remaining = Math.round((totalDep - totalWagered) * 100) / 100;
+        const msg = `1x Wagering Requirement not met! Wagered ${totalWagered.toLocaleString()} / ${totalDep.toLocaleString()} PKR. Play ${remaining.toLocaleString()} PKR more in Real Mode to unlock withdrawals.`;
+        el.withdrawErrorBox.textContent = msg;
+        el.withdrawErrorBox.classList.remove('hidden');
+        showToast(msg, true);
+        updateWithdrawRolloverUI();
+        return;
+      }
+    }
 
     el.wdSubmitBtn.disabled = true;
     try {
@@ -923,18 +1248,21 @@
       if (!res.ok) {
         el.withdrawErrorBox.textContent = data.error || 'Withdrawal failed.';
         el.withdrawErrorBox.classList.remove('hidden');
+        showToast(data.error || 'Withdrawal failed.', true);
         return;
       }
 
       if (data.user) {
         state.user = data.user;
         updateUserUI();
+        updateWithdrawRolloverUI();
       }
       el.withdrawSuccessBox.textContent =
         'Withdrawal request submitted! Amount is reserved and will be processed by Admin.';
       el.withdrawSuccessBox.classList.remove('hidden');
       el.withdrawForm.reset();
       el.wdBankNameGroup.classList.add('hidden');
+      renderGatewaySelector(el.wdGatewayCards, el.wdMethod);
       fetchMyTransactions();
       showToast('Withdrawal request submitted!');
     } catch {
@@ -1966,8 +2294,21 @@
 
   socket.on('settings:updated', (data) => {
     state.publicSettings = {
+      whatsappSupportEnabled:
+        data.whatsappSupportEnabled !== undefined
+          ? Boolean(data.whatsappSupportEnabled)
+          : state.publicSettings.whatsappSupportEnabled,
       whatsappSupportNumber: data.whatsappSupportNumber || state.publicSettings.whatsappSupportNumber,
+      whatsappChannelEnabled:
+        data.whatsappChannelEnabled !== undefined
+          ? Boolean(data.whatsappChannelEnabled)
+          : state.publicSettings.whatsappChannelEnabled,
       whatsappChannelUrl: data.whatsappChannelUrl || state.publicSettings.whatsappChannelUrl,
+      telegramChannelEnabled:
+        data.telegramChannelEnabled !== undefined
+          ? Boolean(data.telegramChannelEnabled)
+          : state.publicSettings.telegramChannelEnabled,
+      telegramChannelUrl: data.telegramChannelUrl || state.publicSettings.telegramChannelUrl,
       paymentAccounts: data.paymentAccounts || state.publicSettings.paymentAccounts,
       audioConfig: data.audioConfig || state.publicSettings.audioConfig,
     };

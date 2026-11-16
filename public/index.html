@@ -427,7 +427,7 @@
         <span>Dual Wallet: Fun Mode (FC) & Real Money (PKR).</span>
       </div>
       <div class="footer-links">
-        <button type="button" class="footer-link" id="footerChannelBtn">WhatsApp Channel</button>
+        <button type="button" class="footer-link" id="footerChannelBtn">WhatsApp &amp; Telegram</button>
         <button type="button" class="footer-link" id="footerFairBtn">Provably Fair</button>
         <button type="button" class="footer-link" id="footerHowToBtn">Rules</button>
         <a href="/admin" class="secret-admin-trigger" title="Operations Console">·</a>
@@ -612,13 +612,18 @@
         <div id="depositSuccessBox" class="alert-success hidden"></div>
 
         <form id="depositForm" class="form-group" style="gap: 12px;">
+          <div class="form-group">
+            <span class="form-label">Select Official Payment Gateway</span>
+            <div class="gateway-selector-grid" id="depGatewayCards"></div>
+          </div>
+
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div class="form-group">
               <label class="form-label" for="depMethod">Payment Method Used</label>
               <select class="form-input" id="depMethod" required>
                 <option value="EasyPaisa">EasyPaisa</option>
                 <option value="JazzCash">JazzCash</option>
-                <option value="Bank Account">Bank Account</option>
+                <option value="Bank Account">Bank Transfer</option>
               </select>
             </div>
             <div class="form-group">
@@ -681,17 +686,35 @@
           <strong class="tabular-nums" style="color: #34d399;" id="withdrawAvailBalance">0.00 PKR</strong>
         </div>
 
+        <div id="withdrawRolloverBox" class="rollover-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <strong id="withdrawRolloverTitle">1x Deposit Rollover Requirement</strong>
+            <span class="tabular-nums" id="withdrawRolloverRatio" style="font-weight: 700;">0 / 0 PKR</span>
+          </div>
+          <div class="rollover-progress-track">
+            <div class="rollover-progress-fill" id="withdrawRolloverBar" style="width: 100%; background: #10b981;"></div>
+          </div>
+          <span id="withdrawRolloverHint" style="font-size: 0.74rem; color: var(--text-secondary);">
+            Must wager 1x your approved deposits in Real Mode before withdrawing.
+          </span>
+        </div>
+
         <div id="withdrawErrorBox" class="alert-error hidden"></div>
         <div id="withdrawSuccessBox" class="alert-success hidden"></div>
 
         <form id="withdrawForm" class="form-group" style="gap: 12px;">
+          <div class="form-group">
+            <span class="form-label">Select Payout Gateway</span>
+            <div class="gateway-selector-grid" id="wdGatewayCards"></div>
+          </div>
+
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div class="form-group">
               <label class="form-label" for="wdMethod">Withdrawal Method</label>
               <select class="form-input" id="wdMethod" required>
                 <option value="EasyPaisa">EasyPaisa</option>
                 <option value="JazzCash">JazzCash</option>
-                <option value="Bank Account">Bank Account</option>
+                <option value="Bank Account">Bank Transfer</option>
               </select>
             </div>
             <div class="form-group">
@@ -721,7 +744,10 @@
 
           <div class="form-group">
             <label class="form-label" for="wdAccountNumber">Account Number / Mobile / IBAN</label>
-            <input type="text" class="form-input" id="wdAccountNumber" placeholder="03XX-XXXXXXX or IBAN" maxlength="60" required />
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <input type="text" class="form-input" id="wdAccountNumber" placeholder="03XX-XXXXXXX or IBAN" maxlength="60" required />
+              <button type="button" class="copy-btn" id="wdCopyNumBtn" title="Copy entered account number" style="padding: 9px 11px; flex-shrink: 0;">Copy</button>
+            </div>
           </div>
 
           <span class="form-hint">Amount is deducted from your Real Balance immediately and refunded automatically if rejected.</span>
@@ -763,17 +789,17 @@
     </div>
 
     <!-- ======================================================================
-         Post-Registration Official WhatsApp Channel Modal
+         Official Channels & Support Modal (WhatsApp + Telegram + Help)
          ====================================================================== -->
     <div class="modal-backdrop" id="channelModal" role="dialog" aria-modal="true">
       <div class="modal-card" style="text-align: center;">
         <div class="modal-header">
-          <h2 class="modal-title" style="margin: 0 auto;">Follow Our Official WhatsApp Channel</h2>
+          <h2 class="modal-title" style="margin: 0 auto;">Official Channels &amp; Support</h2>
           <button type="button" class="modal-close" data-close="channelModal" aria-label="Close">×</button>
         </div>
 
-        <p style="margin: 0; color: var(--text-secondary); font-size: 0.92rem;">
-          Join our official WhatsApp community for flight events, bonus drops, and live announcements.
+        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+          Join our official channels for flight events, bonus drops, and instant helpline assistance.
         </p>
 
         <a
@@ -782,9 +808,31 @@
           target="_blank"
           rel="noopener noreferrer"
           class="btn btn-whatsapp"
-          style="width: 100%; padding: 13px 18px; font-size: 0.98rem;"
+          style="width: 100%; padding: 12px 16px; font-size: 0.94rem;"
         >
           Open Official WhatsApp Channel
+        </a>
+
+        <a
+          id="telegramChannelDirectLink"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-telegram"
+          style="width: 100%; padding: 12px 16px; font-size: 0.94rem;"
+        >
+          Join Official Telegram Channel
+        </a>
+
+        <a
+          id="whatsappSupportDirectLink"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-secondary"
+          style="width: 100%; padding: 11px 16px; font-size: 0.9rem;"
+        >
+          WhatsApp Support / Helpline
         </a>
 
         <button type="button" class="btn btn-secondary" data-close="channelModal" style="width: 100%;">
@@ -803,8 +851,8 @@
           <button type="button" class="modal-close" data-close="fairModal" aria-label="Close">×</button>
         </div>
 
-        <p style="margin: 0; color: var(--text-secondary); font-size: 0.86rem;">
-          Every flight commits to a SHA-256 hash of the Server Seed before betting closes. Once a flight ends, the Server Seed is revealed so you can verify HMAC-SHA256(ServerSeed, ClientSeed:Nonce).
+        <p style="margin: 0; color: var(--text-secondary); font-size: 0.85rem;">
+          Every flight commits to a SHA-256 hash of the Server Seed before betting closes. Once a flight ends, the Server Seed is revealed so you can verify SHA-256(ServerSeed) and HMAC-SHA256(ServerSeed, ClientSeed:Nonce).
         </p>
 
         <div class="form-group">
@@ -812,6 +860,48 @@
           <div class="seed-box" id="fairSeedDetails">
             Waiting for round data...
           </div>
+        </div>
+
+        <div class="pay-config-box">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+            <strong style="font-size: 0.85rem; color: var(--accent-gold-bright);">Custom Next-Round Client Seed</strong>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">4-32 chars (A-Z, 0-9, _ or -)</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <input
+              type="text"
+              class="form-input"
+              id="fairClientSeedInput"
+              placeholder="e.g. my-lucky-seed-786"
+              maxlength="32"
+              style="flex: 1; min-width: 170px;"
+            />
+            <button type="button" class="btn btn-secondary" id="saveClientSeedBtn">
+              Apply for Next Flight
+            </button>
+          </div>
+          <div id="fairClientSeedStatus" class="hidden" style="font-size: 0.78rem;"></div>
+        </div>
+
+        <div class="pay-config-box">
+          <strong style="font-size: 0.85rem; color: var(--accent-sky);">Cryptographic HMAC-SHA256 Verifier</strong>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px;">
+            <div class="form-group">
+              <label class="form-label" for="verifyServerSeedInput">Server Seed</label>
+              <input type="text" class="form-input" id="verifyServerSeedInput" placeholder="Revealed server seed..." />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="verifyClientSeedInput">Client Seed</label>
+              <input type="text" class="form-input" id="verifyClientSeedInput" placeholder="Client seed..." />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="verifyNonceInput">Nonce (Round #)</label>
+              <input type="number" class="form-input" id="verifyNonceInput" placeholder="e.g. 12" />
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary" id="verifyHmacBtn" style="width: 100%;">
+            Compute SHA-256 &amp; HMAC-SHA256 Crash Point
+          </button>
         </div>
 
         <div id="fairVerifyResult" class="alert-success hidden"></div>

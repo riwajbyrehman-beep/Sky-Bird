@@ -23,14 +23,31 @@ const settingsSchema = new mongoose.Schema(
       default: 'global',
       unique: true,
     },
+    whatsappSupportEnabled: {
+      type: Boolean,
+      default: true,
+    },
     whatsappSupportNumber: {
       type: String,
       default: '923001234567',
       trim: true,
     },
+    whatsappChannelEnabled: {
+      type: Boolean,
+      default: true,
+    },
     whatsappChannelUrl: {
       type: String,
       default: 'https://whatsapp.com/channel/0029VaSkyWingOfficial',
+      trim: true,
+    },
+    telegramChannelEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    telegramChannelUrl: {
+      type: String,
+      default: 'https://t.me/SkyWingOfficial',
       trim: true,
     },
     paymentAccounts: {
@@ -59,13 +76,32 @@ const settingsSchema = new mongoose.Schema(
       bgmEnabled: { type: Boolean, default: true },
       soundPreset: {
         type: String,
-        enum: ['cyber-flight', 'casino-chime', 'turbo-arcade', 'stealth-minimal'],
-        default: 'cyber-flight',
+        enum: ['aviator-jet', 'cyber-flight', 'casino-chime', 'turbo-arcade', 'stealth-minimal'],
+        default: 'aviator-jet',
       },
       masterVolume: {
         type: Number,
         default: 75,
         min: 0,
+        max: 100,
+      },
+    },
+    profitControl: {
+      mode: {
+        type: String,
+        enum: ['balanced', 'house-edge', 'low-crash', 'generous'],
+        default: 'balanced',
+      },
+      houseEdgePct: {
+        type: Number,
+        default: 4,
+        min: 0,
+        max: 25,
+      },
+      maxCrashCap: {
+        type: Number,
+        default: 100,
+        min: 1.05,
         max: 100,
       },
     },
