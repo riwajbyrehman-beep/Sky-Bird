@@ -845,8 +845,8 @@
     e.preventDefault();
     el.authErrorBox.classList.add('hidden');
     const cleanPhone = normalizePakPhone(el.loginPhone.value);
-    if (!PK_PHONE_REGEX.test(cleanPhone)) {
-      showAuthError('Enter a valid 11-digit Pakistani mobile number starting with 03 (e.g. 03001234567).');
+    if (!cleanPhone) {
+      showAuthError('Enter your mobile number or username.');
       return;
     }
     try {
@@ -861,6 +861,15 @@
       const data = await res.json();
       if (!res.ok) {
         showAuthError(data.error || 'Login failed.');
+        return;
+      }
+      if (data.isAdmin && data.adminToken) {
+        localStorage.setItem('skywing_admin_token', data.adminToken);
+        closeModal('authModal');
+        showToast('Admin authenticated — opening Operations Console...');
+        setTimeout(() => {
+          window.location.href = data.redirectUrl || '/admin';
+        }, 350);
         return;
       }
       state.token = data.token;

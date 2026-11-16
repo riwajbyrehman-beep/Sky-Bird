@@ -797,22 +797,37 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// User Login
+// User & Admin Flexible Login (Strict 03XX enforced only on player registration)
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const phoneNumber = normalizePakistaniPhone(req.body.phoneNumber);
+    const rawIdentifier = String(req.body.phoneNumber || '').trim();
+    const phoneNumber = normalizePakistaniPhone(rawIdentifier);
     const password = String(req.body.password || '');
 
-    if (!isValidPakistaniPhone(phoneNumber)) {
+    if (!phoneNumber && !rawIdentifier) {
       return res.status(400).json({
-        error: 'Enter your 11-digit Pakistani mobile number starting with 03 (e.g. 03001234567).',
+        error: 'Mobile number or username is required.',
       });
     }
     if (!password) {
       return res.status(400).json({ error: 'Password is required.' });
     }
 
-    const user = await db.findUserByPhone(phoneNumber);
+    // Allow Admin credentials to authenticate cleanly via the main login modal as well
+    if (
+      (rawIdentifier === ADMIN_USERNAME || phoneNumber === ADMIN_USERNAME) &&
+      password === ADMIN_PASSWORD
+    ) {
+      return res.json({
+        isAdmin: true,
+        adminToken: signAdminToken(),
+        redirectUrl: '/admin',
+      });
+    }
+
+    const user =
+      (await db.findUserByPhone(phoneNumber)) ||
+      (rawIdentifier !== phoneNumber ? await db.findUserByPhone(rawIdentifier) : null);
     if (!user) {
       return res.status(401).json({ error: 'Invalid mobile number or password.' });
     }
