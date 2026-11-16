@@ -287,6 +287,7 @@
     realWalletActions: document.getElementById('realWalletActions'),
     openDepositBtn: document.getElementById('openDepositBtn'),
     openWithdrawBtn: document.getElementById('openWithdrawBtn'),
+    officialAppBanner: document.getElementById('officialAppBanner'),
     onlineCount: document.getElementById('onlinePlayersCount'),
     userAccountLabel: document.getElementById('userAccountLabel'),
     historyList: document.getElementById('historyList'),
@@ -750,6 +751,9 @@
       el.authTriggerBtn.classList.remove('btn-secondary');
       el.authTriggerBtn.classList.add('btn-primary');
       el.userAccountLabel.textContent = 'Guest Mode';
+    }
+    if (el.officialAppBanner) {
+      el.officialAppBanner.classList.toggle('hidden', !state.user);
     }
     updateModeAndWalletUI();
     if (state.sidebarTab !== 'live') renderSidebar();
@@ -1580,17 +1584,43 @@
   }
 
   function resizeCanvas() {
-    const rect = el.canvas.parentElement.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvasWidth = Math.max(280, rect.width);
-    canvasHeight = Math.max(240, rect.height);
-    el.canvas.width = Math.floor(canvasWidth * dpr);
-    el.canvas.height = Math.floor(canvasHeight * dpr);
+    const parent = el.canvas.parentElement;
+    if (!parent) return;
+    const rect = parent.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const prevW = canvasWidth;
+    const prevH = canvasHeight;
+
+    canvasWidth = Math.max(240, Math.round(rect.width));
+    canvasHeight = Math.max(220, Math.round(rect.height));
+
+    el.canvas.style.width = '100%';
+    el.canvas.style.height = '100%';
+    el.canvas.width = Math.round(canvasWidth * dpr);
+    el.canvas.height = Math.round(canvasHeight * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (starNodes.length === 0) initStarNetwork();
+
+    if (starNodes.length === 0) {
+      initStarNetwork();
+    } else if (prevW > 0 && prevH > 0 && (prevW !== canvasWidth || prevH !== canvasHeight)) {
+      const sx = canvasWidth / prevW;
+      const sy = canvasHeight / prevH;
+      for (let i = 0; i < starNodes.length; i++) {
+        starNodes[i].x *= sx;
+        starNodes[i].y *= sy;
+      }
+    }
   }
 
   window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 80));
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', resizeCanvas);
+  }
+  if (typeof ResizeObserver !== 'undefined' && el.canvas.parentElement) {
+    const ro = new ResizeObserver(() => resizeCanvas());
+    ro.observe(el.canvas.parentElement);
+  }
   resizeCanvas();
 
   function drawStarParticleNetwork(nowMs, mult, birdPos, isFlying) {
@@ -1681,10 +1711,11 @@
     }
   }
 
-  function drawCyberBird(x, y, angleRad, timeMs) {
+  function drawCyberBird(x, y, angleRad, timeMs, scale = 1) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angleRad);
+    if (scale !== 1) ctx.scale(scale, scale);
 
     const wingFlap = Math.sin(timeMs * 0.018);
 
@@ -1800,12 +1831,14 @@
 
     ctx.clearRect(-20, -20, canvasWidth + 40, canvasHeight + 40);
 
-    const padLeft = 48;
-    const padRight = 24;
-    const padTop = 32;
-    const padBottom = 36;
-    const plotW = canvasWidth - padLeft - padRight;
-    const plotH = canvasHeight - padTop - padBottom;
+    const isCompact = canvasWidth < 480;
+    const birdScale = isCompact ? 0.82 : 1;
+    const padLeft = isCompact ? 38 : 48;
+    const padRight = isCompact ? 16 : 24;
+    const padTop = isCompact ? 26 : 32;
+    const padBottom = isCompact ? 28 : 36;
+    const plotW = Math.max(120, canvasWidth - padLeft - padRight);
+    const plotH = Math.max(120, canvasHeight - padTop - padBottom);
 
     let elapsedSec = 0;
     if (state.game.phase === 'FLYING' && state.game.flightStartedAt > 0) {
@@ -1986,15 +2019,15 @@
       ctx.restore();
 
       lastKnownBirdPos = { x: endX, y: endY };
-      drawCyberBird(endX, endY, angle, nowMs);
+      drawCyberBird(endX, endY, angle, nowMs, birdScale);
     } else if (state.game.phase === 'BETTING') {
       exhaustParticles.length = 0;
       crashParticles.length = 0;
       shockwaveRings.length = 0;
       birdHistory.length = 0;
       const hoverY = padTop + plotH - 18 + Math.sin(nowMs * 0.005) * 4;
-      lastKnownBirdPos = { x: padLeft + 26, y: hoverY };
-      drawCyberBird(padLeft + 26, hoverY, -0.18, nowMs);
+      lastKnownBirdPos = { x: padLeft + 22, y: hoverY };
+      drawCyberBird(padLeft + 22, hoverY, -0.18, nowMs, birdScale);
     }
 
     for (let i = shockwaveRings.length - 1; i >= 0; i--) {
