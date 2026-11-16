@@ -16,6 +16,11 @@
       whatsappSupportNumber: '923001234567',
       whatsappChannelUrl: 'https://whatsapp.com/channel/0029VaSkyWingOfficial',
       paymentAccounts: null,
+      audioConfig: {
+        bgmEnabled: true,
+        soundPreset: 'cyber-flight',
+        masterVolume: 75,
+      },
     },
     soundEnabled: localStorage.getItem('skywing_sound') !== 'off',
     sidebarTab: 'live', // 'live' | 'mine' | 'wallet'
@@ -45,228 +50,10 @@
   };
 
   // ==========================================================================
-  // Web Audio API Synthesizer (Zero External Assets)
+  // Web Audio API Synthesizer (Shared Engine with Global Presets & BGM)
   // ==========================================================================
-  class SoundEngine {
-    constructor() {
-      this.ctx = null;
-      this.tensionOsc = null;
-      this.tensionHarmonic = null;
-      this.tensionFilter = null;
-      this.tensionGain = null;
-      this.lastFlapAt = 0;
-    }
-
-    ensureContext() {
-      if (!state.soundEnabled) return null;
-      if (!this.ctx) {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return null;
-        this.ctx = new AudioCtx();
-      }
-      if (this.ctx.state === 'suspended') {
-        this.ctx.resume().catch(() => {});
-      }
-      return this.ctx;
-    }
-
-    playClick() {
-      const ctx = this.ensureContext();
-      if (!ctx) return;
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(580, now);
-      osc.frequency.exponentialRampToValueAtTime(290, now + 0.055);
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.07);
-    }
-
-    playWingFlap() {
-      const ctx = this.ensureContext();
-      if (!ctx) return;
-      const now = performance.now();
-      if (now - this.lastFlapAt < 320) return;
-      this.lastFlapAt = now;
-
-      const t = ctx.currentTime;
-      const bufferSize = Math.floor(ctx.sampleRate * 0.11);
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
-      }
-
-      const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
-
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(520, t);
-      filter.frequency.exponentialRampToValueAtTime(280, t + 0.1);
-      filter.Q.value = 1.8;
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.065, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
-
-      noise.connect(filter).connect(gain).connect(ctx.destination);
-      noise.start(t);
-
-      const thump = ctx.createOscillator();
-      const thumpGain = ctx.createGain();
-      thump.type = 'sine';
-      thump.frequency.setValueAtTime(110, t);
-      thump.frequency.exponentialRampToValueAtTime(55, t + 0.07);
-      thumpGain.gain.setValueAtTime(0.035, t);
-      thumpGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-      thump.connect(thumpGain).connect(ctx.destination);
-      thump.start(t);
-      thump.stop(t + 0.09);
-    }
-
-    startTension() {
-      const ctx = this.ensureContext();
-      if (!ctx) return;
-      this.stopTension();
-
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const harmonic = ctx.createOscillator();
-      const filter = ctx.createBiquadFilter();
-      const gain = ctx.createGain();
-
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(165, now);
-
-      harmonic.type = 'sine';
-      harmonic.frequency.setValueAtTime(330, now);
-
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(480, now);
-      filter.Q.value = 2.2;
-
-      gain.gain.setValueAtTime(0.001, now);
-      gain.gain.linearRampToValueAtTime(0.034, now + 0.25);
-
-      osc.connect(filter);
-      harmonic.connect(filter);
-      filter.connect(gain).connect(ctx.destination);
-
-      osc.start(now);
-      harmonic.start(now);
-      this.tensionOsc = osc;
-      this.tensionHarmonic = harmonic;
-      this.tensionFilter = filter;
-      this.tensionGain = gain;
-    }
-
-    updateTension(mult) {
-      if (!this.tensionOsc || !this.ctx || !state.soundEnabled) return;
-      const t = this.ctx.currentTime;
-      const baseFreq = Math.min(680, 165 + (mult - 1) * 44);
-      const cutoff = Math.min(2600, 480 + (mult - 1) * 220);
-      this.tensionOsc.frequency.setTargetAtTime(baseFreq, t, 0.05);
-      this.tensionHarmonic?.frequency.setTargetAtTime(baseFreq * 1.5, t, 0.05);
-      this.tensionFilter?.frequency.setTargetAtTime(cutoff, t, 0.06);
-    }
-
-    stopTension() {
-      if (this.tensionGain && this.ctx) {
-        try {
-          const t = this.ctx.currentTime;
-          this.tensionGain.gain.setTargetAtTime(0.0001, t, 0.03);
-          this.tensionOsc?.stop(t + 0.09);
-          this.tensionHarmonic?.stop(t + 0.09);
-        } catch {
-          // ignore
-        }
-      }
-      this.tensionOsc = null;
-      this.tensionHarmonic = null;
-      this.tensionFilter = null;
-      this.tensionGain = null;
-    }
-
-    playCashout() {
-      const ctx = this.ensureContext();
-      if (!ctx) return;
-      const notes = [523.25, 659.25, 783.99, 987.77, 1046.5];
-      const base = ctx.currentTime;
-      notes.forEach((freq, idx) => {
-        const osc = ctx.createOscillator();
-        const shimmer = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        shimmer.type = 'triangle';
-        const start = base + idx * 0.045;
-        osc.frequency.setValueAtTime(freq, start);
-        shimmer.frequency.setValueAtTime(freq * 2, start);
-        gain.gain.setValueAtTime(0.085, start);
-        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.28);
-        osc.connect(gain);
-        shimmer.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(start);
-        shimmer.start(start);
-        osc.stop(start + 0.3);
-        shimmer.stop(start + 0.3);
-      });
-    }
-
-    playCrash() {
-      this.stopTension();
-      const ctx = this.ensureContext();
-      if (!ctx) return;
-      const t = ctx.currentTime;
-
-      const sub = ctx.createOscillator();
-      const subGain = ctx.createGain();
-      sub.type = 'sine';
-      sub.frequency.setValueAtTime(140, t);
-      sub.frequency.exponentialRampToValueAtTime(34, t + 0.38);
-      subGain.gain.setValueAtTime(0.22, t);
-      subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
-      sub.connect(subGain).connect(ctx.destination);
-      sub.start(t);
-      sub.stop(t + 0.43);
-
-      const bufferSize = Math.floor(ctx.sampleRate * 0.36);
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 1.5);
-      }
-      const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
-      const noiseFilter = ctx.createBiquadFilter();
-      noiseFilter.type = 'lowpass';
-      noiseFilter.frequency.setValueAtTime(1800, t);
-      noiseFilter.frequency.exponentialRampToValueAtTime(160, t + 0.34);
-      const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.16, t);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.36);
-      noise.connect(noiseFilter).connect(noiseGain).connect(ctx.destination);
-      noise.start(t);
-
-      const sweep = ctx.createOscillator();
-      const sweepGain = ctx.createGain();
-      sweep.type = 'sawtooth';
-      sweep.frequency.setValueAtTime(420, t);
-      sweep.frequency.exponentialRampToValueAtTime(58, t + 0.44);
-      sweepGain.gain.setValueAtTime(0.075, t);
-      sweepGain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
-      sweep.connect(sweepGain).connect(ctx.destination);
-      sweep.start(t);
-      sweep.stop(t + 0.46);
-    }
-  }
-
-  const audio = new SoundEngine();
+  const audio = new window.SkyWingAudioEngine();
+  audio.setMuted(!state.soundEnabled);
 
   // ==========================================================================
   // DOM References
@@ -513,16 +300,28 @@
   el.soundToggleBtn.addEventListener('click', () => {
     state.soundEnabled = !state.soundEnabled;
     localStorage.setItem('skywing_sound', state.soundEnabled ? 'on' : 'off');
+    audio.setMuted(!state.soundEnabled);
     if (state.soundEnabled) {
       audio.ensureContext();
       audio.playClick();
+      if (state.publicSettings.audioConfig?.bgmEnabled !== false) {
+        audio.startBGM();
+      }
       if (state.game.phase === 'FLYING') audio.startTension();
-    } else {
-      audio.stopTension();
     }
     updateSoundUI();
   });
   updateSoundUI();
+
+  function unlockAudioOnGesture() {
+    if (!state.soundEnabled) return;
+    audio.ensureContext();
+    if (state.publicSettings.audioConfig?.bgmEnabled !== false && !audio.bgmRunning) {
+      audio.startBGM();
+    }
+  }
+  window.addEventListener('pointerdown', unlockAudioOnGesture, { once: true });
+  window.addEventListener('keydown', unlockAudioOnGesture, { once: true });
 
   // ==========================================================================
   // Currency Mode Switcher (Fun Mode FC <-> Real Money Mode PKR)
@@ -579,7 +378,9 @@
           whatsappSupportNumber: data.whatsappSupportNumber || '923001234567',
           whatsappChannelUrl: data.whatsappChannelUrl || '#',
           paymentAccounts: data.paymentAccounts || null,
+          audioConfig: data.audioConfig || state.publicSettings.audioConfig,
         };
+        audio.setConfig(state.publicSettings.audioConfig, true);
         syncChannelLinks();
         renderPaymentAccounts();
       }
@@ -781,7 +582,13 @@
       const data = await res.json();
       state.user = data.user;
       if (data.publicSettings) {
-        state.publicSettings = data.publicSettings;
+        state.publicSettings = {
+          ...state.publicSettings,
+          ...data.publicSettings,
+        };
+        if (data.publicSettings.audioConfig) {
+          audio.setConfig(data.publicSettings.audioConfig, true);
+        }
         syncChannelLinks();
         renderPaymentAccounts();
       }
@@ -1248,7 +1055,7 @@
           showToast(res?.error || 'Could not place bet.', true);
           return;
         }
-        audio.playClick();
+        audio.playCasinoChime();
         state.panels[slot].placedBet = res.bet;
         state.panels[slot].queued = false;
         if (state.user) {
@@ -2162,7 +1969,11 @@
       whatsappSupportNumber: data.whatsappSupportNumber || state.publicSettings.whatsappSupportNumber,
       whatsappChannelUrl: data.whatsappChannelUrl || state.publicSettings.whatsappChannelUrl,
       paymentAccounts: data.paymentAccounts || state.publicSettings.paymentAccounts,
+      audioConfig: data.audioConfig || state.publicSettings.audioConfig,
     };
+    if (data.audioConfig) {
+      audio.setConfig(data.audioConfig, true);
+    }
     syncChannelLinks();
     renderPaymentAccounts();
   });

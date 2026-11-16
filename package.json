@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "build": "node --check server.js && node --check models/User.js && node --check models/Settings.js && node --check models/Transaction.js && node --check public/game.js",
+    "build": "node --check server.js && node --check models/User.js && node --check models/Settings.js && node --check models/Transaction.js && node --check public/audio-engine.js && node --check public/game.js",
     "preview": "node server.js",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"

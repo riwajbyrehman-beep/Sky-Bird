@@ -1,8 +1,9 @@
-const CACHE_NAME = 'skywing-pwa-v1';
+const CACHE_NAME = 'skywing-pwa-v2';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/style.css',
+  '/audio-engine.js',
   '/game.js',
   '/manifest.json',
   '/icon.svg',
@@ -39,7 +40,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/socket.io/') ||
     url.pathname === '/health' ||
-    url.pathname === '/admin'
+    url.pathname.startsWith('/admin')
   ) {
     return;
   }

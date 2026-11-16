@@ -55,6 +55,20 @@ const settingsSchema = new mongoose.Schema(
         },
       },
     },
+    audioConfig: {
+      bgmEnabled: { type: Boolean, default: true },
+      soundPreset: {
+        type: String,
+        enum: ['cyber-flight', 'casino-chime', 'turbo-arcade', 'stealth-minimal'],
+        default: 'cyber-flight',
+      },
+      masterVolume: {
+        type: Number,
+        default: 75,
+        min: 0,
+        max: 100,
+      },
+    },
     dailyProfitTarget: {
       type: Number,
       default: 30000,

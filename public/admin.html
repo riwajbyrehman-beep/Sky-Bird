@@ -131,15 +131,42 @@
         display: inline-block;
         box-shadow: 0 0 8px #10b981;
       }
+      .audio-controls-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+        align-items: end;
+      }
+      .audio-test-bench {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        padding: 12px;
+        border-radius: 10px;
+        background: rgba(6, 9, 19, 0.55);
+        border: 1px solid var(--border-hairline);
+      }
+      .isolated-badge {
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 4px 9px;
+        border-radius: 6px;
+        background: rgba(56, 189, 248, 0.14);
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        color: #7dd3fc;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+      }
     </style>
   </head>
   <body>
-    <!-- Admin Login View -->
+    <!-- Admin Login View (Strictly Isolated) -->
     <div id="adminLoginView" class="login-wrapper">
       <div class="modal-card">
         <div class="modal-header">
           <h1 class="modal-title">Admin Operations Login</h1>
-          <a href="/" class="footer-link">Back to Game</a>
+          <span class="isolated-badge">Admin Only</span>
         </div>
         <div id="adminLoginError" class="alert-error hidden"></div>
         <form id="adminLoginForm" class="form-group" style="gap: 14px;">
@@ -158,14 +185,14 @@
       </div>
     </div>
 
-    <!-- Admin Dashboard View -->
+    <!-- Admin Dashboard View (Strictly Isolated Operations Console) -->
     <div id="adminDashboardView" class="hidden">
       <header class="topbar">
-        <a href="/" class="brand-mark">
-          <span>SkyWing Admin</span>
-        </a>
-        <div class="nav-links">
-          <a href="/" class="nav-link">Live Game Arena</a>
+        <div class="brand-mark" style="cursor: default;">
+          <span>SkyWing Admin Console</span>
+        </div>
+        <div class="nav-links" style="display: flex; align-items: center; gap: 12px;">
+          <span class="isolated-badge">Isolated Operations</span>
           <span style="font-size: 0.78rem; color: #34d399; display: inline-flex; align-items: center; gap: 6px;">
             <span class="live-dot"></span> Real-Time Alerts Active
           </span>
@@ -238,6 +265,73 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <!-- Game Audio & Sound Controls (Global Sync + Live Test Bench) -->
+        <section class="panel-card" id="audioControlSection">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <div>
+              <h2 class="panel-title">Game Audio & Sound Controls</h2>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">
+                Configure synthesized background music, sound preset, and global master volume for all players.
+              </span>
+            </div>
+            <button type="button" class="btn btn-emerald" id="saveAudioBtn">Save &amp; Sync Audio Globally</button>
+          </div>
+
+          <div class="audio-controls-grid">
+            <div class="pay-config-box">
+              <div class="modal-header">
+                <strong style="color: var(--accent-gold-bright);">Background Music</strong>
+                <label class="toggle-label">
+                  <span class="switch">
+                    <input type="checkbox" id="audioBgmEnabled" checked />
+                    <span class="slider"></span>
+                  </span>
+                  <span id="audioBgmStateText">ON</span>
+                </label>
+              </div>
+              <span class="form-hint">Players can still mute/unmute locally from the game header toggle.</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="audioPreset">Global Sound Preset</label>
+              <select class="form-input" id="audioPreset">
+                <option value="cyber-flight">Cyber Flight Synth</option>
+                <option value="casino-chime">High-Energy Casino Chime</option>
+                <option value="turbo-arcade">Turbo Arcade Pulse</option>
+                <option value="stealth-minimal">Minimal Pro</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label class="form-label" for="audioMasterVolume">Master Game Volume</label>
+                <strong class="tabular-nums" id="audioMasterVolumeVal" style="color: #38bdf8; font-size: 0.9rem;">75%</strong>
+              </div>
+              <input
+                type="range"
+                id="audioMasterVolume"
+                min="0"
+                max="100"
+                step="1"
+                value="75"
+                style="width: 100%; accent-color: #f59e0b; cursor: pointer;"
+              />
+            </div>
+          </div>
+
+          <div class="audio-test-bench">
+            <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); margin-right: 4px;">
+              Live Sound Test Bench:
+            </span>
+            <button type="button" class="btn btn-primary btn-xs" id="testBgmBtn">▶ Test BGM</button>
+            <button type="button" class="btn btn-secondary btn-xs" id="stopBgmBtn">⏹ Stop BGM</button>
+            <button type="button" class="btn btn-secondary btn-xs" id="testCyberBtn">Cyber Flight</button>
+            <button type="button" class="btn btn-secondary btn-xs" id="testChimeBtn">Casino Chime</button>
+            <button type="button" class="btn btn-emerald btn-xs" id="testVictoryBtn">Victory Arpeggio</button>
+            <button type="button" class="btn btn-danger btn-xs" id="testCrashBtn">Crash Explosion 2.0</button>
           </div>
         </section>
 
@@ -519,6 +613,7 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/audio-engine.js"></script>
     <script>
       (() => {
         'use strict';
@@ -530,6 +625,7 @@
         let activeAlertTx = null;
         let pendingRejectTxId = null;
         let adminSocket = null;
+        const adminAudio = window.SkyWingAudioEngine ? new window.SkyWingAudioEngine() : null;
 
         const loginView = document.getElementById('adminLoginView');
         const dashView = document.getElementById('adminDashboardView');
@@ -675,6 +771,8 @@
         });
 
         function showLogin() {
+          adminAudio?.stopBGM();
+          adminAudio?.stopTension();
           loginView.classList.remove('hidden');
           dashView.classList.add('hidden');
         }
@@ -769,6 +867,16 @@
             document.getElementById('bkName').value = pa.bank?.bankName || '';
             document.getElementById('bkTitle').value = pa.bank?.accountTitle || '';
             document.getElementById('bkNumber').value = pa.bank?.accountNumber || '';
+
+            const ac = s.audioConfig || { bgmEnabled: true, soundPreset: 'cyber-flight', masterVolume: 75 };
+            document.getElementById('audioBgmEnabled').checked = ac.bgmEnabled !== false;
+            document.getElementById('audioBgmStateText').textContent = ac.bgmEnabled !== false ? 'ON' : 'OFF';
+            document.getElementById('audioPreset').value = ac.soundPreset || 'cyber-flight';
+            document.getElementById('audioMasterVolume').value = Number(ac.masterVolume ?? 75);
+            document.getElementById('audioMasterVolumeVal').textContent = `${Number(ac.masterVolume ?? 75)}%`;
+            if (adminAudio) {
+              adminAudio.setConfig(ac, false);
+            }
 
             const roundsBody = document.getElementById('roundsTableBody');
             if (!s.recentRounds || !s.recentRounds.length) {
@@ -965,7 +1073,94 @@
         });
 
         // ====================================================================
-        // Settings Form Submission (Including Payment Accounts)
+        // Game Audio & Sound Controls + Live Test Bench
+        // ====================================================================
+        function getAdminAudioConfig() {
+          return {
+            bgmEnabled: document.getElementById('audioBgmEnabled').checked,
+            soundPreset: document.getElementById('audioPreset').value,
+            masterVolume: Number(document.getElementById('audioMasterVolume').value),
+          };
+        }
+
+        function syncAdminTestEngine(autoStart = false) {
+          if (!adminAudio) return;
+          adminAudio.setMuted(false);
+          adminAudio.setConfig(getAdminAudioConfig(), autoStart);
+        }
+
+        document.getElementById('audioBgmEnabled').addEventListener('change', (e) => {
+          document.getElementById('audioBgmStateText').textContent = e.target.checked ? 'ON' : 'OFF';
+          syncAdminTestEngine(false);
+          if (!e.target.checked) adminAudio?.stopBGM();
+        });
+
+        document.getElementById('audioPreset').addEventListener('change', () => {
+          syncAdminTestEngine(Boolean(adminAudio?.bgmRunning));
+        });
+
+        document.getElementById('audioMasterVolume').addEventListener('input', (e) => {
+          document.getElementById('audioMasterVolumeVal').textContent = `${e.target.value}%`;
+          syncAdminTestEngine(false);
+        });
+
+        document.getElementById('testBgmBtn').addEventListener('click', () => {
+          syncAdminTestEngine(false);
+          adminAudio?.ensureContext();
+          adminAudio?.startBGM(document.getElementById('audioPreset').value);
+        });
+
+        document.getElementById('stopBgmBtn').addEventListener('click', () => {
+          adminAudio?.stopBGM();
+          adminAudio?.stopTension();
+        });
+
+        document.getElementById('testCyberBtn').addEventListener('click', () => {
+          syncAdminTestEngine(false);
+          adminAudio?.ensureContext();
+          adminAudio?.startBGM('cyber-flight');
+          setTimeout(() => adminAudio?.stopBGM(), 2200);
+        });
+
+        document.getElementById('testChimeBtn').addEventListener('click', () => {
+          syncAdminTestEngine(false);
+          adminAudio?.ensureContext();
+          adminAudio?.playCasinoChime();
+        });
+
+        document.getElementById('testVictoryBtn').addEventListener('click', () => {
+          syncAdminTestEngine(false);
+          adminAudio?.ensureContext();
+          adminAudio?.playCashout();
+        });
+
+        document.getElementById('testCrashBtn').addEventListener('click', () => {
+          syncAdminTestEngine(false);
+          adminAudio?.ensureContext();
+          adminAudio?.playCrash();
+        });
+
+        document.getElementById('saveAudioBtn').addEventListener('click', async () => {
+          try {
+            const audioConfig = getAdminAudioConfig();
+            const res = await apiFetch('/api/admin/settings', {
+              method: 'PUT',
+              body: JSON.stringify({ audioConfig }),
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              showToast(err.error || 'Failed to save audio settings.', true);
+              return;
+            }
+            showToast('Global audio settings saved & synced to all players!');
+            loadDashboard();
+          } catch {
+            showToast('Failed to save audio settings.', true);
+          }
+        });
+
+        // ====================================================================
+        // Settings Form Submission (Including Payment Accounts & Audio)
         // ====================================================================
         document.getElementById('settingsForm').addEventListener('submit', async (e) => {
           e.preventDefault();
@@ -978,6 +1173,7 @@
                 welcomeBonusCredits: Number(document.getElementById('setWelcomeBonus').value),
                 whatsappSupportNumber: document.getElementById('setSupportPhone').value,
                 whatsappChannelUrl: document.getElementById('setChannelUrl').value,
+                audioConfig: getAdminAudioConfig(),
                 paymentAccounts: {
                   easypaisa: {
                     enabled: document.getElementById('epEnabled').checked,

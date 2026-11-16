@@ -70,12 +70,23 @@ function defaultPaymentAccounts() {
   };
 }
 
+const ALLOWED_SOUND_PRESETS = ['cyber-flight', 'casino-chime', 'turbo-arcade', 'stealth-minimal'];
+
+function defaultAudioConfig() {
+  return {
+    bgmEnabled: true,
+    soundPreset: 'cyber-flight',
+    masterVolume: 75,
+  };
+}
+
 function defaultSettingsObj() {
   return {
     key: 'global',
     whatsappSupportNumber: '923001234567',
     whatsappChannelUrl: 'https://whatsapp.com/channel/0029VaSkyWingOfficial',
     paymentAccounts: defaultPaymentAccounts(),
+    audioConfig: defaultAudioConfig(),
     dailyProfitTarget: 30000,
     varianceTolerancePct: 8,
     welcomeBonusCredits: 1000,
@@ -110,6 +121,10 @@ function loadLocalStore() {
           paymentAccounts: {
             ...defaultPaymentAccounts(),
             ...(parsed.settings?.paymentAccounts || {}),
+          },
+          audioConfig: {
+            ...defaultAudioConfig(),
+            ...(parsed.settings?.audioConfig || {}),
           },
         },
       };
@@ -230,6 +245,10 @@ const db = {
         ...defaultPaymentAccounts(),
         ...(obj.paymentAccounts || {}),
       };
+      obj.audioConfig = {
+        ...defaultAudioConfig(),
+        ...(obj.audioConfig || {}),
+      };
       return obj;
     }
 
@@ -247,6 +266,10 @@ const db = {
       paymentAccounts: {
         ...defaultPaymentAccounts(),
         ...(localStore.settings.paymentAccounts || {}),
+      },
+      audioConfig: {
+        ...defaultAudioConfig(),
+        ...(localStore.settings.audioConfig || {}),
       },
     };
   },
@@ -724,12 +747,13 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Secret Admin Panel route
-app.get('/admin', (req, res) => {
+// Secret Isolated Admin Panel route
+app.get(['/admin', '/admin/*'], (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Public Settings (WhatsApp Channel + Support Helpline + Payment Accounts)
+// Public Settings (WhatsApp Channel + Support Helpline + Payment Accounts + Audio Config)
 app.get('/api/public-settings', async (req, res) => {
   try {
     const settings = await db.getSettings();
@@ -738,6 +762,7 @@ app.get('/api/public-settings', async (req, res) => {
       whatsappChannelUrl: settings.whatsappChannelUrl,
       welcomeBonusCredits: settings.welcomeBonusCredits,
       paymentAccounts: settings.paymentAccounts,
+      audioConfig: settings.audioConfig || defaultAudioConfig(),
     });
   } catch {
     res.status(500).json({ error: 'Failed to fetch settings' });
@@ -868,6 +893,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
       whatsappSupportNumber: settings.whatsappSupportNumber,
       whatsappChannelUrl: settings.whatsappChannelUrl,
       paymentAccounts: settings.paymentAccounts,
+      audioConfig: settings.audioConfig || defaultAudioConfig(),
     },
   });
 });
@@ -1016,6 +1042,7 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
         whatsappSupportNumber: settings.whatsappSupportNumber,
         whatsappChannelUrl: settings.whatsappChannelUrl,
         paymentAccounts: settings.paymentAccounts,
+        audioConfig: settings.audioConfig || defaultAudioConfig(),
         dailyProfitTarget: target,
         varianceTolerancePct: tolerance,
         welcomeBonusCredits: settings.welcomeBonusCredits,
@@ -1115,6 +1142,26 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
       },
     };
 
+    const incomingAudio = req.body.audioConfig || {};
+    const curAudio = current.audioConfig || defaultAudioConfig();
+    const nextPreset = ALLOWED_SOUND_PRESETS.includes(incomingAudio.soundPreset)
+      ? incomingAudio.soundPreset
+      : ALLOWED_SOUND_PRESETS.includes(curAudio.soundPreset)
+        ? curAudio.soundPreset
+        : 'cyber-flight';
+    const rawVol =
+      incomingAudio.masterVolume !== undefined
+        ? Number(incomingAudio.masterVolume)
+        : Number(curAudio.masterVolume ?? 75);
+    const audioConfig = {
+      bgmEnabled:
+        incomingAudio.bgmEnabled !== undefined
+          ? Boolean(incomingAudio.bgmEnabled)
+          : Boolean(curAudio.bgmEnabled),
+      soundPreset: nextPreset,
+      masterVolume: Number.isFinite(rawVol) ? Math.min(100, Math.max(0, Math.round(rawVol))) : 75,
+    };
+
     const carryForwardPool = Math.max(
       0,
       Math.round((Number(current.dailyNetProfit || 0) - dailyProfitTarget) * 100) / 100
@@ -1124,6 +1171,7 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
       whatsappSupportNumber: whatsappSupportNumber || current.whatsappSupportNumber,
       whatsappChannelUrl: whatsappChannelUrl || current.whatsappChannelUrl,
       paymentAccounts,
+      audioConfig,
       dailyProfitTarget,
       varianceTolerancePct,
       welcomeBonusCredits,
@@ -1134,6 +1182,7 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
       whatsappSupportNumber: updated.whatsappSupportNumber,
       whatsappChannelUrl: updated.whatsappChannelUrl,
       paymentAccounts: updated.paymentAccounts,
+      audioConfig: updated.audioConfig || audioConfig,
     });
 
     res.json({ settings: updated });
