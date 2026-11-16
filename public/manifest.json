@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "SkyWing Crash",
+  "short_name": "SkyWing",
+  "description": "Real-time multiplayer Flying Bird Crash Game with Fun Credits and PKR Real Money modes.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#060913",
+  "background_color": "#060913",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

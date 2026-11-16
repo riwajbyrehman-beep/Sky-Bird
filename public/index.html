@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>SkyWing Crash — Multiplayer Arcade Game</title>
+    <meta
+      name="description"
+      content="Real-time multiplayer Crash Game with an animated cyber-golden bird, dual betting panels, Fun Credits & PKR wallets, and provably fair verification."
+    />
+    <meta name="theme-color" content="#060913" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SkyWing" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <!-- Top Bar -->
+    <header class="topbar">
+      <a href="/" class="brand-mark">
+        <span class="brand-icon" aria-hidden="true">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M16 7h.01" />
+            <path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20" />
+            <path d="m20 7 2 .5-2 .5" />
+            <path d="M10 18v3" />
+            <path d="M14 17.75V21" />
+            <path d="M7 18a6 6 0 0 0 3.84-10.61" />
+          </svg>
+        </span>
+        <span>SkyWing</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary Navigation">
+        <button type="button" class="nav-link" id="openHowToBtn">How to Play</button>
+        <button type="button" class="nav-link" id="openFairBtn">Provably Fair</button>
+        <button type="button" class="nav-link" id="openChannelBtn">Official Channel</button>
+      </nav>
+
+      <div class="header-actions">
+        <!-- Fun Mode / Real Money PKR Switcher -->
+        <div class="mode-switcher" role="group" aria-label="Currency Mode Switcher">
+          <button type="button" class="mode-btn active-fun" id="modeFunBtn">Fun (FC)</button>
+          <button type="button" class="mode-btn" id="modeRealBtn">Real (PKR)</button>
+        </div>
+
+        <div class="wallet-box" title="Active Wallet Balance">
+          <span class="wallet-balance tabular-nums" id="walletBalanceDisplay">0.00 FC</span>
+          <span class="wallet-label" id="walletModeLabel">Fun Credits</span>
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-install"
+          id="installAppBtn"
+          title="Install SkyWing Mobile App"
+        >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          <span class="install-label">Install App</span>
+        </button>
+
+        <button
+          type="button"
+          class="sound-toggle-btn active"
+          id="soundToggleBtn"
+          title="Toggle Game Audio"
+          aria-label="Toggle Game Audio"
+          aria-pressed="true"
+        >
+          <svg
+            id="soundOnIcon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+          </svg>
+          <svg
+            id="soundOffIcon"
+            class="hidden"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </svg>
+          <span class="sound-eq" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </span>
+          <span class="sound-label" id="soundStatusLabel">SFX On</span>
+        </button>
+
+        <button type="button" class="btn btn-primary" id="authTriggerBtn">Log In / Join</button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <!-- Currency Mode Notice & Real Wallet Deposit/Withdraw Bar -->
+      <div class="fc-notice-bar">
+        <div class="fc-notice-left">
+          <div id="funModeNotice">
+            <strong style="color: var(--accent-gold-bright);">Fun Mode (FC)</strong>
+            <span>— Non-Withdrawable Virtual Points for Practice & Entertainment.</span>
+          </div>
+          <div id="realModeNotice" class="hidden">
+            <strong style="color: #34d399;">Real Money Mode (PKR)</strong>
+            <span>— EasyPaisa, JazzCash & Pakistani Bank Deposits/Withdrawals.</span>
+          </div>
+          <div id="realWalletActions" class="real-wallet-actions hidden">
+            <button type="button" class="btn btn-emerald" id="openDepositBtn" style="padding: 5px 12px; font-size: 0.78rem;">
+              + Deposit PKR
+            </button>
+            <button type="button" class="btn btn-secondary" id="openWithdrawBtn" style="padding: 5px 12px; font-size: 0.78rem;">
+              Withdraw PKR
+            </button>
+          </div>
+        </div>
+        <div class="fc-notice-right tabular-nums">
+          <span id="onlinePlayersCount">1 Online</span>
+          <span aria-hidden="true">·</span>
+          <span id="userAccountLabel">Guest Mode</span>
+        </div>
+      </div>
+
+      <!-- Last 15 Round Multiplier History -->
+      <section class="history-strip" aria-label="Recent Multipliers">
+        <span class="history-label">Last 15 Flights</span>
+        <div class="history-items" id="historyList">
+          <span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for flight history...</span>
+        </div>
+      </section>
+
+      <!-- Main Game Workspace -->
+      <section class="game-grid">
+        <div class="arena-column">
+          <!-- Flight Canvas -->
+          <div class="canvas-card">
+            <canvas id="flightCanvas"></canvas>
+
+            <div class="canvas-hud-top">
+              <button
+                type="button"
+                class="round-tag tabular-nums"
+                id="roundSeedHudBtn"
+                title="Inspect Provably Fair Seeds"
+              >
+                <span id="hudRoundNumber">Round #---</span>
+                <span aria-hidden="true">·</span>
+                <span id="hudSeedShort">SHA-256: ---</span>
+              </button>
+            </div>
+
+            <div class="cashout-toast-container" id="toastContainer"></div>
+
+            <div class="center-telemetry">
+              <div id="bettingOverlay" class="betting-countdown-box">
+                <span class="countdown-title">Next Takeoff In</span>
+                <span class="countdown-timer tabular-nums" id="countdownTimerText">5.0s</span>
+                <div class="countdown-bar-track">
+                  <div class="countdown-bar-fill" id="countdownBarFill"></div>
+                </div>
+                <span id="bettingModeHint" style="font-size: 0.78rem; color: var(--text-secondary);">
+                  Place your Fun Credits bets
+                </span>
+              </div>
+
+              <div id="flyingOverlay" class="hidden">
+                <div class="multiplier-display tabular-nums" id="liveMultiplierText">1.00x</div>
+                <div class="crash-banner hidden" id="crashBannerText">FLEW AWAY!</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dual Betting Panels (STRICTLY Side-by-Side on Mobile & Desktop) -->
+          <div class="betting-panels-grid">
+            <!-- Panel 1 -->
+            <div class="bet-panel" id="betPanel1">
+              <div class="bet-panel-header">
+                <span class="panel-label">Bet 1</span>
+                <div class="segmented-control">
+                  <button type="button" class="seg-btn active" data-panel="1" data-mode="manual">
+                    Manual
+                  </button>
+                  <button type="button" class="seg-btn" data-panel="1" data-mode="auto">
+                    Auto
+                  </button>
+                </div>
+              </div>
+
+              <div class="bet-body-row">
+                <div class="amount-controls">
+                  <div class="stepper-input">
+                    <button type="button" class="step-btn" data-panel="1" data-step="-10">-</button>
+                    <input
+                      type="number"
+                      class="amount-input"
+                      id="betAmount1"
+                      value="50"
+                      min="1"
+                      max="100000"
+                      step="1"
+                    />
+                    <button type="button" class="step-btn" data-panel="1" data-step="10">+</button>
+                  </div>
+                  <div class="preset-chips">
+                    <button type="button" class="preset-btn" data-panel="1" data-preset="10">10</button>
+                    <button type="button" class="preset-btn" data-panel="1" data-preset="100">100</button>
+                    <button type="button" class="preset-btn" data-panel="1" data-preset="half">1/2</button>
+                    <button type="button" class="preset-btn" data-panel="1" data-preset="double">2×</button>
+                  </div>
+                </div>
+
+                <button type="button" class="bet-action-btn state-place" id="betActionBtn1">
+                  <span class="bet-action-main">PLACE BET</span>
+                  <span class="bet-action-sub tabular-nums">50 FC</span>
+                </button>
+              </div>
+
+              <div class="auto-row">
+                <label class="toggle-label">
+                  <span class="switch">
+                    <input type="checkbox" id="autoBetToggle1" />
+                    <span class="slider"></span>
+                  </span>
+                  <span>Auto Bet</span>
+                </label>
+
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <label class="toggle-label">
+                    <span class="switch">
+                      <input type="checkbox" id="autoCashoutToggle1" />
+                      <span class="slider"></span>
+                    </span>
+                    <span>Auto Cashout</span>
+                  </label>
+                  <input
+                    type="number"
+                    class="auto-mult-input"
+                    id="autoCashoutValue1"
+                    value="2.00"
+                    min="1.01"
+                    max="100"
+                    step="0.1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Panel 2 -->
+            <div class="bet-panel" id="betPanel2">
+              <div class="bet-panel-header">
+                <span class="panel-label">Bet 2</span>
+                <div class="segmented-control">
+                  <button type="button" class="seg-btn active" data-panel="2" data-mode="manual">
+                    Manual
+                  </button>
+                  <button type="button" class="seg-btn" data-panel="2" data-mode="auto">
+                    Auto
+                  </button>
+                </div>
+              </div>
+
+              <div class="bet-body-row">
+                <div class="amount-controls">
+                  <div class="stepper-input">
+                    <button type="button" class="step-btn" data-panel="2" data-step="-10">-</button>
+                    <input
+                      type="number"
+                      class="amount-input"
+                      id="betAmount2"
+                      value="100"
+                      min="1"
+                      max="100000"
+                      step="1"
+                    />
+                    <button type="button" class="step-btn" data-panel="2" data-step="10">+</button>
+                  </div>
+                  <div class="preset-chips">
+                    <button type="button" class="preset-btn" data-panel="2" data-preset="25">25</button>
+                    <button type="button" class="preset-btn" data-panel="2" data-preset="500">500</button>
+                    <button type="button" class="preset-btn" data-panel="2" data-preset="half">1/2</button>
+                    <button type="button" class="preset-btn" data-panel="2" data-preset="double">2×</button>
+                  </div>
+                </div>
+
+                <button type="button" class="bet-action-btn state-place" id="betActionBtn2">
+                  <span class="bet-action-main">PLACE BET</span>
+                  <span class="bet-action-sub tabular-nums">100 FC</span>
+                </button>
+              </div>
+
+              <div class="auto-row">
+                <label class="toggle-label">
+                  <span class="switch">
+                    <input type="checkbox" id="autoBetToggle2" />
+                    <span class="slider"></span>
+                  </span>
+                  <span>Auto Bet</span>
+                </label>
+
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <label class="toggle-label">
+                    <span class="switch">
+                      <input type="checkbox" id="autoCashoutToggle2" />
+                      <span class="slider"></span>
+                    </span>
+                    <span>Auto Cashout</span>
+                  </label>
+                  <input
+                    type="number"
+                    class="auto-mult-input"
+                    id="autoCashoutValue2"
+                    value="2.00"
+                    min="1.01"
+                    max="100"
+                    step="0.1"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Players & Wallet History Sidebar -->
+        <aside class="sidebar-card" aria-label="Live Round Players">
+          <div class="sidebar-top">
+            <div
+              class="segmented-control"
+              style="width: 100%; display: grid; grid-template-columns: 1fr 1fr 1fr;"
+            >
+              <button type="button" class="seg-btn active" id="tabLiveBets">Live Bets</button>
+              <button type="button" class="seg-btn" id="tabMyBets">My Bets</button>
+              <button type="button" class="seg-btn" id="tabWalletHistory">Wallet</button>
+            </div>
+          </div>
+
+          <div class="sidebar-stats tabular-nums" id="sidebarStatsRow">
+            <span id="activeBetsCount">0 Active Bets</span>
+            <span id="totalRoundWager">0 FC</span>
+          </div>
+
+          <div class="bets-table-head" id="sidebarTableHead">
+            <span>Player</span>
+            <span>Bet</span>
+            <span>Mult</span>
+            <span style="text-align: right;">Win</span>
+          </div>
+
+          <div class="bets-list" id="sidebarBetsList">
+            <div class="empty-state">No bets placed yet in this flight.</div>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div>
+        <span>SkyWing Crash</span>
+        <span aria-hidden="true"> · </span>
+        <span>Dual Wallet: Fun Mode (FC) & Real Money (PKR).</span>
+      </div>
+      <div class="footer-links">
+        <button type="button" class="footer-link" id="footerChannelBtn">WhatsApp Channel</button>
+        <button type="button" class="footer-link" id="footerFairBtn">Provably Fair</button>
+        <button type="button" class="footer-link" id="footerHowToBtn">Rules</button>
+        <a href="/admin" class="secret-admin-trigger" title="Operations Console">·</a>
+      </div>
+    </footer>
+
+    <!-- ======================================================================
+         Auth Modal (Pakistani 03XX-XXXXXXX + WhatsApp Forgot Password)
+         ====================================================================== -->
+    <div
+      class="modal-backdrop"
+      id="authModal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="authModalTitle"
+    >
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title" id="authModalTitle">Player Account (Pakistan)</h2>
+          <button type="button" class="modal-close" data-close="authModal" aria-label="Close">×</button>
+        </div>
+
+        <div class="segmented-control" style="display: grid; grid-template-columns: 1fr 1fr;">
+          <button type="button" class="seg-btn active" id="authTabLogin">Log In</button>
+          <button type="button" class="seg-btn" id="authTabRegister">Create Account</button>
+        </div>
+
+        <div id="authErrorBox" class="alert-error hidden"></div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="form-group" style="gap: 14px;">
+          <div class="form-group">
+            <label class="form-label" for="loginPhone">Pakistani Mobile Number (11 digits)</label>
+            <input
+              type="tel"
+              class="form-input"
+              id="loginPhone"
+              placeholder="03XX-XXXXXXX"
+              maxlength="14"
+              required
+            />
+            <span class="form-hint">Must start with 03 (e.g. 03001234567).</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loginPassword">Password</label>
+            <input
+              type="password"
+              class="form-input"
+              id="loginPassword"
+              placeholder="Minimum 6 characters"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">
+            Log In & Play
+          </button>
+
+          <button type="button" class="btn btn-whatsapp" id="forgotPasswordBtn" style="width: 100%; padding: 11px;">
+            Forgot Password? (WhatsApp Helpline)
+          </button>
+          <span class="form-hint" style="text-align: center;">
+            Redirects to Admin WhatsApp Support with your registered 03XX number for instant password recovery.
+          </span>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" class="form-group hidden" style="gap: 14px;">
+          <div class="form-group">
+            <label class="form-label" for="regPhone">Pakistani Mobile Number (11 digits, Unique)</label>
+            <input
+              type="tel"
+              class="form-input"
+              id="regPhone"
+              placeholder="03XX-XXXXXXX"
+              maxlength="14"
+              required
+            />
+            <span class="form-hint">11 digits starting with 03 (e.g. 03001234567). One account per number.</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regName">Nickname (Optional)</label>
+            <input
+              type="text"
+              class="form-input"
+              id="regName"
+              placeholder="e.g. LahorePilot"
+              maxlength="24"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regPassword">Password (Min 6 characters)</label>
+            <input
+              type="password"
+              class="form-input"
+              id="regPassword"
+              placeholder="At least 6 characters"
+              minlength="6"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-emerald" style="width: 100%; padding: 12px;">
+            Create Account & Claim Bonus
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         Account Profile Modal
+         ====================================================================== -->
+    <div class="modal-backdrop" id="profileModal" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title">Player Wallet & Profile</h2>
+          <button type="button" class="modal-close" data-close="profileModal" aria-label="Close">×</button>
+        </div>
+
+        <div
+          class="seed-box"
+          style="display: flex; flex-direction: column; gap: 7px; font-family: var(--font-body); font-size: 0.9rem;"
+        >
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Mobile</span>
+            <strong class="tabular-nums" id="profilePhone">-</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Nickname</span>
+            <strong id="profileName">-</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Fun Mode Balance</span>
+            <strong class="tabular-nums" style="color: var(--accent-gold-bright);" id="profileFunBalance">
+              0.00 FC
+            </strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Real Money Balance</span>
+            <strong class="tabular-nums" style="color: #34d399;" id="profileRealBalance">
+              0.00 PKR
+            </strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Total Deposited</span>
+            <span class="tabular-nums" id="profileDeposited">0.00 PKR</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Total Withdrawn</span>
+            <span class="tabular-nums" id="profileWithdrawn">0.00 PKR</span>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button type="button" class="btn btn-emerald" id="profileDepositBtn">+ Deposit PKR</button>
+          <button type="button" class="btn btn-secondary" id="profileWithdrawBtn">Withdraw PKR</button>
+        </div>
+
+        <button type="button" class="btn btn-secondary" id="profileChannelBtn" style="width: 100%;">
+          Follow Official WhatsApp Channel
+        </button>
+        <button type="button" class="btn btn-danger" id="logoutBtn" style="width: 100%;">
+          Log Out
+        </button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         Deposit PKR Modal (EasyPaisa / JazzCash / Bank + Screenshot OR TID)
+         ====================================================================== -->
+    <div class="modal-backdrop" id="depositModal" role="dialog" aria-modal="true">
+      <div class="modal-card wide">
+        <div class="modal-header">
+          <h2 class="modal-title">Deposit Real Money (PKR)</h2>
+          <button type="button" class="modal-close" data-close="depositModal" aria-label="Close">×</button>
+        </div>
+
+        <div id="depositAccountsList" style="display: flex; flex-direction: column; gap: 8px;">
+          <span class="form-hint">Loading active payment accounts...</span>
+        </div>
+
+        <div id="depositErrorBox" class="alert-error hidden"></div>
+        <div id="depositSuccessBox" class="alert-success hidden"></div>
+
+        <form id="depositForm" class="form-group" style="gap: 12px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label" for="depMethod">Payment Method Used</label>
+              <select class="form-input" id="depMethod" required>
+                <option value="EasyPaisa">EasyPaisa</option>
+                <option value="JazzCash">JazzCash</option>
+                <option value="Bank Account">Bank Account</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="depAmount">Amount Sent (PKR)</label>
+              <input
+                type="number"
+                class="form-input"
+                id="depAmount"
+                placeholder="Min 50 PKR"
+                min="50"
+                max="1000000"
+                step="1"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="depTid">Transaction ID / TID (Optional if Screenshot attached)</label>
+            <input
+              type="text"
+              class="form-input"
+              id="depTid"
+              placeholder="e.g. 12345678901"
+              maxlength="80"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="depScreenshot">Payment Screenshot (Optional if TID entered)</label>
+            <input type="file" class="form-input" id="depScreenshot" accept="image/*" />
+            <div id="depPreviewWrap" class="hidden" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+              <img id="depPreviewImg" class="screenshot-preview" alt="Payment screenshot preview" />
+              <button type="button" class="btn btn-secondary" id="depClearImgBtn" style="padding: 5px 10px; font-size: 0.74rem;">
+                Remove
+              </button>
+            </div>
+            <span class="form-hint">Provide EITHER a Payment Screenshot OR a Transaction ID (TID).</span>
+          </div>
+
+          <button type="submit" class="btn btn-emerald" id="depSubmitBtn" style="width: 100%; padding: 12px;">
+            Submit Deposit Proof for Approval
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         Withdraw PKR Modal
+         ====================================================================== -->
+    <div class="modal-backdrop" id="withdrawModal" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title">Withdraw Real Money (PKR)</h2>
+          <button type="button" class="modal-close" data-close="withdrawModal" aria-label="Close">×</button>
+        </div>
+
+        <div class="seed-box" style="display: flex; justify-content: space-between; font-family: var(--font-body); font-size: 0.9rem;">
+          <span style="color: var(--text-muted);">Available Real Balance</span>
+          <strong class="tabular-nums" style="color: #34d399;" id="withdrawAvailBalance">0.00 PKR</strong>
+        </div>
+
+        <div id="withdrawErrorBox" class="alert-error hidden"></div>
+        <div id="withdrawSuccessBox" class="alert-success hidden"></div>
+
+        <form id="withdrawForm" class="form-group" style="gap: 12px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label" for="wdMethod">Withdrawal Method</label>
+              <select class="form-input" id="wdMethod" required>
+                <option value="EasyPaisa">EasyPaisa</option>
+                <option value="JazzCash">JazzCash</option>
+                <option value="Bank Account">Bank Account</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="wdAmount">Amount (PKR)</label>
+              <input
+                type="number"
+                class="form-input"
+                id="wdAmount"
+                placeholder="Min 100 PKR"
+                min="100"
+                max="1000000"
+                step="1"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-group hidden" id="wdBankNameGroup">
+            <label class="form-label" for="wdBankName">Bank Name</label>
+            <input type="text" class="form-input" id="wdBankName" placeholder="e.g. Meezan Bank, HBL, UBL" maxlength="60" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="wdAccountTitle">Account Title (Receiver Name)</label>
+            <input type="text" class="form-input" id="wdAccountTitle" placeholder="Full Account Holder Name" maxlength="60" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="wdAccountNumber">Account Number / Mobile / IBAN</label>
+            <input type="text" class="form-input" id="wdAccountNumber" placeholder="03XX-XXXXXXX or IBAN" maxlength="60" required />
+          </div>
+
+          <span class="form-hint">Amount is deducted from your Real Balance immediately and refunded automatically if rejected.</span>
+
+          <button type="submit" class="btn btn-primary" id="wdSubmitBtn" style="width: 100%; padding: 12px;">
+            Submit Withdrawal Request
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         PWA iOS / Manual Install Instructions Modal
+         ====================================================================== -->
+    <div class="modal-backdrop" id="iosInstallModal" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title">Install SkyWing Mobile App</h2>
+          <button type="button" class="modal-close" data-close="iosInstallModal" aria-label="Close">×</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.9rem; color: var(--text-secondary);">
+          <p style="margin: 0;">Install SkyWing directly to your home screen for instant full-screen gameplay:</p>
+          <div class="seed-box" style="font-family: var(--font-body); font-size: 0.85rem;">
+            <strong style="color: var(--text-primary);">On iPhone / iPad (Safari):</strong>
+            <br />1. Tap the <strong>Share</strong> icon (square with arrow) at the bottom/top bar.
+            <br />2. Scroll down and tap <strong>"Add to Home Screen"</strong>.
+            <br />3. Tap <strong>Add</strong> in the top-right corner.
+          </div>
+          <div class="seed-box" style="font-family: var(--font-body); font-size: 0.85rem;">
+            <strong style="color: var(--text-primary);">On Android (Chrome):</strong>
+            <br />1. Tap the <strong>⋮ Menu</strong> in the top-right corner of Chrome.
+            <br />2. Tap <strong>"Install App"</strong> or <strong>"Add to Home screen"</strong>.
+          </div>
+          <button type="button" class="btn btn-primary" data-close="iosInstallModal" style="width: 100%;">
+            Got It
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         Post-Registration Official WhatsApp Channel Modal
+         ====================================================================== -->
+    <div class="modal-backdrop" id="channelModal" role="dialog" aria-modal="true">
+      <div class="modal-card" style="text-align: center;">
+        <div class="modal-header">
+          <h2 class="modal-title" style="margin: 0 auto;">Follow Our Official WhatsApp Channel</h2>
+          <button type="button" class="modal-close" data-close="channelModal" aria-label="Close">×</button>
+        </div>
+
+        <p style="margin: 0; color: var(--text-secondary); font-size: 0.92rem;">
+          Join our official WhatsApp community for flight events, bonus drops, and live announcements.
+        </p>
+
+        <a
+          id="whatsappChannelDirectLink"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-whatsapp"
+          style="width: 100%; padding: 13px 18px; font-size: 0.98rem;"
+        >
+          Open Official WhatsApp Channel
+        </a>
+
+        <button type="button" class="btn btn-secondary" data-close="channelModal" style="width: 100%;">
+          Continue to Game
+        </button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         Provably Fair Modal
+         ====================================================================== -->
+    <div class="modal-backdrop" id="fairModal" role="dialog" aria-modal="true">
+      <div class="modal-card wide">
+        <div class="modal-header">
+          <h2 class="modal-title">Provably Fair Verification</h2>
+          <button type="button" class="modal-close" data-close="fairModal" aria-label="Close">×</button>
+        </div>
+
+        <p style="margin: 0; color: var(--text-secondary); font-size: 0.86rem;">
+          Every flight commits to a SHA-256 hash of the Server Seed before betting closes. Once a flight ends, the Server Seed is revealed so you can verify HMAC-SHA256(ServerSeed, ClientSeed:Nonce).
+        </p>
+
+        <div class="form-group">
+          <span class="form-label" id="fairRoundHeading">Current Active Round</span>
+          <div class="seed-box" id="fairSeedDetails">
+            Waiting for round data...
+          </div>
+        </div>
+
+        <div id="fairVerifyResult" class="alert-success hidden"></div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         How To Play Modal
+         ====================================================================== -->
+    <div class="modal-backdrop" id="howToModal" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title">How to Play SkyWing</h2>
+          <button type="button" class="modal-close" data-close="howToModal" aria-label="Close">×</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px; color: var(--text-secondary); font-size: 0.9rem;">
+          <div>
+            <strong style="color: var(--text-primary);">1. Choose Fun Mode (FC) or Real Mode (PKR)</strong>
+            <p style="margin: 4px 0 0;">Use the top switcher anytime. Fun Credits are free virtual points for practice; Real Mode uses your Pakistani Rupee balance funded via EasyPaisa, JazzCash, or Bank.</p>
+          </div>
+          <div>
+            <strong style="color: var(--text-primary);">2. Place One or Two Side-by-Side Bets</strong>
+            <p style="margin: 4px 0 0;">During the 5-second countdown, place bets on Bet 1 and/or Bet 2. Auto Cashout is OFF by default — turn it ON only if you want automatic cashout at a target multiplier.</p>
+          </div>
+          <div>
+            <strong style="color: var(--text-primary);">3. Cash Out Before the Bird Flies Away</strong>
+            <p style="margin: 4px 0 0;">Watch the multiplier climb from 1.00x. Tap Cash Out before the bird bursts to lock in your winnings.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/game.js"></script>
+  </body>
+</html>

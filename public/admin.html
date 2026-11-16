@@ -1,0 +1,1177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SkyWing Operations Console — Admin</title>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      .admin-shell {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px 16px 48px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .login-wrapper {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 12px;
+      }
+      .kpi-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-hairline);
+        border-radius: var(--radius-md);
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .kpi-label {
+        font-size: 0.76rem;
+        color: var(--text-muted);
+      }
+      .kpi-value {
+        font-family: var(--font-mono);
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+      .panel-card {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-hairline);
+        border-radius: var(--radius-lg);
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .panel-title {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1.12rem;
+        font-weight: 700;
+      }
+      .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+      }
+      .table-wrap {
+        width: 100%;
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.84rem;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 10px 9px;
+        border-bottom: 1px solid var(--border-hairline);
+        white-space: nowrap;
+      }
+      th {
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.76rem;
+      }
+      .action-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .btn-xs {
+        padding: 5px 9px;
+        font-size: 0.74rem;
+        border-radius: 7px;
+      }
+      .status-text {
+        font-size: 0.76rem;
+        font-weight: 700;
+      }
+      .status-active {
+        color: #34d399;
+      }
+      .status-pending {
+        color: #fbbf24;
+      }
+      .status-banned {
+        color: #f87171;
+      }
+      .pay-config-box {
+        padding: 12px;
+        border-radius: 10px;
+        background: rgba(6, 9, 19, 0.55);
+        border: 1px solid var(--border-hairline);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .preset-reason-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+        display: inline-block;
+        box-shadow: 0 0 8px #10b981;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Admin Login View -->
+    <div id="adminLoginView" class="login-wrapper">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h1 class="modal-title">Admin Operations Login</h1>
+          <a href="/" class="footer-link">Back to Game</a>
+        </div>
+        <div id="adminLoginError" class="alert-error hidden"></div>
+        <form id="adminLoginForm" class="form-group" style="gap: 14px;">
+          <div class="form-group">
+            <label class="form-label" for="adminUser">Admin Username</label>
+            <input type="text" class="form-input" id="adminUser" placeholder="Enter admin username" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="adminPass">Admin Password</label>
+            <input type="password" class="form-input" id="adminPass" placeholder="Enter admin password" required />
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">
+            Unlock Admin Dashboard
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Admin Dashboard View -->
+    <div id="adminDashboardView" class="hidden">
+      <header class="topbar">
+        <a href="/" class="brand-mark">
+          <span>SkyWing Admin</span>
+        </a>
+        <div class="nav-links">
+          <a href="/" class="nav-link">Live Game Arena</a>
+          <span style="font-size: 0.78rem; color: #34d399; display: inline-flex; align-items: center; gap: 6px;">
+            <span class="live-dot"></span> Real-Time Alerts Active
+          </span>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="btn btn-secondary" id="refreshDashBtn">Refresh Data</button>
+          <button type="button" class="btn btn-danger" id="adminLogoutBtn">Log Out</button>
+        </div>
+      </header>
+
+      <main class="admin-shell">
+        <div id="adminToast" class="alert-success hidden"></div>
+        <div id="mongoNoticeBanner" class="alert-error hidden"></div>
+
+        <!-- KPI Summary Strip -->
+        <section class="kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-label">Daily Real Profit (PKR)</span>
+            <span class="kpi-value tabular-nums" id="kpiNetProfit">0.00 PKR</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Daily Profit Target (PKR)</span>
+            <span class="kpi-value tabular-nums" style="color: var(--accent-gold-bright);" id="kpiTarget">30,000 PKR</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Pending Deposits / Withdrawals</span>
+            <span class="kpi-value tabular-nums" style="color: #fbbf24;" id="kpiPendingTx">0 Dep / 0 Wd</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Carry-Forward Pool (PKR)</span>
+            <span class="kpi-value tabular-nums" style="color: var(--accent-emerald);" id="kpiSurplus">0.00 PKR</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Today's Real Bets / Payouts</span>
+            <span class="kpi-value tabular-nums" style="font-size: 0.96rem;" id="kpiBetsPayouts">0 / 0 PKR</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Live Round & Online</span>
+            <span class="kpi-value tabular-nums" style="font-size: 0.96rem;" id="kpiLive">Round #---</span>
+          </div>
+        </section>
+
+        <!-- Deposit & Withdrawal Verification Queue -->
+        <section class="panel-card">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <h2 class="panel-title">Deposits & Withdrawals Queue (Real Money PKR)</h2>
+            <div class="segmented-control">
+              <button type="button" class="seg-btn active" id="txFilterPending">Pending</button>
+              <button type="button" class="seg-btn" id="txFilterAll">All History</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>User (03XX)</th>
+                  <th>Method</th>
+                  <th>Amount (PKR)</th>
+                  <th>TID / Account Info</th>
+                  <th>Proof</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="transactionsTableBody">
+                <tr>
+                  <td colspan="8" style="color: var(--text-muted); text-align: center;">Loading transactions...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Payment Accounts + Profit-Pool Engine & WhatsApp Settings -->
+        <section class="panel-card">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <h2 class="panel-title">Payment Accounts, Pool Engine & WhatsApp Settings</h2>
+            <button type="button" class="btn btn-secondary btn-xs" id="resetDailyBtn">Reset Daily Counters</button>
+          </div>
+
+          <form id="settingsForm" style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="settings-grid">
+              <!-- EasyPaisa Account -->
+              <div class="pay-config-box">
+                <div class="modal-header">
+                  <strong style="color: #34d399;">EasyPaisa Account</strong>
+                  <label class="toggle-label">
+                    <input type="checkbox" id="epEnabled" checked /> Enabled
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="epTitle">Account Title</label>
+                  <input type="text" class="form-input" id="epTitle" placeholder="Account Holder Name" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="epNumber">Account Number</label>
+                  <input type="text" class="form-input" id="epNumber" placeholder="03XX-XXXXXXX" />
+                </div>
+              </div>
+
+              <!-- JazzCash Account -->
+              <div class="pay-config-box">
+                <div class="modal-header">
+                  <strong style="color: #f87171;">JazzCash Account</strong>
+                  <label class="toggle-label">
+                    <input type="checkbox" id="jcEnabled" checked /> Enabled
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="jcTitle">Account Title</label>
+                  <input type="text" class="form-input" id="jcTitle" placeholder="Account Holder Name" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="jcNumber">Account Number</label>
+                  <input type="text" class="form-input" id="jcNumber" placeholder="03XX-XXXXXXX" />
+                </div>
+              </div>
+
+              <!-- Bank Account -->
+              <div class="pay-config-box">
+                <div class="modal-header">
+                  <strong style="color: #38bdf8;">Bank Account</strong>
+                  <label class="toggle-label">
+                    <input type="checkbox" id="bkEnabled" checked /> Enabled
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="bkName">Bank Name</label>
+                  <input type="text" class="form-input" id="bkName" placeholder="e.g. Meezan Bank" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="bkTitle">Account Title</label>
+                  <input type="text" class="form-input" id="bkTitle" placeholder="Account Holder Name" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="bkNumber">Account / IBAN Number</label>
+                  <input type="text" class="form-input" id="bkNumber" placeholder="PK..." />
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-grid">
+              <div class="form-group">
+                <label class="form-label" for="setDailyTarget">Daily Real Profit Target (PKR)</label>
+                <input type="number" class="form-input" id="setDailyTarget" min="0" step="100" required />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="setVariancePct">Variance Dip Tolerance (5% – 10%)</label>
+                <input type="number" class="form-input" id="setVariancePct" min="5" max="10" step="0.5" required />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="setWelcomeBonus">New User Welcome Bonus (Fun FC)</label>
+                <input type="number" class="form-input" id="setWelcomeBonus" min="0" step="50" required />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="setSupportPhone">WhatsApp Helpline Number (Forgot PW)</label>
+                <input type="text" class="form-input" id="setSupportPhone" placeholder="e.g. 923001234567" required />
+                <span class="form-hint">Digits with country code (923XXXXXXXXX).</span>
+              </div>
+
+              <div class="form-group" style="grid-column: span 2;">
+                <label class="form-label" for="setChannelUrl">Official WhatsApp Channel URL</label>
+                <input type="url" class="form-input" id="setChannelUrl" placeholder="https://whatsapp.com/channel/..." required />
+              </div>
+            </div>
+
+            <div>
+              <button type="submit" class="btn btn-primary">Save All Settings to Database</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Comprehensive Member Management Table -->
+        <section class="panel-card">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <h2 class="panel-title">Member Management (Fun FC, Real PKR, Deposits, Withdrawals & P/L)</h2>
+            <form id="userSearchForm" style="display: flex; gap: 8px;">
+              <input
+                type="text"
+                class="form-input"
+                id="userSearchInput"
+                placeholder="Search by 03XX mobile or name..."
+                style="width: 240px; padding: 8px 12px;"
+              />
+              <button type="submit" class="btn btn-secondary">Search</button>
+            </form>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Mobile (03XX)</th>
+                  <th>Nickname</th>
+                  <th>Fun (FC)</th>
+                  <th>Real (PKR)</th>
+                  <th>Deposited</th>
+                  <th>Withdrawn</th>
+                  <th>Net P/L (PKR)</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr>
+                  <td colspan="9" style="color: var(--text-muted); text-align: center;">Loading members...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Recent Rounds Audit Log -->
+        <section class="panel-card">
+          <h2 class="panel-title">Recent Rounds Audit & Provably Fair Seeds</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Round #</th>
+                  <th>Crash Point</th>
+                  <th>Real Bets</th>
+                  <th>Real Payouts</th>
+                  <th>Net House Delta</th>
+                  <th>Server Seed Hash (SHA-256)</th>
+                </tr>
+              </thead>
+              <tbody id="roundsTableBody">
+                <tr>
+                  <td colspan="6" style="color: var(--text-muted); text-align: center;">No completed rounds yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Real-Time Incoming Deposit Alert Pop-Up Modal -->
+    <div class="modal-backdrop" id="depositAlertModal" role="dialog" aria-modal="true">
+      <div class="modal-card wide" style="border-color: rgba(251, 191, 36, 0.7);">
+        <div class="modal-header">
+          <h2 class="modal-title" style="color: var(--accent-gold-bright);">New Deposit Request Alert!</h2>
+          <button type="button" class="modal-close" id="closeDepositAlertBtn">×</button>
+        </div>
+
+        <div id="alertTxDetails" class="seed-box" style="font-family: var(--font-body); font-size: 0.9rem;"></div>
+
+        <div id="alertScreenshotWrap" class="hidden" style="text-align: center;">
+          <img
+            id="alertScreenshotImg"
+            alt="Deposit payment proof"
+            style="max-width: 100%; max-height: 360px; border-radius: 10px; border: 1px solid var(--border-strong); object-fit: contain;"
+          />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <button type="button" class="btn btn-emerald" id="alertApproveBtn" style="padding: 12px;">
+            Approve & Credit PKR
+          </button>
+          <button type="button" class="btn btn-danger" id="alertRejectBtn" style="padding: 12px;">
+            Reject (Reason Required)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mandatory Rejection Reason Modal -->
+    <div class="modal-backdrop" id="rejectReasonModal" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title">Reject Transaction — Reason Required</h2>
+          <button type="button" class="modal-close" id="closeRejectModalBtn">×</button>
+        </div>
+
+        <div id="rejectModalError" class="alert-error hidden"></div>
+
+        <div class="preset-reason-row">
+          <button type="button" class="btn btn-secondary btn-xs reject-preset" data-reason="Invalid Transaction ID (TID)">Invalid TID</button>
+          <button type="button" class="btn btn-secondary btn-xs reject-preset" data-reason="Fake or blurry payment screenshot">Fake/Blur Screenshot</button>
+          <button type="button" class="btn btn-secondary btn-xs reject-preset" data-reason="Payment not received in account">Payment Not Received</button>
+          <button type="button" class="btn btn-secondary btn-xs reject-preset" data-reason="Amount mismatch with proof">Amount Mismatch</button>
+        </div>
+
+        <form id="rejectReasonForm" class="form-group" style="gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="rejectReasonInput">Rejection Reason (Shown to User)</label>
+            <input
+              type="text"
+              class="form-input"
+              id="rejectReasonInput"
+              placeholder="Enter mandatory reason for rejection..."
+              maxlength="200"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-danger" style="width: 100%; padding: 11px;">
+            Confirm Rejection
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Full-Size Screenshot Preview Modal -->
+    <div class="modal-backdrop" id="proofModal" role="dialog" aria-modal="true">
+      <div class="modal-card wide">
+        <div class="modal-header">
+          <h2 class="modal-title" id="proofModalTitle">Payment Screenshot Proof</h2>
+          <button type="button" class="modal-close" id="closeProofModalBtn">×</button>
+        </div>
+        <div id="proofMetaText" class="seed-box" style="font-family: var(--font-body);"></div>
+        <div style="text-align: center;">
+          <img
+            id="proofModalImg"
+            alt="Full payment proof"
+            style="max-width: 100%; max-height: 440px; border-radius: 10px; border: 1px solid var(--border-strong); object-fit: contain;"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin User Action Modal (Fun FC / Real PKR / Reset Password) -->
+    <div class="modal-backdrop" id="adminActionModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title" id="actionModalTitle">Manage User</h2>
+          <button type="button" class="modal-close" id="closeActionModal">×</button>
+        </div>
+        <div id="actionModalError" class="alert-error hidden"></div>
+        <form id="actionModalForm" class="form-group" style="gap: 14px;">
+          <div class="form-group" id="actionModeGroup">
+            <label class="form-label" for="actionOpSelect">Operation</label>
+            <select class="form-input" id="actionOpSelect">
+              <option value="add">Add Balance (+)</option>
+              <option value="deduct">Deduct Balance (-)</option>
+              <option value="set">Set Exact Balance (=)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" id="actionInputLabel" for="actionInputVal">Amount</label>
+            <input type="text" class="form-input" id="actionInputVal" required />
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 11px;">Confirm</button>
+        </form>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      (() => {
+        'use strict';
+
+        let adminToken = localStorage.getItem('skywing_admin_token') || '';
+        let activeModalAction = null;
+        let txFilter = 'pending';
+        let cachedTransactions = [];
+        let activeAlertTx = null;
+        let pendingRejectTxId = null;
+        let adminSocket = null;
+
+        const loginView = document.getElementById('adminLoginView');
+        const dashView = document.getElementById('adminDashboardView');
+        const loginErr = document.getElementById('adminLoginError');
+        const toastEl = document.getElementById('adminToast');
+
+        function escapeHtml(str) {
+          return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+        }
+
+        function showToast(msg, isError = false) {
+          toastEl.textContent = msg;
+          toastEl.className = isError ? 'alert-error' : 'alert-success';
+          toastEl.classList.remove('hidden');
+          setTimeout(() => toastEl.classList.add('hidden'), 3600);
+        }
+
+        function playAlertBell() {
+          try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            const now = ctx.currentTime;
+            [660, 880, 1100].forEach((freq, idx) => {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+              gain.gain.setValueAtTime(0.12, now + idx * 0.08);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.28);
+              osc.connect(gain).connect(ctx.destination);
+              osc.start(now + idx * 0.08);
+              osc.stop(now + idx * 0.08 + 0.3);
+            });
+          } catch {
+            // ignore
+          }
+        }
+
+        function fmtPKR(n) {
+          return `${Number(n || 0).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })} PKR`;
+        }
+
+        function fmtFC(n) {
+          return `${Number(n || 0).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })} FC`;
+        }
+
+        async function apiFetch(url, opts = {}) {
+          const res = await fetch(url, {
+            ...opts,
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${adminToken}`,
+              ...(opts.headers || {}),
+            },
+          });
+          if (res.status === 401 || res.status === 403) {
+            adminToken = '';
+            localStorage.removeItem('skywing_admin_token');
+            showLogin();
+            throw new Error('Admin session expired');
+          }
+          return res;
+        }
+
+        function connectAdminSocket() {
+          if (adminSocket) {
+            adminSocket.emit('admin:subscribe', { token: adminToken });
+            return;
+          }
+          adminSocket = io({ transports: ['websocket', 'polling'] });
+          adminSocket.on('connect', () => {
+            if (adminToken) {
+              adminSocket.emit('admin:subscribe', { token: adminToken });
+            }
+          });
+
+          adminSocket.on('admin:deposit_alert', (tx) => {
+            playAlertBell();
+            openDepositAlertPopup(tx);
+            loadTransactions();
+            loadDashboard();
+          });
+
+          adminSocket.on('admin:withdrawal_alert', (tx) => {
+            playAlertBell();
+            showToast(`New Withdrawal Request: ${Number(tx.amount).toLocaleString()} PKR (${tx.phoneNumber})`);
+            loadTransactions();
+            loadDashboard();
+          });
+
+          adminSocket.on('admin:transaction_resolved', () => {
+            loadTransactions();
+            loadDashboard();
+            loadUsers(document.getElementById('userSearchInput').value);
+          });
+        }
+
+        function openDepositAlertPopup(tx) {
+          activeAlertTx = tx;
+          document.getElementById('alertTxDetails').innerHTML = `
+            <div><strong>User:</strong> ${escapeHtml(tx.phoneNumber)} (${escapeHtml(tx.displayName)})</div>
+            <div style="margin-top:4px;"><strong>Method:</strong> ${escapeHtml(tx.method)}</div>
+            <div style="margin-top:4px;"><strong>Amount:</strong> <span style="color:#34d399; font-weight:700;">${Number(tx.amount).toLocaleString()} PKR</span></div>
+            <div style="margin-top:4px;"><strong>Transaction ID (TID):</strong> ${escapeHtml(tx.transactionId || 'Not provided (see screenshot)')}</div>
+          `;
+          const wrap = document.getElementById('alertScreenshotWrap');
+          const img = document.getElementById('alertScreenshotImg');
+          if (tx.screenshotData) {
+            img.src = tx.screenshotData;
+            wrap.classList.remove('hidden');
+          } else {
+            img.src = '';
+            wrap.classList.add('hidden');
+          }
+          document.getElementById('depositAlertModal').classList.add('open');
+        }
+
+        document.getElementById('closeDepositAlertBtn').addEventListener('click', () => {
+          document.getElementById('depositAlertModal').classList.remove('open');
+        });
+
+        document.getElementById('alertApproveBtn').addEventListener('click', async () => {
+          if (!activeAlertTx) return;
+          await approveTransaction(activeAlertTx.id);
+          document.getElementById('depositAlertModal').classList.remove('open');
+        });
+
+        document.getElementById('alertRejectBtn').addEventListener('click', () => {
+          if (!activeAlertTx) return;
+          document.getElementById('depositAlertModal').classList.remove('open');
+          openRejectModal(activeAlertTx.id);
+        });
+
+        function showLogin() {
+          loginView.classList.remove('hidden');
+          dashView.classList.add('hidden');
+        }
+
+        function showDashboard() {
+          loginView.classList.add('hidden');
+          dashView.classList.remove('hidden');
+          connectAdminSocket();
+          loadDashboard();
+          loadTransactions();
+          loadUsers('');
+        }
+
+        document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          loginErr.classList.add('hidden');
+          try {
+            const res = await fetch('/api/admin/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                username: document.getElementById('adminUser').value.trim(),
+                password: document.getElementById('adminPass').value,
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              loginErr.textContent = data.error || 'Invalid credentials.';
+              loginErr.classList.remove('hidden');
+              return;
+            }
+            adminToken = data.token;
+            localStorage.setItem('skywing_admin_token', adminToken);
+            showDashboard();
+          } catch {
+            loginErr.textContent = 'Connection failed.';
+            loginErr.classList.remove('hidden');
+          }
+        });
+
+        document.getElementById('adminLogoutBtn').addEventListener('click', () => {
+          adminToken = '';
+          localStorage.removeItem('skywing_admin_token');
+          showLogin();
+        });
+
+        document.getElementById('refreshDashBtn').addEventListener('click', () => {
+          loadDashboard();
+          loadTransactions();
+          loadUsers(document.getElementById('userSearchInput').value);
+        });
+
+        async function loadDashboard() {
+          try {
+            const res = await apiFetch('/api/admin/dashboard');
+            const data = await res.json();
+            const s = data.settings;
+            const live = data.live;
+            const p = data.pendingCounts || { deposits: 0, withdrawals: 0 };
+
+            document.getElementById('kpiNetProfit').textContent = fmtPKR(s.dailyNetProfit);
+            document.getElementById('kpiTarget').textContent = fmtPKR(s.dailyProfitTarget);
+            document.getElementById('kpiPendingTx').textContent = `${p.deposits} Dep / ${p.withdrawals} Wd`;
+            document.getElementById('kpiSurplus').textContent = fmtPKR(s.carryForwardPool);
+            document.getElementById('kpiBetsPayouts').textContent = `${Number(s.dailyTotalBets).toFixed(0)} / ${Number(s.dailyTotalPayouts).toFixed(0)} PKR`;
+            document.getElementById('kpiLive').textContent = `#${live.roundNumber} (${live.phase}) · ${live.onlineSockets} Online`;
+
+            const mongoBanner = document.getElementById('mongoNoticeBanner');
+            if (live.mongoNotice) {
+              mongoBanner.textContent = live.mongoNotice;
+              mongoBanner.classList.remove('hidden');
+            } else {
+              mongoBanner.classList.add('hidden');
+            }
+
+            document.getElementById('setDailyTarget').value = s.dailyProfitTarget;
+            document.getElementById('setVariancePct').value = s.varianceTolerancePct;
+            document.getElementById('setWelcomeBonus').value = s.welcomeBonusCredits;
+            document.getElementById('setSupportPhone').value = s.whatsappSupportNumber;
+            document.getElementById('setChannelUrl').value = s.whatsappChannelUrl;
+
+            const pa = s.paymentAccounts || {};
+            document.getElementById('epEnabled').checked = pa.easypaisa?.enabled !== false;
+            document.getElementById('epTitle').value = pa.easypaisa?.accountTitle || '';
+            document.getElementById('epNumber').value = pa.easypaisa?.accountNumber || '';
+
+            document.getElementById('jcEnabled').checked = pa.jazzcash?.enabled !== false;
+            document.getElementById('jcTitle').value = pa.jazzcash?.accountTitle || '';
+            document.getElementById('jcNumber').value = pa.jazzcash?.accountNumber || '';
+
+            document.getElementById('bkEnabled').checked = pa.bank?.enabled !== false;
+            document.getElementById('bkName').value = pa.bank?.bankName || '';
+            document.getElementById('bkTitle').value = pa.bank?.accountTitle || '';
+            document.getElementById('bkNumber').value = pa.bank?.accountNumber || '';
+
+            const roundsBody = document.getElementById('roundsTableBody');
+            if (!s.recentRounds || !s.recentRounds.length) {
+              roundsBody.innerHTML = '<tr><td colspan="6" style="color: var(--text-muted); text-align: center;">No completed rounds yet.</td></tr>';
+            } else {
+              roundsBody.innerHTML = s.recentRounds
+                .map(
+                  (r) => `
+                  <tr>
+                    <td class="tabular-nums">#${r.roundNumber}</td>
+                    <td class="tabular-nums" style="color: ${r.crashPoint >= 2 ? '#34d399' : '#7dd3fc'}; font-weight:700;">${Number(r.crashPoint).toFixed(2)}x</td>
+                    <td class="tabular-nums">${Number(r.totalBets || 0).toFixed(2)} PKR</td>
+                    <td class="tabular-nums">${Number(r.totalPayouts || 0).toFixed(2)} PKR</td>
+                    <td class="tabular-nums" style="color: ${r.netDelta >= 0 ? '#34d399' : '#f87171'};">${r.netDelta >= 0 ? '+' : ''}${Number(r.netDelta || 0).toFixed(2)} PKR</td>
+                    <td class="tabular-nums" style="font-size: 0.72rem; color: var(--text-muted);">${String(r.serverSeedHash || '').slice(0, 26)}...</td>
+                  </tr>
+                `
+                )
+                .join('');
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        }
+
+        // ====================================================================
+        // Deposit & Withdrawal Queue
+        // ====================================================================
+        document.getElementById('txFilterPending').addEventListener('click', () => {
+          txFilter = 'pending';
+          document.getElementById('txFilterPending').classList.add('active');
+          document.getElementById('txFilterAll').classList.remove('active');
+          loadTransactions();
+        });
+
+        document.getElementById('txFilterAll').addEventListener('click', () => {
+          txFilter = 'all';
+          document.getElementById('txFilterAll').classList.add('active');
+          document.getElementById('txFilterPending').classList.remove('active');
+          loadTransactions();
+        });
+
+        async function loadTransactions() {
+          try {
+            const res = await apiFetch(`/api/admin/transactions?status=${txFilter}`);
+            const data = await res.json();
+            cachedTransactions = data.transactions || [];
+            const tbody = document.getElementById('transactionsTableBody');
+
+            if (!cachedTransactions.length) {
+              tbody.innerHTML = `<tr><td colspan="8" style="color: var(--text-muted); text-align: center;">No ${txFilter === 'pending' ? 'pending' : ''} transactions found.</td></tr>`;
+              return;
+            }
+
+            tbody.innerHTML = cachedTransactions
+              .map((tx) => {
+                const isDep = tx.type === 'deposit';
+                const detailsText = isDep
+                  ? tx.transactionId
+                    ? `TID: ${escapeHtml(tx.transactionId)}`
+                    : 'Screenshot Attached'
+                  : `${escapeHtml(tx.accountDetails?.bankName ? tx.accountDetails.bankName + ' · ' : '')}${escapeHtml(tx.accountDetails?.accountTitle || '')} · ${escapeHtml(tx.accountDetails?.accountNumber || '')}`;
+
+                const statusCls =
+                  tx.status === 'approved'
+                    ? 'status-active'
+                    : tx.status === 'rejected'
+                      ? 'status-banned'
+                      : 'status-pending';
+
+                return `
+                  <tr>
+                    <td><strong style="color: ${isDep ? '#34d399' : '#fbbf24'};">${isDep ? 'DEPOSIT' : 'WITHDRAW'}</strong></td>
+                    <td class="tabular-nums">${escapeHtml(tx.phoneNumber)}</td>
+                    <td>${escapeHtml(tx.method)}</td>
+                    <td class="tabular-nums"><strong>${Number(tx.amount).toLocaleString()} PKR</strong></td>
+                    <td style="max-width: 240px; overflow: hidden; text-overflow: ellipsis;">${detailsText}</td>
+                    <td>
+                      ${
+                        tx.screenshotData
+                          ? `<button type="button" class="btn btn-secondary btn-xs" data-view-proof="${tx.id}">View Image</button>`
+                          : `<span style="color: var(--text-muted); font-size: 0.75rem;">No image</span>`
+                      }
+                    </td>
+                    <td>
+                      <span class="status-text ${statusCls}">${tx.status.toUpperCase()}</span>
+                      ${tx.rejectionReason ? `<div style="font-size:0.7rem; color:#fca5a5;">${escapeHtml(tx.rejectionReason)}</div>` : ''}
+                    </td>
+                    <td>
+                      ${
+                        tx.status === 'pending'
+                          ? `<div class="action-group">
+                              <button type="button" class="btn btn-emerald btn-xs" data-approve="${tx.id}">Approve</button>
+                              <button type="button" class="btn btn-danger btn-xs" data-reject="${tx.id}">Reject</button>
+                            </div>`
+                          : `<span style="font-size:0.74rem; color: var(--text-muted);">Reviewed</span>`
+                      }
+                    </td>
+                  </tr>
+                `;
+              })
+              .join('');
+
+            tbody.querySelectorAll('button[data-view-proof]').forEach((btn) => {
+              btn.addEventListener('click', () => {
+                const tx = cachedTransactions.find((t) => String(t.id) === btn.dataset.viewProof);
+                if (!tx) return;
+                document.getElementById('proofModalTitle').textContent = `Deposit Proof · ${tx.phoneNumber}`;
+                document.getElementById('proofMetaText').textContent = `${tx.method} · ${Number(tx.amount).toLocaleString()} PKR · TID: ${tx.transactionId || 'N/A'}`;
+                document.getElementById('proofModalImg').src = tx.screenshotData;
+                document.getElementById('proofModal').classList.add('open');
+              });
+            });
+
+            tbody.querySelectorAll('button[data-approve]').forEach((btn) => {
+              btn.addEventListener('click', () => approveTransaction(btn.dataset.approve));
+            });
+
+            tbody.querySelectorAll('button[data-reject]').forEach((btn) => {
+              btn.addEventListener('click', () => openRejectModal(btn.dataset.reject));
+            });
+          } catch (err) {
+            console.error(err);
+          }
+        }
+
+        document.getElementById('closeProofModalBtn').addEventListener('click', () => {
+          document.getElementById('proofModal').classList.remove('open');
+        });
+
+        async function approveTransaction(id) {
+          try {
+            const res = await apiFetch(`/api/admin/transactions/${id}/approve`, { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Failed to approve.', true);
+              return;
+            }
+            showToast(`Transaction approved (${Number(data.transaction.amount).toLocaleString()} PKR).`);
+            loadTransactions();
+            loadDashboard();
+            loadUsers(document.getElementById('userSearchInput').value);
+          } catch {
+            showToast('Failed to approve transaction.', true);
+          }
+        }
+
+        function openRejectModal(id) {
+          pendingRejectTxId = id;
+          document.getElementById('rejectReasonInput').value = '';
+          document.getElementById('rejectModalError').classList.add('hidden');
+          document.getElementById('rejectReasonModal').classList.add('open');
+        }
+
+        document.getElementById('closeRejectModalBtn').addEventListener('click', () => {
+          document.getElementById('rejectReasonModal').classList.remove('open');
+        });
+
+        document.querySelectorAll('.reject-preset').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            document.getElementById('rejectReasonInput').value = btn.dataset.reason;
+          });
+        });
+
+        document.getElementById('rejectReasonForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const reason = document.getElementById('rejectReasonInput').value.trim();
+          const errEl = document.getElementById('rejectModalError');
+          if (!reason) {
+            errEl.textContent = 'A rejection reason is mandatory.';
+            errEl.classList.remove('hidden');
+            return;
+          }
+          try {
+            const res = await apiFetch(`/api/admin/transactions/${pendingRejectTxId}/reject`, {
+              method: 'POST',
+              body: JSON.stringify({ rejectionReason: reason }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              errEl.textContent = data.error || 'Rejection failed.';
+              errEl.classList.remove('hidden');
+              return;
+            }
+            document.getElementById('rejectReasonModal').classList.remove('open');
+            showToast('Transaction rejected & user notified.');
+            loadTransactions();
+            loadDashboard();
+            loadUsers(document.getElementById('userSearchInput').value);
+          } catch {
+            errEl.textContent = 'Network error.';
+            errEl.classList.remove('hidden');
+          }
+        });
+
+        // ====================================================================
+        // Settings Form Submission (Including Payment Accounts)
+        // ====================================================================
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          try {
+            const res = await apiFetch('/api/admin/settings', {
+              method: 'PUT',
+              body: JSON.stringify({
+                dailyProfitTarget: Number(document.getElementById('setDailyTarget').value),
+                varianceTolerancePct: Number(document.getElementById('setVariancePct').value),
+                welcomeBonusCredits: Number(document.getElementById('setWelcomeBonus').value),
+                whatsappSupportNumber: document.getElementById('setSupportPhone').value,
+                whatsappChannelUrl: document.getElementById('setChannelUrl').value,
+                paymentAccounts: {
+                  easypaisa: {
+                    enabled: document.getElementById('epEnabled').checked,
+                    accountTitle: document.getElementById('epTitle').value.trim(),
+                    accountNumber: document.getElementById('epNumber').value.trim(),
+                  },
+                  jazzcash: {
+                    enabled: document.getElementById('jcEnabled').checked,
+                    accountTitle: document.getElementById('jcTitle').value.trim(),
+                    accountNumber: document.getElementById('jcNumber').value.trim(),
+                  },
+                  bank: {
+                    enabled: document.getElementById('bkEnabled').checked,
+                    bankName: document.getElementById('bkName').value.trim(),
+                    accountTitle: document.getElementById('bkTitle').value.trim(),
+                    accountNumber: document.getElementById('bkNumber').value.trim(),
+                  },
+                },
+              }),
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              showToast(err.error || 'Failed to update settings', true);
+              return;
+            }
+            showToast('Settings & payment accounts saved to database.');
+            loadDashboard();
+          } catch {
+            showToast('Failed to save settings.', true);
+          }
+        });
+
+        document.getElementById('resetDailyBtn').addEventListener('click', async () => {
+          try {
+            const res = await apiFetch('/api/admin/reset-daily-stats', { method: 'POST' });
+            if (res.ok) {
+              showToast('Daily bets, payouts, and surplus pool counters reset.');
+              loadDashboard();
+            }
+          } catch {
+            showToast('Failed to reset counters.', true);
+          }
+        });
+
+        // ====================================================================
+        // Comprehensive Member Management
+        // ====================================================================
+        async function loadUsers(q) {
+          try {
+            const res = await apiFetch(`/api/admin/users?q=${encodeURIComponent(q || '')}`);
+            const data = await res.json();
+            const tbody = document.getElementById('usersTableBody');
+
+            if (!data.users || !data.users.length) {
+              tbody.innerHTML = '<tr><td colspan="9" style="color: var(--text-muted); text-align: center;">No matching members found.</td></tr>';
+              return;
+            }
+
+            tbody.innerHTML = data.users
+              .map((u) => {
+                const pl = Number(u.netProfitLoss || 0);
+                return `
+                  <tr>
+                    <td class="tabular-nums"><strong>${escapeHtml(u.phoneNumber)}</strong></td>
+                    <td>${escapeHtml(u.displayName || '-')}</td>
+                    <td class="tabular-nums" style="color: var(--accent-gold-bright); font-weight: 700;">${fmtFC(u.funBalance)}</td>
+                    <td class="tabular-nums" style="color: #34d399; font-weight: 700;">${fmtPKR(u.realBalance)}</td>
+                    <td class="tabular-nums">${Number(u.totalDeposited || 0).toLocaleString()} PKR</td>
+                    <td class="tabular-nums">${Number(u.totalWithdrawn || 0).toLocaleString()} PKR</td>
+                    <td class="tabular-nums" style="color: ${pl >= 0 ? '#34d399' : '#f87171'}; font-weight: 700;">${pl >= 0 ? '+' : ''}${pl.toFixed(0)} PKR</td>
+                    <td>
+                      <span class="status-text ${u.isBanned ? 'status-banned' : 'status-active'}">
+                        ${u.isBanned ? 'Banned' : 'Active'}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="action-group">
+                        <button type="button" class="btn btn-secondary btn-xs" data-act="fun" data-id="${u.id}" data-phone="${escapeHtml(u.phoneNumber)}">± Fun FC</button>
+                        <button type="button" class="btn btn-emerald btn-xs" data-act="real" data-id="${u.id}" data-phone="${escapeHtml(u.phoneNumber)}">± Real PKR</button>
+                        <button type="button" class="btn btn-secondary btn-xs" data-act="password" data-id="${u.id}" data-phone="${escapeHtml(u.phoneNumber)}">Reset PW</button>
+                        <button type="button" class="btn ${u.isBanned ? 'btn-emerald' : 'btn-danger'} btn-xs" data-act="ban" data-id="${u.id}" data-banned="${u.isBanned}">
+                          ${u.isBanned ? 'Unban' : 'Ban'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              })
+              .join('');
+
+            tbody.querySelectorAll('button[data-act]').forEach((btn) => {
+              btn.addEventListener('click', () => handleUserAction(btn.dataset));
+            });
+          } catch (err) {
+            console.error(err);
+          }
+        }
+
+        document.getElementById('userSearchForm').addEventListener('submit', (e) => {
+          e.preventDefault();
+          loadUsers(document.getElementById('userSearchInput').value);
+        });
+
+        const actionModal = document.getElementById('adminActionModal');
+        const actionErr = document.getElementById('actionModalError');
+        const actionInput = document.getElementById('actionInputVal');
+        const actionModeGroup = document.getElementById('actionModeGroup');
+
+        document.getElementById('closeActionModal').addEventListener('click', () => {
+          actionModal.classList.remove('open');
+        });
+
+        async function handleUserAction(ds) {
+          if (ds.act === 'ban') {
+            const nextBanned = ds.banned !== 'true';
+            const res = await apiFetch(`/api/admin/users/${ds.id}/ban`, {
+              method: 'POST',
+              body: JSON.stringify({ isBanned: nextBanned }),
+            });
+            if (res.ok) {
+              showToast(nextBanned ? 'User account banned.' : 'User account unbanned.');
+              loadUsers(document.getElementById('userSearchInput').value);
+            }
+            return;
+          }
+
+          activeModalAction = { act: ds.act, id: ds.id, phone: ds.phone };
+          actionErr.classList.add('hidden');
+          actionInput.value = '';
+
+          if (ds.act === 'fun' || ds.act === 'real') {
+            const unit = ds.act === 'real' ? 'PKR' : 'FC';
+            actionModeGroup.classList.remove('hidden');
+            document.getElementById('actionModalTitle').textContent = `Adjust ${unit} Balance · ${ds.phone}`;
+            document.getElementById('actionInputLabel').textContent = `Amount (${unit})`;
+            actionInput.type = 'number';
+            actionInput.step = 'any';
+            actionInput.placeholder = 'e.g. 1000';
+          } else if (ds.act === 'password') {
+            actionModeGroup.classList.add('hidden');
+            document.getElementById('actionModalTitle').textContent = `Reset Password · ${ds.phone}`;
+            document.getElementById('actionInputLabel').textContent = 'New Password (min 6 characters)';
+            actionInput.type = 'text';
+            actionInput.placeholder = 'Enter new password';
+          }
+          actionModal.classList.add('open');
+        }
+
+        document.getElementById('actionModalForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!activeModalAction) return;
+          actionErr.classList.add('hidden');
+          const { act, id } = activeModalAction;
+          const val = actionInput.value.trim();
+
+          try {
+            let res;
+            if (act === 'fun' || act === 'real') {
+              const op = document.getElementById('actionOpSelect').value;
+              res = await apiFetch(`/api/admin/users/${id}/credits`, {
+                method: 'POST',
+                body: JSON.stringify({
+                  action: op,
+                  currencyMode: act,
+                  amount: Number(val),
+                }),
+              });
+            } else if (act === 'password') {
+              res = await apiFetch(`/api/admin/users/${id}/password`, {
+                method: 'POST',
+                body: JSON.stringify({ newPassword: val }),
+              });
+            }
+            const data = await res.json();
+            if (!res.ok) {
+              actionErr.textContent = data.error || 'Action failed.';
+              actionErr.classList.remove('hidden');
+              return;
+            }
+            actionModal.classList.remove('open');
+            showToast('User account updated.');
+            loadUsers(document.getElementById('userSearchInput').value);
+          } catch {
+            actionErr.textContent = 'Request failed.';
+            actionErr.classList.remove('hidden');
+          }
+        });
+
+        if (adminToken) {
+          showDashboard();
+        } else {
+          showLogin();
+        }
+      })();
+    </script>
+  </body>
+</html>
