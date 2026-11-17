@@ -53,112 +53,114 @@
       </nav>
 
       <div class="header-actions">
-        <!-- Fun Mode / Real Money PKR Switcher -->
-        <div class="mode-switcher" role="group" aria-label="Currency Mode Switcher">
-          <button type="button" class="mode-btn active-fun" id="modeFunBtn">Fun (FC)</button>
-          <button type="button" class="mode-btn" id="modeRealBtn">Real (PKR)</button>
+        <div id="headerGameControls" class="header-game-controls hidden">
+          <!-- Fun Mode / Real Money PKR Switcher -->
+          <div class="mode-switcher" role="group" aria-label="Currency Mode Switcher">
+            <button type="button" class="mode-btn active-fun" id="modeFunBtn">Fun (FC)</button>
+            <button type="button" class="mode-btn" id="modeRealBtn">Real (PKR)</button>
+          </div>
+
+          <div class="wallet-box" title="Active Wallet Balance">
+            <span class="wallet-balance tabular-nums" id="walletBalanceDisplay">0.00 FC</span>
+            <span class="wallet-label" id="walletModeLabel">Fun Credits</span>
+          </div>
+
+          <button
+            type="button"
+            class="btn btn-install"
+            id="installAppBtn"
+            title="Install SkyWing Mobile App"
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span class="install-label">Install App</span>
+          </button>
+
+          <button
+            type="button"
+            class="sound-toggle-btn active"
+            id="soundToggleBtn"
+            title="Toggle Game Audio"
+            aria-label="Toggle Game Audio"
+            aria-pressed="true"
+          >
+            <svg
+              id="soundOnIcon"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            </svg>
+            <svg
+              id="soundOffIcon"
+              class="hidden"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <line x1="23" y1="9" x2="17" y2="15" />
+              <line x1="17" y1="9" x2="23" y2="15" />
+            </svg>
+            <span class="sound-eq" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </span>
+            <span class="sound-label" id="soundStatusLabel">SFX On</span>
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            id="openAudioDrawerBtn"
+            title="Audio & Soundtrack Preferences"
+            aria-label="Audio Preferences"
+            style="padding: 7px 10px; font-size: 0.78rem;"
+          >
+            Audio
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            id="openRewardsTopBtn"
+            title="VIP Tiers, Daily Login & Referral Rewards"
+            style="padding: 7px 10px; font-size: 0.78rem; color: #fde047;"
+          >
+            VIP
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            id="openSupportTopBtn"
+            title="In-App Live Support Chat"
+            style="padding: 7px 10px; font-size: 0.78rem; color: #7dd3fc;"
+          >
+            Support
+          </button>
         </div>
-
-        <div class="wallet-box" title="Active Wallet Balance">
-          <span class="wallet-balance tabular-nums" id="walletBalanceDisplay">0.00 FC</span>
-          <span class="wallet-label" id="walletModeLabel">Fun Credits</span>
-        </div>
-
-        <button
-          type="button"
-          class="btn btn-install"
-          id="installAppBtn"
-          title="Install SkyWing Mobile App"
-        >
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          <span class="install-label">Install App</span>
-        </button>
-
-        <button
-          type="button"
-          class="sound-toggle-btn active"
-          id="soundToggleBtn"
-          title="Toggle Game Audio"
-          aria-label="Toggle Game Audio"
-          aria-pressed="true"
-        >
-          <svg
-            id="soundOnIcon"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-          </svg>
-          <svg
-            id="soundOffIcon"
-            class="hidden"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-            <line x1="23" y1="9" x2="17" y2="15" />
-            <line x1="17" y1="9" x2="23" y2="15" />
-          </svg>
-          <span class="sound-eq" aria-hidden="true">
-            <span></span><span></span><span></span>
-          </span>
-          <span class="sound-label" id="soundStatusLabel">SFX On</span>
-        </button>
-
-        <button
-          type="button"
-          class="btn btn-secondary"
-          id="openAudioDrawerBtn"
-          title="Audio & Soundtrack Preferences"
-          aria-label="Audio Preferences"
-          style="padding: 7px 10px; font-size: 0.78rem;"
-        >
-          Audio
-        </button>
-
-        <button
-          type="button"
-          class="btn btn-secondary"
-          id="openRewardsTopBtn"
-          title="VIP Tiers, Daily Login & Referral Rewards"
-          style="padding: 7px 10px; font-size: 0.78rem; color: #fde047;"
-        >
-          VIP
-        </button>
-
-        <button
-          type="button"
-          class="btn btn-secondary"
-          id="openSupportTopBtn"
-          title="In-App Live Support Chat"
-          style="padding: 7px 10px; font-size: 0.78rem; color: #7dd3fc;"
-        >
-          Support
-        </button>
 
         <button type="button" class="btn btn-primary" id="authTriggerBtn">Log In / Join</button>
       </div>
@@ -192,7 +194,42 @@
       </div>
     </div>
 
-    <main class="app-shell">
+    <!-- Auth-First Entry Gate (Shown to Unauthenticated Visitors Before Entering Lobby) -->
+    <section id="authEntryGate" class="auth-entry-gate hidden" aria-label="Player Authentication Entry">
+      <div class="auth-gate-card">
+        <div class="auth-gate-badge">SKYWING ARENA · PAKISTAN</div>
+        <h1 class="auth-gate-title">Sign In to Enter the Live SkyWing Arena</h1>
+        <p class="auth-gate-sub">
+          Access SkyWing Crash, Cyber Plinko, and Golden Mines with instant Fun Mode (FC) practice credits and Real Money (PKR) wallets. Log in or register in seconds.
+        </p>
+
+        <div class="auth-gate-actions">
+          <button type="button" class="btn btn-primary auth-gate-btn" id="gateLoginBtn">
+            Log In to Play
+          </button>
+          <button type="button" class="btn btn-emerald auth-gate-btn" id="gateRegisterBtn">
+            Create Account (18+)
+          </button>
+        </div>
+
+        <div class="auth-gate-features">
+          <div class="auth-gate-feat">
+            <strong>3 Live Arcade Games</strong>
+            <span>SkyWing Crash, Cyber Plinko &amp; Golden Mines unified under one wallet.</span>
+          </div>
+          <div class="auth-gate-feat">
+            <strong>Dual FC &amp; PKR Wallets</strong>
+            <span>Practice risk-free in Fun Mode or play Real PKR with dynamic QR deposits.</span>
+          </div>
+          <div class="auth-gate-feat">
+            <strong>Provably Fair Engine</strong>
+            <span>Real-time SHA-256 commit &amp; reveal seeds for every multiplier round.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <main id="mainGameShell" class="app-shell hidden">
       <!-- Currency Mode Notice & Real Wallet Deposit/Withdraw Bar -->
       <div class="fc-notice-bar">
         <div class="fc-notice-left">
@@ -202,7 +239,7 @@
           </div>
           <div id="realModeNotice" class="hidden">
             <strong style="color: #34d399;">Real Money Mode (PKR)</strong>
-            <span>— EasyPaisa, JazzCash & Pakistani Bank Deposits/Withdrawals.</span>
+            <span>— EasyPaisa, JazzCash & Pakistani E-Wallet / Bank QR Deposits.</span>
           </div>
           <div id="realWalletActions" class="real-wallet-actions hidden">
             <button type="button" class="btn btn-emerald" id="openDepositBtn" style="padding: 5px 12px; font-size: 0.78rem;">
@@ -220,33 +257,31 @@
         </div>
       </div>
 
-      <!-- Official Mobile App Promo Banner (Visible When Logged In) -->
-      <div id="officialAppBanner" class="apk-promo-banner hidden" role="region" aria-label="Official Mobile App">
+      <!-- Share & Earn Referral Promo Banner (Visible When Logged In) -->
+      <div id="officialAppBanner" class="apk-promo-banner hidden" role="region" aria-label="Share and Earn Referral Commission">
         <div class="apk-promo-content">
           <span class="apk-promo-icon" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-              <line x1="12" y1="18" x2="12.01" y2="18" />
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
             </svg>
           </span>
           <div class="apk-promo-text">
-            <strong>Download Official App &amp; Get 15% Referral Bonus on Deposits!</strong>
-            <span>Fast native Android experience with instant notifications &amp; seamless PKR deposits.</span>
+            <strong>Share App &amp; Earn Commission Up to 15%!</strong>
+            <span>Invite friends with your referral link and earn up to 15% commission credited to your Real PKR wallet.</span>
           </div>
         </div>
-        <a
-          href="https://www.mediafire.com/file/j0t66ndeqddhjz4/SKyBird+Offical.apk/file"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="btn btn-primary apk-promo-btn"
-        >
+        <button type="button" class="btn btn-primary apk-promo-btn" id="shareEarnBannerBtn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+            <polyline points="16 6 12 2 8 6" />
+            <line x1="12" y1="2" x2="12" y2="15" />
           </svg>
-          <span>Download APK</span>
-        </a>
+          <span>Share &amp; Earn</span>
+        </button>
       </div>
 
       <!-- Withdrawal Operating Hours Banner (Shown when restricted & outside 9AM-5PM) -->
@@ -294,9 +329,9 @@
         </button>
       </section>
 
-      <!-- Last 15 Round Multiplier History -->
+      <!-- Last 15 Round Multiplier History (Isolated Per Active Game) -->
       <section class="history-strip" aria-label="Recent Multipliers">
-        <span class="history-label">Last 15 Flights</span>
+        <span class="history-label" id="historyLabel">Last 15 Flights</span>
         <div class="history-items" id="historyList">
           <span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for flight history...</span>
         </div>
@@ -494,7 +529,7 @@
           </div>
           </div>
 
-          <!-- Cyber Plinko Arena (Toggled from Lobby) -->
+          <!-- Cyber Plinko Arena (Vertical: Board Top, Controls Bottom) -->
           <div id="plinkoArena" class="arcade-panel-card hidden">
             <div class="modal-header">
               <div>
@@ -503,8 +538,12 @@
               </div>
               <span class="vip-tier-pill" id="plinkoLastResultPill">Ready to Drop</span>
             </div>
-            <div class="arcade-grid-split">
-              <div class="arcade-side-controls">
+            <div class="arcade-vertical-layout">
+              <div class="plinko-stage">
+                <canvas id="plinkoCanvas" width="440" height="280"></canvas>
+                <div class="plinko-bucket-row" id="plinkoBucketsRow"></div>
+              </div>
+              <div class="arcade-bottom-controls">
                 <div class="form-group">
                   <label class="form-label" for="plinkoAmount">Bet Amount</label>
                   <input type="number" class="form-input" id="plinkoAmount" value="50" min="1" max="50000" step="1" />
@@ -522,20 +561,18 @@
                     <button type="button" class="seg-btn plinko-risk-btn active" data-risk="medium">Med</button>
                     <button type="button" class="seg-btn plinko-risk-btn" data-risk="high">High</button>
                   </div>
+                  <span class="form-hint" id="plinkoStatsText" style="margin-top: 4px;">Uses active wallet switcher (FC or PKR).</span>
                 </div>
-                <button type="button" class="btn btn-emerald" id="plinkoDropBtn" style="width: 100%; padding: 12px;">
-                  DROP BALL
-                </button>
-                <span class="form-hint" id="plinkoStatsText">Uses active wallet switcher (FC or PKR).</span>
-              </div>
-              <div class="plinko-stage">
-                <canvas id="plinkoCanvas" width="440" height="280"></canvas>
-                <div class="plinko-bucket-row" id="plinkoBucketsRow"></div>
+                <div class="arcade-cta-cell">
+                  <button type="button" class="btn btn-emerald" id="plinkoDropBtn" style="width: 100%; padding: 13px 16px;">
+                    DROP BALL
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Golden Mines 5x5 Arena (Toggled from Lobby) -->
+          <!-- Golden Mines 5x5 Arena (Vertical: Board Top, Controls Bottom) -->
           <div id="minesArena" class="arcade-panel-card hidden">
             <div class="modal-header">
               <div>
@@ -544,11 +581,24 @@
               </div>
               <span class="vip-tier-pill" id="minesMultPill">1.00x</span>
             </div>
-            <div class="arcade-grid-split">
-              <div class="arcade-side-controls">
+            <div class="arcade-vertical-layout">
+              <div class="mines-stage">
+                <div class="mines-stats-bar tabular-nums">
+                  <span>Next Tile: <strong id="minesNextMult" style="color: #fbbf24;">1.10x</strong></span>
+                  <span>Current Win: <strong id="minesCurrentPayout" style="color: #34d399;">0.00</strong></span>
+                </div>
+                <div class="mines-grid" id="minesGrid"></div>
+              </div>
+              <div class="arcade-bottom-controls">
                 <div class="form-group">
                   <label class="form-label" for="minesAmount">Bet Amount</label>
                   <input type="number" class="form-input" id="minesAmount" value="50" min="1" max="50000" step="1" />
+                  <div class="preset-chips" style="margin-top: 4px;">
+                    <button type="button" class="preset-btn mines-chip" data-amt="10">10</button>
+                    <button type="button" class="preset-btn mines-chip" data-amt="50">50</button>
+                    <button type="button" class="preset-btn mines-chip" data-amt="100">100</button>
+                    <button type="button" class="preset-btn mines-chip" data-amt="500">500</button>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="minesCountSelect">Mines Count (3 – 20)</label>
@@ -559,21 +609,16 @@
                     <option value="12">12 Mines (Extreme)</option>
                     <option value="18">18 Mines (Turbo)</option>
                   </select>
+                  <span class="form-hint" id="minesHintText" style="margin-top: 4px;">Select stake &amp; click Start to reveal diamonds.</span>
                 </div>
-                <button type="button" class="btn btn-emerald" id="minesStartBtn" style="width: 100%; padding: 12px;">
-                  START MINES GAME
-                </button>
-                <button type="button" class="btn btn-primary hidden" id="minesCashoutBtn" style="width: 100%; padding: 12px;">
-                  CASH OUT (+0.00)
-                </button>
-                <span class="form-hint" id="minesHintText">Select stake &amp; click Start to reveal diamonds.</span>
-              </div>
-              <div class="mines-stage">
-                <div class="mines-stats-bar tabular-nums">
-                  <span>Next Tile: <strong id="minesNextMult" style="color: #fbbf24;">1.10x</strong></span>
-                  <span>Current Win: <strong id="minesCurrentPayout" style="color: #34d399;">0.00</strong></span>
+                <div class="arcade-cta-cell">
+                  <button type="button" class="btn btn-emerald" id="minesStartBtn" style="width: 100%; padding: 13px 16px;">
+                    START MINES GAME
+                  </button>
+                  <button type="button" class="btn btn-primary hidden" id="minesCashoutBtn" style="width: 100%; padding: 13px 16px;">
+                    CASH OUT (+0.00)
+                  </button>
                 </div>
-                <div class="mines-grid" id="minesGrid"></div>
               </div>
             </div>
           </div>
@@ -612,7 +657,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="site-footer">
+    <footer id="siteFooter" class="site-footer hidden">
       <div>
         <span>SkyWing Crash</span>
         <span aria-hidden="true"> · </span>
@@ -836,135 +881,135 @@
     </div>
 
     <!-- ======================================================================
-         Automated QR Deposit Modal (2-Step Masked Payment Gateway + Micro-Auto-Approve)
+         Privacy-Masked Automated QR Deposit Modal (Dynamic Amount-Based QR)
          ====================================================================== -->
     <div class="modal-backdrop" id="depositModal" role="dialog" aria-modal="true">
       <div class="modal-card wide">
         <div class="modal-header">
-          <h2 class="modal-title">Deposit Real Money (PKR) — Live QR Gateway</h2>
+          <h2 class="modal-title">Deposit Real Money (PKR) — Dynamic QR Gateway</h2>
           <button type="button" class="modal-close" data-close="depositModal" aria-label="Close">×</button>
         </div>
 
-        <div id="depositAccountsList" style="display: flex; flex-direction: column; gap: 8px;">
-          <span class="form-hint">Loading active payment accounts...</span>
+        <div id="depositAccountsList" class="deposit-gateway-badges">
+          <span class="form-hint">Loading verified payment gateways...</span>
         </div>
 
         <div id="depositErrorBox" class="alert-error hidden"></div>
         <div id="depositSuccessBox" class="alert-success hidden"></div>
 
         <form id="depositForm" class="form-group" style="gap: 12px;">
-          <!-- Step 1: Select Gateway + Sender Info + Amount -> Generate QR -->
-          <div id="depositStep1" class="form-group" style="gap: 12px;">
-            <div class="form-group">
-              <span class="form-label">Select Payment Gateway</span>
-              <div class="gateway-selector-grid" id="depGatewayCards"></div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <div class="form-group">
-                <label class="form-label" for="depMethod">Payment Method</label>
-                <select class="form-input" id="depMethod" required>
-                  <option value="EasyPaisa">EasyPaisa</option>
-                  <option value="JazzCash">JazzCash</option>
-                  <option value="Bank Account">Bank Transfer</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="depAmount">Amount to Deposit (PKR)</label>
-                <input
-                  type="number"
-                  class="form-input"
-                  id="depAmount"
-                  placeholder="Min 50 PKR"
-                  min="10"
-                  max="1000000"
-                  step="1"
-                  required
-                />
-              </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <div class="form-group">
-                <label class="form-label" for="depSenderName">Your Sender Account Name</label>
-                <input
-                  type="text"
-                  class="form-input"
-                  id="depSenderName"
-                  placeholder="e.g. Muhammad Ali"
-                  maxlength="60"
-                  required
-                />
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="depSenderNumber">Your Sender Account / Mobile</label>
-                <input
-                  type="text"
-                  class="form-input"
-                  id="depSenderNumber"
-                  placeholder="03XX-XXXXXXX"
-                  maxlength="32"
-                  required
-                />
-              </div>
-            </div>
-
-            <span class="form-hint" id="depLimitInfoText">
-              Micro-deposits with valid TID are auto-approved instantly!
-            </span>
-
-            <button type="button" class="btn btn-emerald" id="depGenQrBtn" style="width: 100%; padding: 12px;">
-              Generate Masked QR &amp; Payment Reference
-            </button>
+          <div class="form-group">
+            <span class="form-label">Select Payment Gateway</span>
+            <div class="gateway-selector-grid" id="depGatewayCards"></div>
           </div>
 
-          <!-- Step 2: Scannable QR Preview + TID / Screenshot Proof Submit -->
-          <div id="depositQrStep2" class="form-group hidden" style="gap: 12px;">
-            <div class="qr-preview-card">
-              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;">
-                <span class="masked-pill" id="depQrRefBadge">REF: ---</span>
-                <span class="masked-pill" id="depMaskedDest" style="color: #34d399; border-color: rgba(52,211,153,0.4);">03XX••••XXX</span>
-              </div>
-              <div class="qr-img-box">
-                <img id="depQrImg" alt="Deposit Payment QR Code" />
-              </div>
-              <div style="font-size: 0.82rem; color: var(--text-secondary);" id="depQrSummaryText">
-                Scan this QR code in your banking/wallet app or pay to the masked merchant account above, then enter your TID below.
-              </div>
-              <span class="form-hint" id="depMicroHint" style="color: #34d399;"></span>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label" for="depMethod">Payment Method</label>
+              <select class="form-input" id="depMethod" required>
+                <option value="EasyPaisa">EasyPaisa</option>
+                <option value="JazzCash">JazzCash</option>
+                <option value="Bank Account">E-Wallet / Bank Transfer</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="depAmount">Amount to Deposit (PKR)</label>
+              <input
+                type="number"
+                class="form-input"
+                id="depAmount"
+                placeholder="Min 50 PKR"
+                value="500"
+                min="10"
+                max="1000000"
+                step="1"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="dep-amt-chips" aria-label="Quick Deposit Amounts">
+            <button type="button" class="preset-btn dep-amt-chip" data-amt="100">100 PKR</button>
+            <button type="button" class="preset-btn dep-amt-chip" data-amt="500">500 PKR</button>
+            <button type="button" class="preset-btn dep-amt-chip" data-amt="1000">1,000 PKR</button>
+            <button type="button" class="preset-btn dep-amt-chip" data-amt="5000">5,000 PKR</button>
+          </div>
+
+          <!-- Dynamic Live QR Code Card (No Merchant Numbers Exposed) -->
+          <div id="depLiveQrCard" class="qr-live-card">
+            <div class="qr-meta-row">
+              <span class="masked-pill" id="depQrGatewayBadge">EasyPaisa · QR Only</span>
+              <span class="masked-pill tabular-nums" id="depQrAmountBadge" style="color: #34d399; border-color: rgba(52,211,153,0.4);">500 PKR</span>
+              <span class="masked-pill tabular-nums" id="depQrRefBadge">REF: ---</span>
             </div>
 
+            <div class="qr-img-box">
+              <img id="depQrImg" class="hidden" alt="Dynamic Deposit QR Code" />
+              <div id="depQrPlaceholder" class="qr-placeholder-box">
+                <span id="depQrLoadingText">Enter a valid PKR amount to generate your live QR code...</span>
+              </div>
+            </div>
+
+            <div style="font-size: 0.78rem; color: var(--text-secondary);">
+              Scan this privacy-protected dynamic QR code directly in your wallet app to pay exact PKR, then submit your TID / screenshot below.
+            </div>
+            <span class="form-hint" id="depMicroHint" style="color: #34d399;"></span>
+          </div>
+
+          <span class="form-hint" id="depLimitInfoText">
+            Micro-deposits with valid TID are auto-approved instantly!
+          </span>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div class="form-group">
-              <label class="form-label" for="depTid">Transaction ID / TID (Instant Auto-Check on Micro-Deposits)</label>
+              <label class="form-label" for="depSenderName">Your Sender Account Name</label>
               <input
                 type="text"
                 class="form-input"
-                id="depTid"
-                placeholder="e.g. 12345678901"
-                maxlength="80"
+                id="depSenderName"
+                placeholder="e.g. Muhammad Ali"
+                maxlength="60"
+                required
               />
             </div>
-
             <div class="form-group">
-              <label class="form-label" for="depScreenshot">Payment Screenshot (Optional if TID entered)</label>
-              <input type="file" class="form-input" id="depScreenshot" accept="image/*" />
-              <div id="depPreviewWrap" class="hidden" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
-                <img id="depPreviewImg" class="screenshot-preview" alt="Payment screenshot preview" />
-                <button type="button" class="btn btn-secondary" id="depClearImgBtn" style="padding: 5px 10px; font-size: 0.74rem;">
-                  Remove
-                </button>
-              </div>
+              <label class="form-label" for="depSenderNumber">Your Sender Account / Mobile</label>
+              <input
+                type="text"
+                class="form-input"
+                id="depSenderNumber"
+                placeholder="03XX-XXXXXXX"
+                maxlength="32"
+                required
+              />
             </div>
+          </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 8px;">
-              <button type="button" class="btn btn-secondary" id="depBackStepBtn" style="padding: 12px;">
-                ← Back
-              </button>
-              <button type="submit" class="btn btn-emerald" id="depSubmitBtn" style="padding: 12px;">
-                I Have Paid / Submit Deposit
+          <div class="form-group">
+            <label class="form-label" for="depTid">Transaction ID / TID (Instant Auto-Check on Micro-Deposits)</label>
+            <input
+              type="text"
+              class="form-input"
+              id="depTid"
+              placeholder="e.g. 12345678901"
+              maxlength="80"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="depScreenshot">Payment Screenshot (Optional if TID entered)</label>
+            <input type="file" class="form-input" id="depScreenshot" accept="image/*" />
+            <div id="depPreviewWrap" class="hidden" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+              <img id="depPreviewImg" class="screenshot-preview" alt="Payment screenshot preview" />
+              <button type="button" class="btn btn-secondary" id="depClearImgBtn" style="padding: 5px 10px; font-size: 0.74rem;">
+                Remove
               </button>
             </div>
           </div>
+
+          <button type="submit" class="btn btn-emerald" id="depSubmitBtn" style="width: 100%; padding: 12px;">
+            I Have Paid / Submit Deposit Proof
+          </button>
         </form>
       </div>
     </div>

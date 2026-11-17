@@ -255,6 +255,23 @@ const settingsSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    poolStatsByGame: {
+      crash: {
+        bets: { type: Number, default: 0 },
+        payouts: { type: Number, default: 0 },
+        netDelta: { type: Number, default: 0 },
+      },
+      plinko: {
+        bets: { type: Number, default: 0 },
+        payouts: { type: Number, default: 0 },
+        netDelta: { type: Number, default: 0 },
+      },
+      mines: {
+        bets: { type: Number, default: 0 },
+        payouts: { type: Number, default: 0 },
+        netDelta: { type: Number, default: 0 },
+      },
+    },
     roundCounter: {
       type: Number,
       default: 1000,

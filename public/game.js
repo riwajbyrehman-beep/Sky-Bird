@@ -230,6 +230,12 @@
     activeTicketId: '',
     plinkoRisk: 'medium',
     plinkoBusy: false,
+    qrRequestSeq: 0,
+    qrDebounceTimer: null,
+    arcade: {
+      plinkoHistory: [],
+      minesHistory: [],
+    },
     mines: {
       active: false,
       revealed: [],
@@ -296,9 +302,19 @@
     openDepositBtn: document.getElementById('openDepositBtn'),
     openWithdrawBtn: document.getElementById('openWithdrawBtn'),
     officialAppBanner: document.getElementById('officialAppBanner'),
+    shareEarnBannerBtn: document.getElementById('shareEarnBannerBtn'),
     onlineCount: document.getElementById('onlinePlayersCount'),
     userAccountLabel: document.getElementById('userAccountLabel'),
+    historyLabel: document.getElementById('historyLabel'),
     historyList: document.getElementById('historyList'),
+
+    // Auth-First Gate & Main Shell Wrappers
+    headerGameControls: document.getElementById('headerGameControls'),
+    authEntryGate: document.getElementById('authEntryGate'),
+    mainGameShell: document.getElementById('mainGameShell'),
+    siteFooter: document.getElementById('siteFooter'),
+    gateLoginBtn: document.getElementById('gateLoginBtn'),
+    gateRegisterBtn: document.getElementById('gateRegisterBtn'),
 
     // Maintenance & Operating Hours & Game Lobby
     maintenanceOverlay: document.getElementById('maintenanceOverlay'),
@@ -397,26 +413,25 @@
     profileChannelBtn: document.getElementById('profileChannelBtn'),
     logoutBtn: document.getElementById('logoutBtn'),
 
-    // Deposit Modal (2-Step QR)
+    // Deposit Modal (Privacy-Masked Dynamic QR)
     depositModal: document.getElementById('depositModal'),
     depositAccountsList: document.getElementById('depositAccountsList'),
     depGatewayCards: document.getElementById('depGatewayCards'),
     depositErrorBox: document.getElementById('depositErrorBox'),
     depositSuccessBox: document.getElementById('depositSuccessBox'),
     depositForm: document.getElementById('depositForm'),
-    depositStep1: document.getElementById('depositStep1'),
-    depositQrStep2: document.getElementById('depositQrStep2'),
     depMethod: document.getElementById('depMethod'),
     depAmount: document.getElementById('depAmount'),
     depSenderName: document.getElementById('depSenderName'),
     depSenderNumber: document.getElementById('depSenderNumber'),
     depLimitInfoText: document.getElementById('depLimitInfoText'),
-    depGenQrBtn: document.getElementById('depGenQrBtn'),
-    depBackStepBtn: document.getElementById('depBackStepBtn'),
+    depLiveQrCard: document.getElementById('depLiveQrCard'),
+    depQrGatewayBadge: document.getElementById('depQrGatewayBadge'),
+    depQrAmountBadge: document.getElementById('depQrAmountBadge'),
     depQrRefBadge: document.getElementById('depQrRefBadge'),
-    depMaskedDest: document.getElementById('depMaskedDest'),
     depQrImg: document.getElementById('depQrImg'),
-    depQrSummaryText: document.getElementById('depQrSummaryText'),
+    depQrPlaceholder: document.getElementById('depQrPlaceholder'),
+    depQrLoadingText: document.getElementById('depQrLoadingText'),
     depMicroHint: document.getElementById('depMicroHint'),
     depTid: document.getElementById('depTid'),
     depScreenshot: document.getElementById('depScreenshot'),
@@ -822,6 +837,10 @@
   }
 
   function switchActiveGame(gameId) {
+    if (!state.user) {
+      openAuthModal(urlRefCode ? 'register' : 'login');
+      return;
+    }
     const games = state.publicSettings.gamesConfig || [];
     const cfg = games.find((g) => g.id === gameId);
     if (cfg && cfg.enabled === false) {
@@ -833,6 +852,8 @@
     el.plinkoArena?.classList.toggle('hidden', gameId !== 'cyber-plinko');
     el.minesArena?.classList.toggle('hidden', gameId !== 'golden-mines');
     syncGamesLobbyUI();
+    renderHistory();
+    renderSidebar();
     if (gameId === 'skywing-crash') {
       setTimeout(resizeCanvas, 30);
     } else if (gameId === 'cyber-plinko') {
@@ -921,7 +942,7 @@
         value: 'EasyPaisa',
         name: 'EasyPaisa',
         badge: 'MOBILE WALLET',
-        sub: 'Instant Wallet',
+        sub: 'Dynamic QR',
         cls: 'brand-easypaisa',
         color: '#34d399',
         icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 7v5c0 5.25 3.4 9.74 8 11 4.6-1.26 8-5.75 8-11V7l-8-5z"/><path d="M9 12l2 2 4-4"/></svg>`,
@@ -932,7 +953,7 @@
         value: 'JazzCash',
         name: 'JazzCash',
         badge: 'MOBILE WALLET',
-        sub: 'Fast Transfer',
+        sub: 'Dynamic QR',
         cls: 'brand-jazzcash',
         color: '#fca5a5',
         icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
@@ -940,9 +961,9 @@
     }
     return {
       value: 'Bank Account',
-      name: 'Bank Transfer',
-      badge: 'IBAN / BANK',
-      sub: 'PK Bank / Raast',
+      name: 'E-Wallet / Bank Transfer',
+      badge: 'QR / RAAST',
+      sub: 'Verified QR',
       cls: 'brand-bank',
       color: '#7dd3fc',
       icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v3"/><path d="M12 14v3"/><path d="M16 14v3"/></svg>`,
@@ -979,6 +1000,7 @@
 
   el.depMethod?.addEventListener('change', () => {
     renderGatewaySelector(el.depGatewayCards, el.depMethod);
+    scheduleDynamicQrUpdate(true);
   });
 
   async function copyValueWithButton(btn, val, label = 'Copied!') {
@@ -991,7 +1013,7 @@
         btn.textContent = prev;
       }, 1500);
     } catch {
-      showToast(`Account: ${val}`);
+      showToast(`Copied!`);
     }
   }
 
@@ -1002,7 +1024,7 @@
     const acc = state.publicSettings.paymentAccounts;
     if (!acc) {
       el.depositAccountsList.innerHTML =
-        '<span class="form-hint">Payment accounts not configured yet. Contact Admin.</span>';
+        '<span class="form-hint">Payment gateways are initializing...</span>';
       return;
     }
 
@@ -1011,24 +1033,21 @@
       cards.push({
         meta: getGatewayBrandMeta('EasyPaisa'),
         label: 'EasyPaisa',
-        title: acc.easypaisa.accountTitle,
-        number: acc.easypaisa.accountNumber,
+        subtitle: 'Verified · QR Only',
       });
     }
     if (acc.jazzcash?.enabled) {
       cards.push({
         meta: getGatewayBrandMeta('JazzCash'),
         label: 'JazzCash',
-        title: acc.jazzcash.accountTitle,
-        number: acc.jazzcash.accountNumber,
+        subtitle: 'Verified · QR Only',
       });
     }
     if (acc.bank?.enabled) {
       cards.push({
         meta: getGatewayBrandMeta('Bank Account'),
-        label: acc.bank.bankName ? `Bank (${acc.bank.bankName})` : 'Bank Transfer',
-        title: acc.bank.accountTitle,
-        number: acc.bank.accountNumber,
+        label: 'E-Wallet / Bank Transfer',
+        subtitle: acc.bank.bankName ? `${acc.bank.bankName} · QR Only` : 'Verified · QR Only',
       });
     }
 
@@ -1041,34 +1060,16 @@
     el.depositAccountsList.innerHTML = cards
       .map(
         (c) => `
-      <div class="pay-account-card">
-        <div class="pay-account-row">
-          <div class="pay-account-brand">
-            <span class="gateway-icon-box ${c.meta.cls}" style="width:28px;height:28px;" aria-hidden="true">${c.meta.icon}</span>
-            <div>
-              <strong style="color: ${c.meta.color}; font-size: 0.88rem; display:block; line-height:1.15;">${escapeHtml(c.label)}</strong>
-              <span class="gateway-badge ${c.meta.cls}">${c.meta.badge}</span>
-            </div>
-          </div>
-          <div style="text-align:right;">
-            <span style="font-size: 0.72rem; color: var(--text-muted); display:block;">Account Title</span>
-            <strong style="font-size: 0.8rem; color: var(--text-primary);">${escapeHtml(c.title)}</strong>
-          </div>
-        </div>
-        <div class="pay-account-row" style="margin-top:2px; padding-top:6px; border-top: 1px solid rgba(148,163,184,0.12);">
-          <span class="tabular-nums" style="font-size: 0.92rem; font-weight: 700; color: var(--text-primary);">${escapeHtml(c.number)}</span>
-          <div style="display:flex; gap:6px;">
-            <button type="button" class="copy-btn" data-copy="${escapeHtml(c.number)}">Copy Number</button>
-          </div>
+      <div class="gateway-badge-card">
+        <span class="gateway-icon-box ${c.meta.cls}" style="width:30px;height:30px;" aria-hidden="true">${c.meta.icon}</span>
+        <div style="min-width:0;">
+          <strong style="color: ${c.meta.color}; font-size: 0.82rem; display:block; line-height:1.15;">${escapeHtml(c.label)}</strong>
+          <span style="font-size: 0.68rem; color: var(--text-muted);">${escapeHtml(c.subtitle)}</span>
         </div>
       </div>
     `
       )
       .join('');
-
-    el.depositAccountsList.querySelectorAll('.copy-btn[data-copy]').forEach((btn) => {
-      btn.addEventListener('click', () => copyValueWithButton(btn, btn.dataset.copy));
-    });
   }
 
   document.getElementById('openHowToBtn').addEventListener('click', () => openModal('howToModal'));
@@ -1241,7 +1242,24 @@
   // ==========================================================================
   // Authentication & User Profile
   // ==========================================================================
+  let wasAuthenticated = Boolean(state.user);
+
+  function openAuthModal(defaultTab = 'login') {
+    if (el.authErrorBox) el.authErrorBox.classList.add('hidden');
+    const savedRef = localStorage.getItem('skywing_ref') || '';
+    if (savedRef && el.regRefCode && !el.regRefCode.value) {
+      el.regRefCode.value = savedRef;
+    }
+    if (defaultTab === 'register') {
+      el.authTabRegister?.click();
+    } else {
+      el.authTabLogin?.click();
+    }
+    openModal('authModal');
+  }
+
   function updateUserUI() {
+    const isAuthed = Boolean(state.user);
     if (state.user) {
       el.authTriggerBtn.textContent = state.user.displayName || state.user.phoneNumber;
       el.authTriggerBtn.classList.remove('btn-primary');
@@ -1274,10 +1292,28 @@
       el.authTriggerBtn.classList.add('btn-primary');
       el.userAccountLabel.textContent = 'Guest Mode';
     }
+
+    // Auth-First Gate Enforcement
+    el.authEntryGate?.classList.toggle('hidden', isAuthed);
+    el.mainGameShell?.classList.toggle('hidden', !isAuthed);
+    el.siteFooter?.classList.toggle('hidden', !isAuthed);
+    el.headerGameControls?.classList.toggle('hidden', !isAuthed);
+
     if (el.officialAppBanner) {
-      el.officialAppBanner.classList.toggle('hidden', !state.user);
+      el.officialAppBanner.classList.toggle('hidden', !isAuthed);
     }
+
+    if (isAuthed && !wasAuthenticated) {
+      setTimeout(() => {
+        if (state.activeGameId === 'skywing-crash') resizeCanvas();
+        else if (state.activeGameId === 'cyber-plinko') renderPlinkoBoard();
+        else if (state.activeGameId === 'golden-mines') renderMinesGrid();
+      }, 40);
+    }
+    wasAuthenticated = isAuthed;
+
     updateModeAndWalletUI();
+    renderHistory();
     if (state.sidebarTab !== 'live') renderSidebar();
     updatePanelButtons();
   }
@@ -1296,10 +1332,13 @@
         headers: { Authorization: `Bearer ${activeToken}` },
       });
       if (!res.ok) {
-        // Never wipe stored tokens on transient server restarts/redeploys; retain cached state
+        // Only clear session vault when backend explicitly rejects token (401/403)
         if (res.status === 401 || res.status === 403) {
+          state.token = '';
           state.user = null;
+          clearSessionVault();
           updateUserUI();
+          openAuthModal(urlRefCode ? 'register' : 'login');
         }
         return;
       }
@@ -1339,17 +1378,12 @@
     if (state.user) {
       openModal('profileModal');
     } else {
-      el.authErrorBox.classList.add('hidden');
-      const savedRef = localStorage.getItem('skywing_ref') || '';
-      if (savedRef && el.regRefCode && !el.regRefCode.value) {
-        el.regRefCode.value = savedRef;
-      }
-      openModal('authModal');
-      if (urlRefCode && !state.user) {
-        el.authTabRegister?.click();
-      }
+      openAuthModal(urlRefCode ? 'register' : 'login');
     }
   });
+
+  el.gateLoginBtn?.addEventListener('click', () => openAuthModal('login'));
+  el.gateRegisterBtn?.addEventListener('click', () => openAuthModal('register'));
 
   el.authTabLogin.addEventListener('click', () => {
     el.authTabLogin.classList.add('active');
@@ -1674,20 +1708,113 @@
     });
   }
 
-  function resetDepositModalToStep1() {
-    state.qrDepositRef = '';
-    el.depositStep1?.classList.remove('hidden');
-    el.depositQrStep2?.classList.add('hidden');
+  function setQrLoadingState(message, clearRef = true) {
+    if (clearRef) state.qrDepositRef = '';
+    if (el.depQrImg) {
+      el.depQrImg.classList.add('hidden');
+      el.depQrImg.removeAttribute('src');
+    }
+    if (el.depQrPlaceholder) el.depQrPlaceholder.classList.remove('hidden');
+    if (el.depQrLoadingText) el.depQrLoadingText.textContent = message;
+    if (clearRef && el.depQrRefBadge) el.depQrRefBadge.textContent = 'REF: ---';
   }
+
+  async function requestDynamicDepositQr() {
+    if (!state.token || !state.user) return;
+    const method = el.depMethod?.value || 'EasyPaisa';
+    const amount = Number(el.depAmount?.value || 0);
+    const minDep = Number(state.publicSettings.financialLimits?.minDeposit || 50);
+    const meta = getGatewayBrandMeta(method);
+
+    if (el.depQrGatewayBadge) el.depQrGatewayBadge.textContent = `${meta.name} · QR Only`;
+    if (el.depQrAmountBadge) {
+      el.depQrAmountBadge.textContent = Number.isFinite(amount) && amount > 0 ? `${amount.toLocaleString()} PKR` : '0 PKR';
+    }
+
+    if (!Number.isFinite(amount) || amount < minDep || amount > 1000000) {
+      setQrLoadingState(`Enter at least ${minDep} PKR to generate your live QR code.`);
+      if (el.depMicroHint) el.depMicroHint.textContent = '';
+      return;
+    }
+
+    const seq = ++state.qrRequestSeq;
+    setQrLoadingState(`Generating ${amount.toLocaleString()} PKR ${meta.name} QR...`, false);
+
+    try {
+      const res = await fetch('/api/transactions/deposit/qr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({ method, amount }),
+      });
+      const data = await res.json();
+      if (seq !== state.qrRequestSeq) return;
+
+      if (!res.ok) {
+        setQrLoadingState(data.error || 'Selected gateway unavailable.');
+        return;
+      }
+
+      state.qrDepositRef = data.qrReference;
+      if (el.depQrImg) {
+        el.depQrImg.src = data.qrDataUrl;
+        el.depQrImg.classList.remove('hidden');
+      }
+      if (el.depQrPlaceholder) el.depQrPlaceholder.classList.add('hidden');
+      if (el.depQrRefBadge) el.depQrRefBadge.textContent = `REF: ${data.qrReference}`;
+      if (el.depQrGatewayBadge) el.depQrGatewayBadge.textContent = `${meta.name} · QR Only`;
+      if (el.depQrAmountBadge) el.depQrAmountBadge.textContent = `${Number(data.amount).toLocaleString()} PKR`;
+      if (el.depMicroHint) {
+        const isMicro = data.microAutoApproveLimit > 0 && amount <= data.microAutoApproveLimit;
+        el.depMicroHint.textContent = isMicro
+          ? `Micro-Deposit Eligible! Enter your valid TID (6+ chars) for instant auto-approval.`
+          : `Standard Review: Admin will approve shortly after verifying your TID / screenshot.`;
+      }
+    } catch {
+      if (seq === state.qrRequestSeq) {
+        setQrLoadingState('Network error generating QR code. Retrying on edit...');
+      }
+    }
+  }
+
+  function scheduleDynamicQrUpdate(immediate = false) {
+    if (state.qrDebounceTimer) {
+      clearTimeout(state.qrDebounceTimer);
+      state.qrDebounceTimer = null;
+    }
+    if (immediate) {
+      requestDynamicDepositQr();
+    } else {
+      state.qrDebounceTimer = setTimeout(() => {
+        requestDynamicDepositQr();
+      }, 240);
+    }
+  }
+
+  el.depAmount?.addEventListener('input', () => scheduleDynamicQrUpdate(false));
+
+  document.querySelectorAll('.dep-amt-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.depAmount) {
+        el.depAmount.value = btn.dataset.amt;
+        scheduleDynamicQrUpdate(true);
+      }
+    });
+  });
 
   function openDepositFlow() {
     if (!state.user) {
-      openModal('authModal');
+      openAuthModal(urlRefCode ? 'register' : 'login');
       return;
     }
     el.depositErrorBox.classList.add('hidden');
     el.depositSuccessBox.classList.add('hidden');
-    resetDepositModalToStep1();
+    const minDep = Number(state.publicSettings.financialLimits?.minDeposit || 50);
+    if (el.depAmount && (!Number(el.depAmount.value) || Number(el.depAmount.value) < minDep)) {
+      el.depAmount.value = String(Math.max(500, minDep));
+    }
     if (el.depSenderName && !el.depSenderName.value && state.user.displayName) {
       el.depSenderName.value = state.user.displayName;
     }
@@ -1697,11 +1824,12 @@
     renderPaymentAccounts();
     syncWithdrawalHoursUI();
     openModal('depositModal');
+    scheduleDynamicQrUpdate(true);
   }
 
   async function openWithdrawFlow() {
     if (!state.user) {
-      openModal('authModal');
+      openAuthModal(urlRefCode ? 'register' : 'login');
       return;
     }
     await fetchCurrentUser();
@@ -1729,55 +1857,6 @@
     closeModal('profileModal');
     openWithdrawFlow();
   });
-
-  el.depGenQrBtn?.addEventListener('click', async () => {
-    el.depositErrorBox.classList.add('hidden');
-    el.depositSuccessBox.classList.add('hidden');
-    const method = el.depMethod.value;
-    const amount = Number(el.depAmount.value);
-    const senderName = String(el.depSenderName?.value || '').trim();
-    const senderNumber = String(el.depSenderNumber?.value || '').trim();
-
-    el.depGenQrBtn.disabled = true;
-    try {
-      const res = await fetch('/api/transactions/deposit/qr', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${state.token}`,
-        },
-        body: JSON.stringify({ method, amount, senderName, senderNumber }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        el.depositErrorBox.textContent = data.error || 'Could not generate QR code.';
-        el.depositErrorBox.classList.remove('hidden');
-        return;
-      }
-
-      state.qrDepositRef = data.qrReference;
-      if (el.depQrImg) el.depQrImg.src = data.qrDataUrl;
-      if (el.depQrRefBadge) el.depQrRefBadge.textContent = `REF: ${data.qrReference}`;
-      if (el.depMaskedDest) {
-        el.depMaskedDest.textContent = `${data.method}: ${data.maskedAccountNumber} (${data.accountTitle})`;
-      }
-      if (el.depMicroHint) {
-        const isMicro = data.microAutoApproveLimit > 0 && amount <= data.microAutoApproveLimit;
-        el.depMicroHint.textContent = isMicro
-          ? `Micro-Deposit Eligible! Enter your valid TID (6+ chars) for instant auto-approval.`
-          : `Standard Review: Admin will approve shortly after verifying your TID / screenshot.`;
-      }
-      el.depositStep1?.classList.add('hidden');
-      el.depositQrStep2?.classList.remove('hidden');
-    } catch {
-      el.depositErrorBox.textContent = 'Network error generating QR code.';
-      el.depositErrorBox.classList.remove('hidden');
-    } finally {
-      el.depGenQrBtn.disabled = false;
-    }
-  });
-
-  el.depBackStepBtn?.addEventListener('click', resetDepositModalToStep1);
 
   // Compress uploaded payment screenshot cleanly into JPEG base64
   el.depScreenshot.addEventListener('change', () => {
@@ -1883,9 +1962,13 @@
       }
       el.depositSuccessBox.classList.remove('hidden');
       el.depositForm.reset();
+      const minDep = Number(state.publicSettings.financialLimits?.minDeposit || 50);
+      if (el.depAmount) el.depAmount.value = String(Math.max(500, minDep));
+      if (el.depSenderName && state.user?.displayName) el.depSenderName.value = state.user.displayName;
+      if (el.depSenderNumber && state.user?.phoneNumber) el.depSenderNumber.value = state.user.phoneNumber;
       state.depositScreenshotData = '';
       el.depPreviewWrap.classList.add('hidden');
-      resetDepositModalToStep1();
+      scheduleDynamicQrUpdate(true);
       fetchMyTransactions();
     } catch {
       el.depositErrorBox.textContent = 'Network error. Please try again.';
@@ -2260,10 +2343,74 @@
   });
 
   // ==========================================================================
-  // History & Sidebar Rendering (Live Bets | My Bets | Wallet History)
+  // Isolated Per-Game History & Sidebar Rendering (Live Bets | My Bets | Wallet)
   // ==========================================================================
   function renderHistory() {
-    const items = state.game.history.slice(0, 15);
+    if (!el.historyList) return;
+    const gid = state.activeGameId || 'skywing-crash';
+
+    if (gid === 'cyber-plinko') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Plinko Drops';
+      const items = (state.arcade.plinkoHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML =
+          '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Cyber Plinko drops...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const mult = Number(item.multiplier || 0);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${
+          mult >= 5 ? 'mult-high' : mult >= 1.1 ? 'mult-med' : 'mult-low'
+        }`;
+        chip.textContent = `${mult.toFixed(1)}x`;
+        chip.title = `Plinko (${String(item.risk || 'medium').toUpperCase()}) · Slot #${Number(item.slot ?? 0) + 1}`;
+        chip.addEventListener('click', () => {
+          showToast(
+            `Plinko Drop: ${mult}x (${String(item.risk || 'med').toUpperCase()} risk · ${Number(item.amount || 0)} ${item.currencyMode === 'real' ? 'PKR' : 'FC'})`
+          );
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
+    if (gid === 'golden-mines') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Mines Games';
+      const items = (state.arcade.minesHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML =
+          '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Golden Mines results...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const boom = Boolean(item.boom);
+        const mult = Number(item.multiplier || 0);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${
+          boom ? 'mult-low' : mult >= 3 ? 'mult-high' : 'mult-med'
+        }`;
+        chip.textContent = boom ? 'Boom' : `${mult.toFixed(2)}x`;
+        chip.title = `${item.diamondsCount || 0} Diamonds · ${item.minesCount || 3} Mines`;
+        chip.addEventListener('click', () => {
+          showToast(
+            boom
+              ? `Mines Boom (${item.minesCount || 3} mines · ${item.diamondsCount || 0} gems found)`
+              : `Mines Cashout ${mult.toFixed(2)}x (${item.diamondsCount || 0}💎 / ${item.minesCount || 3}💣)`
+          );
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
+    // SkyWing Crash History
+    if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Flights';
+    const items = (state.game.history || []).slice(0, 15);
     if (!items.length) {
       el.historyList.innerHTML =
         '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for flight history...</span>';
@@ -2286,8 +2433,68 @@
   }
 
   function renderSidebar() {
+    const gid = state.activeGameId || 'skywing-crash';
+
     if (state.sidebarTab === 'live') {
       el.sidebarTableHead.classList.remove('hidden');
+
+      if (gid === 'cyber-plinko') {
+        const feed = (state.arcade.plinkoHistory || []).slice(0, 25);
+        const totalWager = feed.reduce((s, x) => s + Number(x.amount || 0), 0);
+        el.activeBetsCount.textContent = `${feed.length} Recent Drops`;
+        el.totalRoundWager.textContent = `${totalWager.toFixed(0)} Vol`;
+        if (!feed.length) {
+          el.sidebarBetsList.innerHTML =
+            '<div class="empty-state">No Cyber Plinko drops yet. Drop a ball!</div>';
+          return;
+        }
+        el.sidebarBetsList.innerHTML = feed
+          .map((item) => {
+            const u = item.currencyMode === 'real' ? 'PKR' : 'FC';
+            const won = Number(item.payout || 0) >= Number(item.amount || 0);
+            const winText = Number(item.payout || 0) > 0 ? `+${Number(item.payout).toFixed(2)}` : '0.00';
+            return `
+              <div class="bet-row ${won ? 'won' : ''}">
+                <span class="bet-player">${escapeHtml(item.player || 'Player')}</span>
+                <span class="tabular-nums">${Number(item.amount || 0).toFixed(0)} ${u}</span>
+                <span class="bet-mult tabular-nums">${Number(item.multiplier || 0).toFixed(1)}x</span>
+                <span class="bet-payout tabular-nums">${winText}</span>
+              </div>
+            `;
+          })
+          .join('');
+        return;
+      }
+
+      if (gid === 'golden-mines') {
+        const feed = (state.arcade.minesHistory || []).slice(0, 25);
+        const totalWager = feed.reduce((s, x) => s + Number(x.amount || 0), 0);
+        el.activeBetsCount.textContent = `${feed.length} Recent Games`;
+        el.totalRoundWager.textContent = `${totalWager.toFixed(0)} Vol`;
+        if (!feed.length) {
+          el.sidebarBetsList.innerHTML =
+            '<div class="empty-state">No Golden Mines games yet. Reveal diamonds!</div>';
+          return;
+        }
+        el.sidebarBetsList.innerHTML = feed
+          .map((item) => {
+            const u = item.currencyMode === 'real' ? 'PKR' : 'FC';
+            const won = !item.boom && Number(item.payout || 0) > 0;
+            const multText = item.boom ? 'Boom' : `${Number(item.multiplier || 0).toFixed(2)}x`;
+            const winText = won ? `+${Number(item.payout).toFixed(2)}` : '-';
+            return `
+              <div class="bet-row ${won ? 'won' : ''}">
+                <span class="bet-player">${escapeHtml(item.player || 'Player')}</span>
+                <span class="tabular-nums">${Number(item.amount || 0).toFixed(0)} ${u}</span>
+                <span class="bet-mult tabular-nums">${multText}</span>
+                <span class="bet-payout tabular-nums">${winText}</span>
+              </div>
+            `;
+          })
+          .join('');
+        return;
+      }
+
       const bets = state.game.bets || [];
       const totalFun = bets
         .filter((b) => b.currencyMode !== 'real')
@@ -2326,7 +2533,8 @@
         .join('');
     } else if (state.sidebarTab === 'mine') {
       el.sidebarTableHead.classList.remove('hidden');
-      const history = state.user?.recentBets || [];
+      const allHistory = state.user?.recentBets || [];
+      const history = allHistory.filter((h) => (h.game || 'skywing-crash') === gid);
       el.activeBetsCount.textContent = `${history.length} Recent`;
       el.totalRoundWager.textContent = state.user
         ? fmtMoney(
@@ -2337,28 +2545,40 @@
 
       if (!state.user) {
         el.sidebarBetsList.innerHTML =
-          '<div class="empty-state">Log in to view your personal flight history.</div>';
+          '<div class="empty-state">Log in to view your personal history.</div>';
         return;
       }
       if (!history.length) {
-        el.sidebarBetsList.innerHTML =
-          '<div class="empty-state">You have not placed any bets yet.</div>';
+        const emptyMsg =
+          gid === 'cyber-plinko'
+            ? 'You have not played Cyber Plinko yet.'
+            : gid === 'golden-mines'
+              ? 'You have not played Golden Mines yet.'
+              : 'You have not placed any SkyWing Crash bets yet.';
+        el.sidebarBetsList.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
         return;
       }
 
       el.sidebarBetsList.innerHTML = history
         .map((h) => {
-          const won = h.payout > 0;
+          const won = Number(h.payout || 0) > 0;
           const u = h.currencyMode === 'real' ? 'PKR' : 'FC';
-          const multText = h.cashoutMultiplier
-            ? `${Number(h.cashoutMultiplier).toFixed(2)}x`
-            : `Crash ${Number(h.crashedAt).toFixed(2)}x`;
+          let multText = '';
+          if (gid === 'cyber-plinko') {
+            multText = `${Number(h.cashoutMultiplier || 0).toFixed(1)}x`;
+          } else if (gid === 'golden-mines') {
+            multText = won ? `${Number(h.cashoutMultiplier || 0).toFixed(2)}x` : 'Boom';
+          } else {
+            multText = h.cashoutMultiplier
+              ? `${Number(h.cashoutMultiplier).toFixed(2)}x`
+              : `Crash ${Number(h.crashedAt || 1).toFixed(2)}x`;
+          }
           const payoutText = won
             ? `+${Number(h.payout).toFixed(2)}`
             : `-${Number(h.betAmount).toFixed(2)}`;
           return `
             <div class="bet-row ${won ? 'won' : ''}">
-              <span class="bet-player">#${h.roundNumber}</span>
+              <span class="bet-player">#${h.roundNumber || '-'}</span>
               <span class="tabular-nums">${Number(h.betAmount).toFixed(0)} ${u}</span>
               <span class="bet-mult tabular-nums" style="font-size:0.72rem;">${multText}</span>
               <span class="bet-payout tabular-nums" style="color:${won ? '#34d399' : '#f87171'};">${payoutText}</span>
@@ -3060,6 +3280,8 @@
 
     if (Array.isArray(data.bets)) state.game.bets = data.bets;
     if (Array.isArray(data.history)) state.game.history = data.history;
+    if (Array.isArray(data.plinkoHistory)) state.arcade.plinkoHistory = data.plinkoHistory;
+    if (Array.isArray(data.minesHistory)) state.arcade.minesHistory = data.minesHistory;
     if (data.onlineCount !== undefined && el.onlineCount) {
       el.onlineCount.textContent = `${data.onlineCount} Online`;
     }
@@ -3178,8 +3400,10 @@
     });
 
     syncPhaseOverlays();
-    renderHistory();
-    renderSidebar();
+    if (state.activeGameId === 'skywing-crash') {
+      renderHistory();
+      renderSidebar();
+    }
     updatePanelButtons();
 
     if (state.user) {
@@ -3243,8 +3467,10 @@
     }
 
     syncPhaseOverlays();
-    renderHistory();
-    renderSidebar();
+    if (state.activeGameId === 'skywing-crash') {
+      renderHistory();
+      renderSidebar();
+    }
     updatePanelButtons();
 
     if (state.user) fetchCurrentUser();
@@ -3253,13 +3479,13 @@
   socket.on('bet:placed', (bet) => {
     if (!state.game.bets.some((b) => b.id === bet.id)) {
       state.game.bets.push(bet);
-      renderSidebar();
+      if (state.activeGameId === 'skywing-crash') renderSidebar();
     }
   });
 
   socket.on('bet:cancelled', ({ betId }) => {
     state.game.bets = state.game.bets.filter((b) => b.id !== betId);
-    renderSidebar();
+    if (state.activeGameId === 'skywing-crash') renderSidebar();
   });
 
   socket.on('bet:cashedOut', (data) => {
@@ -3268,7 +3494,7 @@
       bet.cashedOut = true;
       bet.cashoutMultiplier = data.cashoutMultiplier;
       bet.payout = data.payout;
-      renderSidebar();
+      if (state.activeGameId === 'skywing-crash') renderSidebar();
     }
     if (state.user && String(data.userId) === String(state.user.id)) {
       const slot = data.slot === 2 ? 2 : 1;
@@ -3280,6 +3506,30 @@
         );
       }
       updatePanelButtons();
+    }
+  });
+
+  socket.on('arcade:plinko_drop', (item) => {
+    if (!item) return;
+    if (!state.arcade.plinkoHistory.some((x) => x.id === item.id)) {
+      state.arcade.plinkoHistory.unshift(item);
+      state.arcade.plinkoHistory = state.arcade.plinkoHistory.slice(0, 25);
+      if (state.activeGameId === 'cyber-plinko') {
+        renderHistory();
+        if (state.sidebarTab === 'live') renderSidebar();
+      }
+    }
+  });
+
+  socket.on('arcade:mines_result', (item) => {
+    if (!item) return;
+    if (!state.arcade.minesHistory.some((x) => x.id === item.id)) {
+      state.arcade.minesHistory.unshift(item);
+      state.arcade.minesHistory = state.arcade.minesHistory.slice(0, 25);
+      if (state.activeGameId === 'golden-mines') {
+        renderHistory();
+        if (state.sidebarTab === 'live') renderSidebar();
+      }
     }
   });
 
@@ -3396,10 +3646,18 @@
         if (stepIdx >= data.path.length) {
           const finalX = w / 2 + (data.slot - 4) * pegSpacing * 0.95;
           renderPlinkoBoard({ x: finalX, y: h - 14, hitSlot: data.slot });
+          if (Array.isArray(data.plinkoHistory)) {
+            state.arcade.plinkoHistory = data.plinkoHistory;
+          } else if (data.plinkoFeedItem && !state.arcade.plinkoHistory.some((x) => x.id === data.plinkoFeedItem.id)) {
+            state.arcade.plinkoHistory.unshift(data.plinkoFeedItem);
+            state.arcade.plinkoHistory = state.arcade.plinkoHistory.slice(0, 25);
+          }
           if (data.user) {
             state.user = data.user;
             updateUserUI();
           }
+          renderHistory();
+          renderSidebar();
           el.plinkoLastResultPill.textContent = `${data.multiplier}x (${data.profit >= 0 ? '+' : ''}${data.profit} ${unitLabel(data.currencyMode)})`;
           if (data.multiplier >= 1.5) audio.playCashout();
           showToast(`Plinko landed ${data.multiplier}x → Payout ${fmtMoney(data.payout, data.currencyMode)}`);
@@ -3425,6 +3683,14 @@
   // ==========================================================================
   // Golden Mines 5x5 Grid Controller
   // ==========================================================================
+  document.querySelectorAll('.mines-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.minesAmount && !state.mines.active) {
+        el.minesAmount.value = btn.dataset.amt;
+      }
+    });
+  });
+
   function renderMinesGrid() {
     if (!el.minesGrid) return;
     let html = '';
@@ -3456,7 +3722,7 @@
 
   el.minesStartBtn?.addEventListener('click', async () => {
     if (!state.user) {
-      openModal('authModal');
+      openAuthModal(urlRefCode ? 'register' : 'login');
       return;
     }
     const amount = Number(el.minesAmount?.value || 0);
@@ -3520,10 +3786,18 @@
         state.mines.minesShown = data.mines || [];
         state.mines.multiplier = 0;
         state.mines.potentialPayout = 0;
+        if (Array.isArray(data.minesHistory)) {
+          state.arcade.minesHistory = data.minesHistory;
+        } else if (data.minesFeedItem && !state.arcade.minesHistory.some((x) => x.id === data.minesFeedItem.id)) {
+          state.arcade.minesHistory.unshift(data.minesFeedItem);
+          state.arcade.minesHistory = state.arcade.minesHistory.slice(0, 25);
+        }
         if (data.user) {
           state.user = data.user;
           updateUserUI();
         }
+        renderHistory();
+        renderSidebar();
         el.minesHintText.textContent = 'BOOM! You hit a hidden mine.';
         showToast('Hit a mine! Better luck next round.', true);
       } else if (data.clearedAll) {
@@ -3533,10 +3807,18 @@
         state.mines.minesShown = data.mines || [];
         state.mines.multiplier = data.multiplier;
         state.mines.potentialPayout = data.payout;
+        if (Array.isArray(data.minesHistory)) {
+          state.arcade.minesHistory = data.minesHistory;
+        } else if (data.minesFeedItem && !state.arcade.minesHistory.some((x) => x.id === data.minesFeedItem.id)) {
+          state.arcade.minesHistory.unshift(data.minesFeedItem);
+          state.arcade.minesHistory = state.arcade.minesHistory.slice(0, 25);
+        }
         if (data.user) {
           state.user = data.user;
           updateUserUI();
         }
+        renderHistory();
+        renderSidebar();
         el.minesHintText.textContent = `Board cleared! Won ${fmtMoney(data.payout, state.currencyMode)}`;
         showToast(`Board Cleared! +${fmtMoney(data.payout, state.currencyMode)}`);
       } else {
@@ -3573,10 +3855,18 @@
       state.mines.minesShown = data.mines || [];
       state.mines.multiplier = data.multiplier;
       state.mines.potentialPayout = data.payout;
+      if (Array.isArray(data.minesHistory)) {
+        state.arcade.minesHistory = data.minesHistory;
+      } else if (data.minesFeedItem && !state.arcade.minesHistory.some((x) => x.id === data.minesFeedItem.id)) {
+        state.arcade.minesHistory.unshift(data.minesFeedItem);
+        state.arcade.minesHistory = state.arcade.minesHistory.slice(0, 25);
+      }
       if (data.user) {
         state.user = data.user;
         updateUserUI();
       }
+      renderHistory();
+      renderSidebar();
       el.minesHintText.textContent = `Cashed out at ${data.multiplier}x (+${fmtMoney(data.payout, data.currencyMode)})`;
       showToast(`Mines Cashout ${data.multiplier}x (+${fmtMoney(data.payout, data.currencyMode)})`);
       renderMinesGrid();
@@ -3586,12 +3876,51 @@
   });
 
   // ==========================================================================
-  // VIP Loyalty Tiers, Rewards & Referral Copy
+  // VIP Loyalty Tiers, Rewards & Referral Copy / Share & Earn
   // ==========================================================================
   function getReferralShareUrl() {
     const code = state.user?.referralCode || '';
     return `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
   }
+
+  async function shareOrCopyReferralLink(triggerBtn = null) {
+    if (!state.user?.referralCode) {
+      openAuthModal('register');
+      return;
+    }
+    const shareUrl = getReferralShareUrl();
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'SkyWing Arena — Play & Earn Commission',
+          text: 'Join me on SkyWing Crash, Cyber Plinko & Golden Mines! Register with my link for welcome credits:',
+          url: shareUrl,
+        });
+        showToast('Referral link shared! Earn up to 15% commission on deposits.');
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      if (triggerBtn) {
+        const span = triggerBtn.querySelector('span');
+        if (span) {
+          const prev = span.textContent;
+          span.textContent = 'Copied!';
+          setTimeout(() => {
+            span.textContent = prev;
+          }, 1600);
+        }
+      }
+      showToast('Referral link copied! Share & earn up to 15% commission.');
+    } catch {
+      showToast(`Share your link: ${shareUrl}`);
+    }
+  }
+
+  el.shareEarnBannerBtn?.addEventListener('click', () => shareOrCopyReferralLink(el.shareEarnBannerBtn));
 
   el.profileCopyRefBtn?.addEventListener('click', () => {
     if (!state.user?.referralCode) return;
@@ -3605,7 +3934,7 @@
 
   async function openRewardsFlow() {
     if (!state.user) {
-      openModal('authModal');
+      openAuthModal(urlRefCode ? 'register' : 'login');
       return;
     }
     openModal('rewardsModal');
@@ -3882,7 +4211,11 @@
   updateUserUI();
   loadPublicSettings();
   fetchCurrentUser();
-  if (state.token) fetchMyTransactions();
+  if (state.token) {
+    fetchMyTransactions();
+  } else if (!state.user) {
+    openAuthModal(urlRefCode ? 'register' : 'login');
+  }
   renderPlinkoBoard();
   renderMinesGrid();
 })();

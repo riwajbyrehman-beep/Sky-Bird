@@ -186,6 +186,23 @@ function defaultTelegramBotConfig() {
   };
 }
 
+function defaultPoolStatsByGame() {
+  return {
+    crash: { bets: 0, payouts: 0, netDelta: 0 },
+    plinko: { bets: 0, payouts: 0, netDelta: 0 },
+    mines: { bets: 0, payouts: 0, netDelta: 0 },
+  };
+}
+
+function hydratePoolStatsByGame(raw = {}) {
+  const def = defaultPoolStatsByGame();
+  return {
+    crash: { ...def.crash, ...(raw.crash || {}) },
+    plinko: { ...def.plinko, ...(raw.plinko || {}) },
+    mines: { ...def.mines, ...(raw.mines || {}) },
+  };
+}
+
 function defaultSettingsObj() {
   return {
     key: 'global',
@@ -214,16 +231,26 @@ function defaultSettingsObj() {
     dailyTotalBets: 0,
     dailyTotalPayouts: 0,
     dailyNetProfit: 0,
-    carryForwardPool: 0,
+    carryForwardPool: 10000,
+    poolStatsByGame: defaultPoolStatsByGame(),
     roundCounter: 1000,
     recentRounds: [],
   };
 }
 
 function hydrateSettingsObj(raw = {}) {
+  const unifiedPool =
+    raw.profitDistributionPool !== undefined
+      ? Math.max(0, Number(raw.profitDistributionPool) || 0)
+      : raw.carryForwardPool !== undefined
+        ? Math.max(0, Number(raw.carryForwardPool) || 0)
+        : 10000;
   return {
     ...defaultSettingsObj(),
     ...raw,
+    profitDistributionPool: unifiedPool,
+    carryForwardPool: unifiedPool,
+    poolStatsByGame: hydratePoolStatsByGame(raw.poolStatsByGame),
     paymentAccounts: {
       ...defaultPaymentAccounts(),
       ...(raw.paymentAccounts || {}),
@@ -396,7 +423,8 @@ const db = {
         doc.dailyTotalBets = 0;
         doc.dailyTotalPayouts = 0;
         doc.dailyNetProfit = 0;
-        doc.carryForwardPool = 0;
+        doc.carryForwardPool = Math.max(0, Number(doc.profitDistributionPool ?? 10000));
+        doc.poolStatsByGame = defaultPoolStatsByGame();
         await doc.save();
       }
       const obj = hydrateSettingsObj(doc.toObject());
@@ -409,7 +437,11 @@ const db = {
       localStore.settings.dailyTotalBets = 0;
       localStore.settings.dailyTotalPayouts = 0;
       localStore.settings.dailyNetProfit = 0;
-      localStore.settings.carryForwardPool = 0;
+      localStore.settings.carryForwardPool = Math.max(
+        0,
+        Number(localStore.settings.profitDistributionPool ?? 10000)
+      );
+      localStore.settings.poolStatsByGame = defaultPoolStatsByGame();
       saveLocalStore();
     }
     return hydrateSettingsObj(localStore.settings);
@@ -1009,27 +1041,27 @@ function maskMerchantNumber(num, maskEnabled = true) {
   return `${s.slice(0, 4)}${'•'.repeat(Math.max(4, s.length - 7))}${s.slice(-3)}`;
 }
 
-function maskPaymentAccountsForPublic(paymentAccounts, maskEnabled = true) {
+function maskPaymentAccountsForPublic(paymentAccounts) {
   const pa = paymentAccounts || defaultPaymentAccounts();
   return {
     easypaisa: {
       enabled: pa.easypaisa?.enabled !== false,
+      label: 'EasyPaisa',
       accountTitle: pa.easypaisa?.accountTitle || 'SkyWing Official',
-      accountNumber: maskMerchantNumber(pa.easypaisa?.accountNumber || '', maskEnabled),
-      masked: Boolean(maskEnabled),
+      qrOnly: true,
     },
     jazzcash: {
       enabled: pa.jazzcash?.enabled !== false,
+      label: 'JazzCash',
       accountTitle: pa.jazzcash?.accountTitle || 'SkyWing Official',
-      accountNumber: maskMerchantNumber(pa.jazzcash?.accountNumber || '', maskEnabled),
-      masked: Boolean(maskEnabled),
+      qrOnly: true,
     },
     bank: {
       enabled: pa.bank?.enabled !== false,
-      bankName: pa.bank?.bankName || 'Meezan Bank',
+      label: 'E-Wallet / Bank Transfer',
+      bankName: pa.bank?.bankName || 'Pakistani Bank / Raast',
       accountTitle: pa.bank?.accountTitle || 'SkyWing Enterprises',
-      accountNumber: maskMerchantNumber(pa.bank?.accountNumber || '', maskEnabled),
-      masked: Boolean(maskEnabled),
+      qrOnly: true,
     },
   };
 }
@@ -1223,7 +1255,7 @@ function buildPublicSettingsPayload(settings) {
     telegramChannelUrl: settings.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
     welcomeBonusCredits: settings.welcomeBonusCredits,
     maskMasterAccounts: maskEnabled,
-    paymentAccounts: maskPaymentAccountsForPublic(settings.paymentAccounts, maskEnabled),
+    paymentAccounts: maskPaymentAccountsForPublic(settings.paymentAccounts),
     financialLimits: settings.financialLimits || defaultFinancialLimits(),
     withdrawalHours: {
       ...(settings.withdrawalHours || defaultWithdrawalHours()),
@@ -1827,11 +1859,6 @@ app.post('/api/transactions/deposit/qr', requireAuth, async (req, res) => {
         error: `Deposit amount must be between ${minDep.toLocaleString()} and 1,000,000 PKR.`,
       });
     }
-    if (senderName.length < 2 || senderNumber.length < 7) {
-      return res.status(400).json({
-        error: 'Enter your Sender Name and Sender Account / Mobile Number first.',
-      });
-    }
 
     const pa = settings.paymentAccounts || defaultPaymentAccounts();
     const acct =
@@ -1845,7 +1872,7 @@ app.post('/api/transactions/deposit/qr', requireAuth, async (req, res) => {
       .toString('hex')
       .toUpperCase()}`;
 
-    // Encode merchant payment instruction & unique reference into scannable QR payload
+    // Encode merchant payment instruction & exact amount inside scannable QR without exposing raw numbers in UI
     const qrPayload = [
       `PAY:${method.toUpperCase()}`,
       `TO:${acct.accountTitle}`,
@@ -1853,6 +1880,8 @@ app.post('/api/transactions/deposit/qr', requireAuth, async (req, res) => {
       acct.bankName ? `BANK:${acct.bankName}` : '',
       `AMT:${amount} PKR`,
       `REF:${qrReference}`,
+      senderName ? `FROM:${senderName}` : '',
+      senderNumber ? `SRC:${senderNumber}` : '',
     ]
       .filter(Boolean)
       .join('|');
@@ -1863,15 +1892,15 @@ app.post('/api/transactions/deposit/qr', requireAuth, async (req, res) => {
       color: { dark: '#060913', light: '#ffffff' },
     });
 
-    const maskEnabled = settings.maskMasterAccounts !== false;
     res.json({
       qrReference,
       qrDataUrl,
       method,
+      displayMethod: method === 'Bank Account' ? 'E-Wallet / Bank Transfer' : method,
       amount,
-      maskedAccountNumber: maskMerchantNumber(acct.accountNumber, maskEnabled),
       accountTitle: acct.accountTitle,
       bankName: acct.bankName || '',
+      privacyProtected: true,
       microAutoApproveLimit: Number(limits.microDepositAutoApproveLimit || 0),
     });
   } catch (err) {
@@ -2277,6 +2306,48 @@ function computeMinesMultiplier(revealedCount, minesCount, houseEdgePct = 4) {
   return Math.max(1.01, Math.round((edgeFactor / prob) * 100) / 100);
 }
 
+async function recordUnifiedPoolDelta(gameKey, betDelta = 0, payoutDelta = 0) {
+  const s = await db.getSettings();
+  const safeGame = ['crash', 'plinko', 'mines'].includes(gameKey) ? gameKey : 'crash';
+  const cleanBet = Math.round(Number(betDelta || 0) * 100) / 100;
+  const cleanPay = Math.round(Number(payoutDelta || 0) * 100) / 100;
+  const poolDelta = Math.round((cleanBet - cleanPay) * 100) / 100;
+
+  const dailyTotalBets = Math.round((Number(s.dailyTotalBets || 0) + cleanBet) * 100) / 100;
+  const dailyTotalPayouts = Math.round((Number(s.dailyTotalPayouts || 0) + cleanPay) * 100) / 100;
+  const dailyNetProfit = Math.round((dailyTotalBets - dailyTotalPayouts) * 100) / 100;
+  const currentPool = Math.max(0, Number(s.profitDistributionPool ?? 10000));
+  const profitDistributionPool = Math.max(0, Math.round((currentPool + poolDelta) * 100) / 100);
+
+  const stats = hydratePoolStatsByGame(s.poolStatsByGame);
+  const gStat = stats[safeGame];
+  stats[safeGame] = {
+    bets: Math.round((Number(gStat.bets || 0) + cleanBet) * 100) / 100,
+    payouts: Math.round((Number(gStat.payouts || 0) + cleanPay) * 100) / 100,
+    netDelta: Math.round((Number(gStat.netDelta || 0) + poolDelta) * 100) / 100,
+  };
+
+  const updated = await db.updateSettings({
+    dailyTotalBets,
+    dailyTotalPayouts,
+    dailyNetProfit,
+    profitDistributionPool,
+    carryForwardPool: profitDistributionPool,
+    poolStatsByGame: stats,
+  });
+
+  io.to('admins').emit('admin:pool_updated', {
+    profitDistributionPool,
+    carryForwardPool: profitDistributionPool,
+    dailyTotalBets,
+    dailyTotalPayouts,
+    dailyNetProfit,
+    poolStatsByGame: stats,
+  });
+
+  return hydrateSettingsObj(updated);
+}
+
 app.post('/api/games/plinko/play', requireAuth, async (req, res) => {
   try {
     const settings = await db.getSettings();
@@ -2308,7 +2379,7 @@ app.post('/api/games/plinko/play', requireAuth, async (req, res) => {
 
     // 8 cryptographic coin flips for Plinko peg path
     const bytes = crypto.randomBytes(8);
-    const pathArr = [];
+    let pathArr = [];
     let slot = 0;
     for (let i = 0; i < 8; i++) {
       const bit = bytes[i] & 1;
@@ -2317,11 +2388,34 @@ app.post('/api/games/plinko/play', requireAuth, async (req, res) => {
     }
 
     const table = PLINKO_TABLES[risk];
-    let mult = table[slot] ?? 1.0;
-    // Apply configured houseEdge / risk offset gently to top slots
     const edgePct = Math.min(25, Math.max(0, Number(gameCfg?.houseEdgePct ?? 4) + Number(settings.rtpRiskConfig?.dynamicEdgeOffset || 0)));
-    if (mult > 1.5 && edgePct > 4) {
-      mult = Math.round(mult * Math.max(0.75, 1 - (edgePct - 4) / 100) * 100) / 100;
+    const computeSlotMult = (targetSlot) => {
+      let m = table[targetSlot] ?? 1.0;
+      if (m > 1.5 && edgePct > 4) {
+        m = Math.round(m * Math.max(0.75, 1 - (edgePct - 4) / 100) * 100) / 100;
+      }
+      return m;
+    };
+
+    let mult = computeSlotMult(slot);
+    // Respect unified Profit Distribution Pool for large Real PKR wins so pool cannot go negative
+    if (currencyMode === 'real') {
+      const unifiedAvailable = Math.max(0, Number(settings.profitDistributionPool ?? 10000)) + amount;
+      if (amount * mult > unifiedAvailable) {
+        const affordableSlots = table
+          .map((_, idx) => idx)
+          .filter((idx) => amount * computeSlotMult(idx) <= unifiedAvailable);
+        if (affordableSlots.length > 0) {
+          const picked = affordableSlots[crypto.randomInt(0, affordableSlots.length)];
+          slot = picked;
+          mult = computeSlotMult(slot);
+          pathArr = Array.from({ length: 8 }, (_, i) => (i < slot ? 1 : 0));
+          for (let i = pathArr.length - 1; i > 0; i--) {
+            const j = crypto.randomInt(0, i + 1);
+            [pathArr[i], pathArr[j]] = [pathArr[j], pathArr[i]];
+          }
+        }
+      }
     }
 
     const payout = Math.round(amount * mult * 100) / 100;
@@ -2331,6 +2425,7 @@ app.post('/api/games/plinko/play', requireAuth, async (req, res) => {
     const wagerField = currencyMode === 'real' ? 'totalWageredReal' : 'totalWageredFun';
     const wonField = currencyMode === 'real' ? 'totalWonReal' : 'totalWonFun';
 
+    const plinkoRoundId = Math.floor(Date.now() / 1000) % 100000;
     const updatedUser = await db.updateUserById(userId, {
       $inc: {
         [wagerField]: amount,
@@ -2342,7 +2437,7 @@ app.post('/api/games/plinko/play', requireAuth, async (req, res) => {
         recentBets: {
           $each: [
             {
-              roundNumber: Math.floor(Date.now() / 1000) % 100000,
+              roundNumber: plinkoRoundId,
               game: 'cyber-plinko',
               currencyMode,
               betAmount: amount,
@@ -2350,6 +2445,7 @@ app.post('/api/games/plinko/play', requireAuth, async (req, res) => {
               payout,
               profit,
               crashedAt: mult,
+              risk,
               createdAt: new Date(),
             },
           ],
@@ -2358,18 +2454,25 @@ app.post('/api/games/plinko/play', requireAuth, async (req, res) => {
       },
     });
 
+    const plinkoFeedItem = {
+      id: `plinko-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+      roundNumber: plinkoRoundId,
+      player: req.user.displayName || maskPhone(req.user.phoneNumber),
+      amount,
+      multiplier: mult,
+      payout,
+      profit,
+      risk,
+      slot,
+      currencyMode,
+      createdAt: new Date().toISOString(),
+    };
+    gameState.plinkoHistory = [plinkoFeedItem, ...(gameState.plinkoHistory || [])].slice(0, 20);
+    io.emit('arcade:plinko_drop', plinkoFeedItem);
+
     if (currencyMode === 'real') {
-      const dailyBets = Math.round((Number(settings.dailyTotalBets || 0) + amount) * 100) / 100;
-      const dailyPayouts = Math.round((Number(settings.dailyTotalPayouts || 0) + payout) * 100) / 100;
-      const dailyNet = Math.round((dailyBets - dailyPayouts) * 100) / 100;
-      const poolDelta = Math.round((amount - payout) * 100) / 100;
-      const nextPool = Math.max(0, Math.round((Number(settings.profitDistributionPool || 0) + poolDelta) * 100) / 100);
-      await db.updateSettings({
-        dailyTotalBets: dailyBets,
-        dailyTotalPayouts: dailyPayouts,
-        dailyNetProfit: dailyNet,
-        profitDistributionPool: nextPool,
-      });
+      await recordUnifiedPoolDelta('plinko', amount, payout);
+      evaluateRtpRiskDaemon().catch(() => {});
     }
 
     if (updatedUser || afterWin) emitUserBalances(updatedUser || afterWin);
@@ -2380,7 +2483,9 @@ app.post('/api/games/plinko/play', requireAuth, async (req, res) => {
       multiplier: mult,
       payout,
       profit,
+      risk,
       currencyMode,
+      plinkoHistory: gameState.plinkoHistory,
       user: sanitizeUser(updatedUser || afterWin),
     });
   } catch (err) {
@@ -2443,13 +2548,8 @@ app.post('/api/games/mines/start', requireAuth, async (req, res) => {
     activeMinesGames.set(userId, session);
 
     if (currencyMode === 'real') {
-      const dailyBets = Math.round((Number(settings.dailyTotalBets || 0) + amount) * 100) / 100;
-      const dailyNet = Math.round((dailyBets - Number(settings.dailyTotalPayouts || 0)) * 100) / 100;
-      await db.updateSettings({
-        dailyTotalBets: dailyBets,
-        dailyNetProfit: dailyNet,
-        profitDistributionPool: Math.round((Number(settings.profitDistributionPool || 0) + amount) * 100) / 100,
-      });
+      await recordUnifiedPoolDelta('mines', amount, 0);
+      evaluateRtpRiskDaemon().catch(() => {});
     }
 
     emitUserBalances(updatedUser || afterDeduct);
@@ -2484,13 +2584,14 @@ app.post('/api/games/mines/reveal', requireAuth, async (req, res) => {
 
     if (session.mines.has(index)) {
       const mineList = Array.from(session.mines);
+      const minesRoundId = Math.floor(Date.now() / 1000) % 100000;
       activeMinesGames.delete(userId);
       const updatedUser = await db.updateUserById(userId, {
         $push: {
           recentBets: {
             $each: [
               {
-                roundNumber: Math.floor(Date.now() / 1000) % 100000,
+                roundNumber: minesRoundId,
                 game: 'golden-mines',
                 currencyMode: session.currencyMode,
                 betAmount: session.betAmount,
@@ -2498,6 +2599,8 @@ app.post('/api/games/mines/reveal', requireAuth, async (req, res) => {
                 payout: 0,
                 profit: -session.betAmount,
                 crashedAt: 0,
+                diamondsCount: session.revealed.length,
+                minesCount: session.minesCount,
                 createdAt: new Date(),
               },
             ],
@@ -2505,6 +2608,23 @@ app.post('/api/games/mines/reveal', requireAuth, async (req, res) => {
           },
         },
       });
+      const minesFeedItem = {
+        id: `mines-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+        roundNumber: minesRoundId,
+        player: req.user.displayName || maskPhone(req.user.phoneNumber),
+        amount: session.betAmount,
+        multiplier: 0,
+        payout: 0,
+        profit: -session.betAmount,
+        diamondsCount: session.revealed.length,
+        minesCount: session.minesCount,
+        boom: true,
+        currencyMode: session.currencyMode,
+        createdAt: new Date().toISOString(),
+      };
+      gameState.minesHistory = [minesFeedItem, ...(gameState.minesHistory || [])].slice(0, 20);
+      io.emit('arcade:mines_result', minesFeedItem);
+
       return res.json({
         boom: true,
         index,
@@ -2512,6 +2632,7 @@ app.post('/api/games/mines/reveal', requireAuth, async (req, res) => {
         revealed: session.revealed,
         multiplier: 0,
         payout: 0,
+        minesHistory: gameState.minesHistory,
         user: sanitizeUser(updatedUser),
       });
     }
@@ -2527,20 +2648,54 @@ app.post('/api/games/mines/reveal', requireAuth, async (req, res) => {
     if (session.revealed.length >= 25 - session.minesCount) {
       const mineList = Array.from(session.mines);
       const payout = Math.round(session.betAmount * mult * 100) / 100;
+      const profit = Math.round((payout - session.betAmount) * 100) / 100;
+      const minesRoundId = Math.floor(Date.now() / 1000) % 100000;
       activeMinesGames.delete(userId);
       const afterWin = await db.adjustBalanceAtomic(userId, session.currencyMode, payout);
       const wonField = session.currencyMode === 'real' ? 'totalWonReal' : 'totalWonFun';
       const updatedUser = await db.updateUserById(userId, {
         $inc: { [wonField]: payout, totalWon: payout },
+        $push: {
+          recentBets: {
+            $each: [
+              {
+                roundNumber: minesRoundId,
+                game: 'golden-mines',
+                currencyMode: session.currencyMode,
+                betAmount: session.betAmount,
+                cashoutMultiplier: mult,
+                payout,
+                profit,
+                crashedAt: mult,
+                diamondsCount: session.revealed.length,
+                minesCount: session.minesCount,
+                createdAt: new Date(),
+              },
+            ],
+            $slice: 30,
+          },
+        },
       });
+      const minesFeedItem = {
+        id: `mines-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+        roundNumber: minesRoundId,
+        player: req.user.displayName || maskPhone(req.user.phoneNumber),
+        amount: session.betAmount,
+        multiplier: mult,
+        payout,
+        profit,
+        diamondsCount: session.revealed.length,
+        minesCount: session.minesCount,
+        boom: false,
+        currencyMode: session.currencyMode,
+        createdAt: new Date().toISOString(),
+      };
+      gameState.minesHistory = [minesFeedItem, ...(gameState.minesHistory || [])].slice(0, 20);
+      io.emit('arcade:mines_result', minesFeedItem);
+
       if (session.currencyMode === 'real') {
-        const s = await db.getSettings();
-        const dailyPayouts = Math.round((Number(s.dailyTotalPayouts || 0) + payout) * 100) / 100;
-        await db.updateSettings({
-          dailyTotalPayouts: dailyPayouts,
-          dailyNetProfit: Math.round((Number(s.dailyTotalBets || 0) - dailyPayouts) * 100) / 100,
-          profitDistributionPool: Math.max(0, Math.round((Number(s.profitDistributionPool || 0) - payout) * 100) / 100),
-        });
+        await recordUnifiedPoolDelta('mines', 0, payout);
+        evaluateRtpRiskDaemon().catch(() => {});
       }
       emitUserBalances(updatedUser || afterWin);
       return res.json({
@@ -2551,6 +2706,7 @@ app.post('/api/games/mines/reveal', requireAuth, async (req, res) => {
         mines: mineList,
         multiplier: mult,
         payout,
+        minesHistory: gameState.minesHistory,
         user: sanitizeUser(updatedUser || afterWin),
       });
     }
@@ -2585,6 +2741,7 @@ app.post('/api/games/mines/cashout', requireAuth, async (req, res) => {
     const payout = Math.round(session.betAmount * mult * 100) / 100;
     const profit = Math.round((payout - session.betAmount) * 100) / 100;
     const mineList = Array.from(session.mines);
+    const minesRoundId = Math.floor(Date.now() / 1000) % 100000;
     activeMinesGames.delete(userId);
 
     const afterWin = await db.adjustBalanceAtomic(userId, session.currencyMode, payout);
@@ -2595,7 +2752,7 @@ app.post('/api/games/mines/cashout', requireAuth, async (req, res) => {
         recentBets: {
           $each: [
             {
-              roundNumber: Math.floor(Date.now() / 1000) % 100000,
+              roundNumber: minesRoundId,
               game: 'golden-mines',
               currencyMode: session.currencyMode,
               betAmount: session.betAmount,
@@ -2603,6 +2760,8 @@ app.post('/api/games/mines/cashout', requireAuth, async (req, res) => {
               payout,
               profit,
               crashedAt: mult,
+              diamondsCount: session.revealed.length,
+              minesCount: session.minesCount,
               createdAt: new Date(),
             },
           ],
@@ -2611,14 +2770,26 @@ app.post('/api/games/mines/cashout', requireAuth, async (req, res) => {
       },
     });
 
+    const minesFeedItem = {
+      id: `mines-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+      roundNumber: minesRoundId,
+      player: req.user.displayName || maskPhone(req.user.phoneNumber),
+      amount: session.betAmount,
+      multiplier: mult,
+      payout,
+      profit,
+      diamondsCount: session.revealed.length,
+      minesCount: session.minesCount,
+      boom: false,
+      currencyMode: session.currencyMode,
+      createdAt: new Date().toISOString(),
+    };
+    gameState.minesHistory = [minesFeedItem, ...(gameState.minesHistory || [])].slice(0, 20);
+    io.emit('arcade:mines_result', minesFeedItem);
+
     if (session.currencyMode === 'real') {
-      const s = await db.getSettings();
-      const dailyPayouts = Math.round((Number(s.dailyTotalPayouts || 0) + payout) * 100) / 100;
-      await db.updateSettings({
-        dailyTotalPayouts: dailyPayouts,
-        dailyNetProfit: Math.round((Number(s.dailyTotalBets || 0) - dailyPayouts) * 100) / 100,
-        profitDistributionPool: Math.max(0, Math.round((Number(s.profitDistributionPool || 0) - payout) * 100) / 100),
-      });
+      await recordUnifiedPoolDelta('mines', 0, payout);
+      evaluateRtpRiskDaemon().catch(() => {});
     }
 
     emitUserBalances(updatedUser || afterWin);
@@ -2627,8 +2798,11 @@ app.post('/api/games/mines/cashout', requireAuth, async (req, res) => {
       multiplier: mult,
       payout,
       profit,
+      diamondsCount: session.revealed.length,
+      minesCount: session.minesCount,
       mines: mineList,
       currencyMode: session.currencyMode,
+      minesHistory: gameState.minesHistory,
       user: sanitizeUser(updatedUser || afterWin),
     });
   } catch (err) {
@@ -2817,6 +2991,7 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
         audioConfig: settings.audioConfig || defaultAudioConfig(),
         profitControl: settings.profitControl || defaultProfitControl(),
         profitDistributionPool: Math.round(Number(settings.profitDistributionPool ?? 10000) * 100) / 100,
+        poolStatsByGame: hydratePoolStatsByGame(settings.poolStatsByGame),
         rtpRiskConfig: settings.rtpRiskConfig || defaultRtpRiskConfig(),
         gamesConfig: settings.gamesConfig || defaultGamesConfig(),
         telegramBot: {
@@ -2836,7 +3011,7 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
         dailyTotalBets: Math.round((settings.dailyTotalBets || 0) * 100) / 100,
         dailyTotalPayouts: Math.round((settings.dailyTotalPayouts || 0) * 100) / 100,
         dailyNetProfit: Math.round((settings.dailyNetProfit || 0) * 100) / 100,
-        carryForwardPool: Math.round((settings.carryForwardPool || 0) * 100) / 100,
+        carryForwardPool: Math.round(Number(settings.profitDistributionPool ?? settings.carryForwardPool ?? 10000) * 100) / 100,
         protectedFloor,
         roundCounter: settings.roundCounter,
         recentRounds: (settings.recentRounds || []).slice(0, 20),
@@ -2991,10 +3166,7 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
         : 100,
     };
 
-    const carryForwardPool = Math.max(
-      0,
-      Math.round((Number(current.dailyNetProfit || 0) - dailyProfitTarget) * 100) / 100
-    );
+    const unifiedPool = Math.max(0, Number(current.profitDistributionPool ?? current.carryForwardPool ?? 10000));
 
     const updated = await db.updateSettings({
       whatsappSupportEnabled,
@@ -3009,7 +3181,8 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
       dailyProfitTarget,
       varianceTolerancePct,
       welcomeBonusCredits,
-      carryForwardPool,
+      profitDistributionPool: unifiedPool,
+      carryForwardPool: unifiedPool,
     });
 
     io.emit('settings:updated', buildPublicSettingsPayload(updated));
@@ -3041,16 +3214,30 @@ app.put('/api/admin/financial-limits', requireAdmin, async (req, res) => {
         : current.maskMasterAccounts !== false;
     const profitDistributionPool =
       req.body.profitDistributionPool !== undefined
-        ? Math.max(0, Number(req.body.profitDistributionPool) || 0)
-        : Number(current.profitDistributionPool ?? 10000);
+        ? Math.max(0, Math.round((Number(req.body.profitDistributionPool) || 0) * 100) / 100)
+        : Math.max(0, Number(current.profitDistributionPool ?? 10000));
 
     const updated = await db.updateSettings({
       financialLimits,
       maskMasterAccounts,
       profitDistributionPool,
+      carryForwardPool: profitDistributionPool,
     });
     io.emit('settings:updated', buildPublicSettingsPayload(updated));
-    res.json({ financialLimits: updated.financialLimits, maskMasterAccounts: updated.maskMasterAccounts, profitDistributionPool: updated.profitDistributionPool });
+    io.to('admins').emit('admin:pool_updated', {
+      profitDistributionPool,
+      carryForwardPool: profitDistributionPool,
+      dailyTotalBets: Number(updated.dailyTotalBets || 0),
+      dailyTotalPayouts: Number(updated.dailyTotalPayouts || 0),
+      dailyNetProfit: Number(updated.dailyNetProfit || 0),
+      poolStatsByGame: hydratePoolStatsByGame(updated.poolStatsByGame),
+    });
+    res.json({
+      financialLimits: updated.financialLimits,
+      maskMasterAccounts: updated.maskMasterAccounts,
+      profitDistributionPool: updated.profitDistributionPool,
+      carryForwardPool: updated.profitDistributionPool,
+    });
   } catch {
     res.status(500).json({ error: 'Failed to save financial limits.' });
   }
@@ -3434,12 +3621,15 @@ app.post('/api/admin/profit-control/crash-now', requireAdmin, async (req, res) =
 
 app.post('/api/admin/reset-daily-stats', requireAdmin, async (req, res) => {
   try {
+    const current = await db.getSettings();
+    const unifiedPool = Math.max(0, Number(current.profitDistributionPool ?? 10000));
     const updated = await db.updateSettings({
       dailyDateKey: getTodayKey(),
       dailyTotalBets: 0,
       dailyTotalPayouts: 0,
       dailyNetProfit: 0,
-      carryForwardPool: 0,
+      carryForwardPool: unifiedPool,
+      poolStatsByGame: defaultPoolStatsByGame(),
     });
     res.json({ settings: updated });
   } catch {
@@ -3807,6 +3997,8 @@ const gameState = {
   totalRealRoundPayouts: 0,
   bets: [],
   history: [],
+  plinkoHistory: [],
+  minesHistory: [],
 };
 
 let tickTimer = null;
@@ -3858,6 +4050,8 @@ function buildAuthoritativeState(includeDetails = false) {
   if (includeDetails) {
     payload.bets = publicBetsList();
     payload.history = publicHistoryList();
+    payload.plinkoHistory = (gameState.plinkoHistory || []).slice(0, 15);
+    payload.minesHistory = (gameState.minesHistory || []).slice(0, 15);
     payload.totalRoundBet = gameState.totalRoundBet;
   }
 
@@ -4011,19 +4205,14 @@ async function startFlyingPhase() {
   gameState.totalRoundPayouts = 0;
   gameState.totalRealRoundPayouts = 0;
 
-  // Record Real Money PKR bets in Daily House Profit Pool
+  // Credit Real Money PKR bets directly into the centralized Unified Profit Pool
   const poolBetDelta = gameState.totalRealRoundBet;
-  const updatedDailyBets =
-    Math.round((Number(settings.dailyTotalBets || 0) + poolBetDelta) * 100) / 100;
-  const projectedDailyNet =
-    Math.round((updatedDailyBets - Number(settings.dailyTotalPayouts || 0)) * 100) / 100;
-
+  let effectiveSettings = settings;
   if (poolBetDelta > 0) {
-    await db.updateSettings({
-      dailyTotalBets: updatedDailyBets,
-      dailyNetProfit: projectedDailyNet,
-    });
+    effectiveSettings = await recordUnifiedPoolDelta('crash', poolBetDelta, 0);
   }
+  const updatedDailyBets = Number(effectiveSettings.dailyTotalBets || 0);
+  const projectedDailyNet = Number(effectiveSettings.dailyNetProfit || 0);
 
   let crashPoint = computeRawCrashPoint(
     gameState.serverSeed,
@@ -4031,8 +4220,8 @@ async function startFlyingPhase() {
     gameState.nonce
   );
 
-  const profitCtrl = settings.profitControl || defaultProfitControl();
-  const rtpRisk = settings.rtpRiskConfig || defaultRtpRiskConfig();
+  const profitCtrl = effectiveSettings.profitControl || defaultProfitControl();
+  const rtpRisk = effectiveSettings.rtpRiskConfig || defaultRtpRiskConfig();
   const maxCrashCap = Math.min(100, Math.max(1.05, Number(profitCtrl.maxCrashCap ?? 100)));
   const effectiveEdgePct = Math.min(
     25,
@@ -4064,13 +4253,11 @@ async function startFlyingPhase() {
     crashPoint = Math.min(maxCrashCap, crashPoint);
   }
 
-  // Dynamic Pool-Aware Variance Engine (Fixes consecutive 1.49x / 3.49x single-player Real PKR bug)
-  const target = Number(settings.dailyProfitTarget || 0);
-  const tolerancePct = Math.min(10, Math.max(5, Number(settings.varianceTolerancePct || 8)));
+  // Dynamic Pool-Aware Variance Engine backed by the single Unified Profit Pool (Crash + Plinko + Mines)
+  const target = Number(effectiveSettings.dailyProfitTarget || 0);
+  const tolerancePct = Math.min(10, Math.max(5, Number(effectiveSettings.varianceTolerancePct || 8)));
   const protectedFloor = Math.max(0, target * (1 - tolerancePct / 100));
-  const distributionPool = Number(settings.profitDistributionPool ?? 10000);
-  const carryPool = Number(settings.carryForwardPool || 0);
-  const availablePool = Math.max(0, distributionPool + carryPool);
+  const availablePool = Math.max(0, Number(effectiveSettings.profitDistributionPool ?? 10000));
   const surplusPool = Math.max(0, projectedDailyNet - target);
 
   let maxAllowedRoundPayout = Infinity;
@@ -4078,8 +4265,6 @@ async function startFlyingPhase() {
 
   if (gameState.totalRealRoundBet > 0 && gameState.nextRoundForcedCrash === null) {
     if (availablePool >= gameState.totalRealRoundBet * 2) {
-      // Pool has healthy funds: allow genuine random cryptographic variance (1.8x - 15x+ naturally)
-      // without deterministic 1.5x or 3.5x hard clamping!
       const poolCoverageLimit = Math.max(
         gameState.totalRealRoundBet * 15,
         availablePool + gameState.totalRealRoundBet
@@ -4093,7 +4278,6 @@ async function startFlyingPhase() {
       );
       protectionActive = true;
     } else {
-      // Pool depleted: randomized variance floor so consecutive rounds still differ naturally
       const randomMultFloor = 1.18 + (crypto.randomBytes(2).readUInt16BE(0) / 65535) * 3.1;
       maxAllowedRoundPayout = Math.max(
         availablePool + gameState.totalRealRoundBet * 0.9,
@@ -4289,29 +4473,12 @@ async function triggerCrash(finalMultiplier) {
     });
   }
 
-  const settings = await db.getSettings();
-  const updatedPayouts =
-    Math.round((Number(settings.dailyTotalPayouts || 0) + gameState.totalRealRoundPayouts) * 100) /
-    100;
-  const updatedNet =
-    Math.round((Number(settings.dailyTotalBets || 0) - updatedPayouts) * 100) / 100;
-  const target = Number(settings.dailyProfitTarget || 0);
-  const carryForwardPool = Math.max(0, Math.round((updatedNet - target) * 100) / 100);
-
   const roundNetDelta =
     Math.round((gameState.totalRealRoundBet - gameState.totalRealRoundPayouts) * 100) / 100;
-  const nextDistPool = Math.max(
-    0,
-    Math.round((Number(settings.profitDistributionPool ?? 10000) + roundNetDelta) * 100) / 100
-  );
 
-  if (gameState.totalRealRoundBet > 0 || gameState.totalRealRoundPayouts > 0) {
-    await db.updateSettings({
-      dailyTotalPayouts: updatedPayouts,
-      dailyNetProfit: updatedNet,
-      carryForwardPool,
-      profitDistributionPool: nextDistPool,
-    });
+  // Bets were already credited to the Unified Pool at takeoff; debit Crash payouts here
+  if (gameState.totalRealRoundPayouts > 0) {
+    await recordUnifiedPoolDelta('crash', 0, gameState.totalRealRoundPayouts);
   }
 
   const roundRecord = {

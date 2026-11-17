@@ -10,6 +10,9 @@ const betRecordSchema = new mongoose.Schema(
     payout: { type: Number, default: 0 },
     profit: { type: Number, default: 0 },
     crashedAt: { type: Number, required: true },
+    risk: { type: String, default: '' },
+    diamondsCount: { type: Number, default: 0 },
+    minesCount: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
   },
   { _id: false }

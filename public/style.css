@@ -166,6 +166,135 @@ a {
   flex-wrap: nowrap;
 }
 
+.header-game-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+/* ============================================================================
+   Auth-First Entry Gate (Unauthenticated Landing View)
+   ============================================================================ */
+.auth-entry-gate {
+  width: 100%;
+  max-width: 960px;
+  margin: 28px auto 40px;
+  padding: 0 16px;
+}
+
+.auth-gate-card {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(245, 158, 11, 0.14), transparent 55%),
+    radial-gradient(circle at 12% 85%, rgba(16, 185, 129, 0.12), transparent 55%),
+    linear-gradient(160deg, rgba(13, 20, 38, 0.96), rgba(6, 9, 19, 0.98));
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  padding: 36px 28px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.52);
+}
+
+.auth-gate-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.38);
+  color: var(--accent-gold-bright);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.auth-gate-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 3.2vw, 2.25rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1.15;
+}
+
+.auth-gate-sub {
+  margin: 0;
+  max-width: 600px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.auth-gate-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.auth-gate-btn {
+  min-width: 190px;
+  min-height: 46px;
+  padding: 12px 22px;
+  font-size: 0.95rem;
+}
+
+.auth-gate-features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  margin-top: 14px;
+  text-align: left;
+}
+
+.auth-gate-feat {
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(6, 9, 19, 0.65);
+  border: 1px solid var(--border-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auth-gate-feat strong {
+  font-size: 0.86rem;
+  color: var(--accent-gold-bright);
+}
+
+.auth-gate-feat span {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+@media (max-width: 720px) {
+  .auth-entry-gate {
+    margin: 16px auto 28px;
+    padding: 0 10px;
+  }
+  .auth-gate-card {
+    padding: 24px 16px;
+  }
+  .auth-gate-actions {
+    width: 100%;
+  }
+  .auth-gate-btn {
+    width: 100%;
+  }
+  .auth-gate-features {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Currency Mode Switcher */
 .mode-switcher {
   display: inline-flex;
@@ -1619,6 +1748,11 @@ select:focus-visible {
     justify-content: flex-end;
     max-width: 100%;
   }
+  .header-game-controls {
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
   .wallet-label,
   .sound-label,
   .install-label {
@@ -2546,27 +2680,36 @@ select:focus-visible {
   gap: 14px;
 }
 
-.arcade-grid-split {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-
-@media (max-width: 760px) {
-  .arcade-grid-split {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.arcade-side-controls {
+.arcade-vertical-layout {
   display: flex;
   flex-direction: column;
+  gap: 14px;
+}
+
+.arcade-bottom-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.15fr) minmax(170px, 0.9fr);
   gap: 12px;
+  align-items: end;
   background: rgba(6, 9, 19, 0.65);
   border: 1px solid var(--border-hairline);
   border-radius: 12px;
-  padding: 12px;
+  padding: 14px;
+}
+
+.arcade-cta-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .arcade-bottom-controls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
 }
 
 /* Cyber Plinko Canvas & Buckets */
@@ -2687,18 +2830,48 @@ select:focus-visible {
 }
 
 /* ============================================================================
-   2-Step QR Deposit, Saved Payout Accounts & 18+ Terms Agreement
+   Privacy-Masked Dynamic QR Deposit, Saved Payout Accounts & 18+ Agreement
    ============================================================================ */
-.qr-preview-card {
+.deposit-gateway-badges {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.gateway-badge-card {
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: rgba(6, 9, 19, 0.72);
+  border: 1px solid var(--border-hairline);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.dep-amt-chips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.qr-live-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
   padding: 14px;
   border-radius: 14px;
-  background: rgba(6, 9, 19, 0.72);
+  background: rgba(6, 9, 19, 0.76);
   border: 1px solid rgba(52, 211, 153, 0.35);
   text-align: center;
+}
+
+.qr-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .qr-img-box {
@@ -2706,12 +2879,31 @@ select:focus-visible {
   padding: 10px;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  min-width: 196px;
+  min-height: 196px;
+  display: grid;
+  place-items: center;
 }
 
 .qr-img-box img {
   display: block;
-  width: 190px;
-  height: 190px;
+  width: 186px;
+  height: 186px;
+}
+
+.qr-placeholder-box {
+  width: 186px;
+  height: 186px;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.4;
 }
 
 .masked-pill {

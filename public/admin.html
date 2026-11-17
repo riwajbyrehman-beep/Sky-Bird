@@ -227,8 +227,9 @@
             <span class="kpi-value tabular-nums" style="color: #fbbf24;" id="kpiPendingTx">0 Dep / 0 Wd</span>
           </div>
           <div class="kpi-card">
-            <span class="kpi-label">Carry-Forward Pool (PKR)</span>
+            <span class="kpi-label">Unified Profit Pool (All 3 Games)</span>
             <span class="kpi-value tabular-nums" style="color: var(--accent-emerald);" id="kpiSurplus">0.00 PKR</span>
+            <span class="tabular-nums" style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px;" id="kpiPoolBreakdown">Crash · Plinko · Mines</span>
           </div>
           <div class="kpi-card">
             <span class="kpi-label">Today's Real Bets / Payouts</span>
@@ -273,16 +274,38 @@
           </div>
         </section>
 
-        <!-- Financial Limits, Fee Controls, Micro-Auto-Approval & Profit Pool -->
+        <!-- Financial Limits, Fee Controls, Micro-Auto-Approval & Unified Profit Pool -->
         <section class="panel-card admin-section" id="secFinancialLimits">
           <div class="modal-header" style="flex-wrap: wrap;">
             <div>
-              <h2 class="panel-title">Financial Limits, Fees &amp; Next Pool Balance</h2>
+              <h2 class="panel-title">Financial Limits, Fees &amp; Unified Profit Pool (All 3 Games)</h2>
               <span style="font-size: 0.78rem; color: var(--text-muted);">
-                Configure min deposit/withdrawal limits, withdrawal fee %, instant micro-deposit auto-approve threshold, account masking &amp; pool balance.
+                Centralized Profit Pool shared dynamically across SkyWing Crash, Cyber Plinko, and Golden Mines, plus deposit/withdrawal limits &amp; fees.
               </span>
             </div>
             <button type="button" class="btn btn-emerald" id="saveFinancialLimitsBtn">Save Financial Limits</button>
+          </div>
+
+          <div class="rtp-telemetry-grid" style="margin-bottom: 12px;" id="unifiedPoolBreakdownGrid">
+            <div class="pay-config-box">
+              <span class="kpi-label">Unified Pool Balance</span>
+              <strong class="tabular-nums" style="font-size: 1.05rem; color: #34d399;" id="poolUnifiedVal">0.00 PKR</strong>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">SkyWing Crash (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #fbbf24;" id="poolCrashNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolCrashVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Cyber Plinko (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #7dd3fc;" id="poolPlinkoNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolPlinkoVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Golden Mines (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #c084fc;" id="poolMinesNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolMinesVol">Bets 0 / Pay 0</span>
+            </div>
           </div>
 
           <div class="settings-grid">
@@ -304,9 +327,9 @@
               <span class="form-hint">Set to 0 to disable instant auto-approval.</span>
             </div>
             <div class="form-group">
-              <label class="form-label" for="limProfitDistPool">Next Pool / Profit Distribution Pool (PKR)</label>
+              <label class="form-label" for="limProfitDistPool">Unified Profit Distribution Pool (PKR)</label>
               <input type="number" class="form-input" id="limProfitDistPool" min="0" step="100" value="10000" />
-              <span class="form-hint">Fuels single-player dynamic Real PKR crash variance.</span>
+              <span class="form-hint">Single centralized PKR reserve fueling Crash, Plinko &amp; Mines pool-aware RNG.</span>
             </div>
             <div class="pay-config-box">
               <div class="modal-header">
@@ -1223,12 +1246,67 @@
             if (recentRounds) drawRtpChart(recentRounds);
           });
 
+          adminSocket.on('admin:pool_updated', (poolPayload) => {
+            renderUnifiedPoolStats(poolPayload);
+          });
+
           adminSocket.on('support:ticket_updated', (ticket) => {
             const idx = adminTickets.findIndex((t) => String(t._id || t.id) === String(ticket._id || ticket.id));
             if (idx >= 0) adminTickets[idx] = ticket;
             else adminTickets.unshift(ticket);
             renderAdminSupportTickets();
           });
+        }
+
+        function renderUnifiedPoolStats(payload) {
+          if (!payload) return;
+          const poolBal = Number(payload.profitDistributionPool ?? payload.carryForwardPool ?? 0);
+          const byGame = payload.poolStatsByGame || {};
+          const crash = byGame.crash || { bets: 0, payouts: 0, netDelta: 0 };
+          const plinko = byGame.plinko || { bets: 0, payouts: 0, netDelta: 0 };
+          const mines = byGame.mines || { bets: 0, payouts: 0, netDelta: 0 };
+
+          const kpiSurplusEl = document.getElementById('kpiSurplus');
+          if (kpiSurplusEl) kpiSurplusEl.textContent = fmtPKR(poolBal);
+
+          const kpiSplitEl = document.getElementById('kpiPoolBreakdown');
+          if (kpiSplitEl) {
+            kpiSplitEl.textContent = `C:${Number(crash.netDelta || 0) >= 0 ? '+' : ''}${Number(crash.netDelta || 0).toFixed(0)} · P:${Number(plinko.netDelta || 0) >= 0 ? '+' : ''}${Number(plinko.netDelta || 0).toFixed(0)} · M:${Number(mines.netDelta || 0) >= 0 ? '+' : ''}${Number(mines.netDelta || 0).toFixed(0)}`;
+          }
+
+          const poolUnifiedEl = document.getElementById('poolUnifiedVal');
+          if (poolUnifiedEl) poolUnifiedEl.textContent = fmtPKR(poolBal);
+
+          const fmtSigned = (n) => `${Number(n || 0) >= 0 ? '+' : ''}${fmtPKR(n)}`;
+          const setGameCell = (netId, volId, stat) => {
+            const netEl = document.getElementById(netId);
+            const volEl = document.getElementById(volId);
+            if (netEl) {
+              netEl.textContent = fmtSigned(stat.netDelta || 0);
+              netEl.style.color = Number(stat.netDelta || 0) >= 0 ? '#34d399' : '#f87171';
+            }
+            if (volEl) {
+              volEl.textContent = `Bets ${Number(stat.bets || 0).toFixed(0)} / Pay ${Number(stat.payouts || 0).toFixed(0)}`;
+            }
+          };
+          setGameCell('poolCrashNet', 'poolCrashVol', crash);
+          setGameCell('poolPlinkoNet', 'poolPlinkoVol', plinko);
+          setGameCell('poolMinesNet', 'poolMinesVol', mines);
+
+          if (payload.dailyNetProfit !== undefined) {
+            const kpiProfitEl = document.getElementById('kpiNetProfit');
+            if (kpiProfitEl) kpiProfitEl.textContent = fmtPKR(payload.dailyNetProfit);
+          }
+          if (payload.dailyTotalBets !== undefined && payload.dailyTotalPayouts !== undefined) {
+            const kpiBetsEl = document.getElementById('kpiBetsPayouts');
+            if (kpiBetsEl) {
+              kpiBetsEl.textContent = `${Number(payload.dailyTotalBets).toFixed(0)} / ${Number(payload.dailyTotalPayouts).toFixed(0)} PKR`;
+            }
+          }
+          const limInput = document.getElementById('limProfitDistPool');
+          if (limInput && document.activeElement !== limInput) {
+            limInput.value = Number(poolBal.toFixed(2));
+          }
         }
 
         let adminTickets = [];
@@ -1528,9 +1606,17 @@
             document.getElementById('kpiNetProfit').textContent = fmtPKR(s.dailyNetProfit);
             document.getElementById('kpiTarget').textContent = fmtPKR(s.dailyProfitTarget);
             document.getElementById('kpiPendingTx').textContent = `${p.deposits} Dep / ${p.withdrawals} Wd`;
-            document.getElementById('kpiSurplus').textContent = fmtPKR(s.carryForwardPool);
+            document.getElementById('kpiSurplus').textContent = fmtPKR(s.profitDistributionPool ?? s.carryForwardPool ?? 0);
             document.getElementById('kpiBetsPayouts').textContent = `${Number(s.dailyTotalBets).toFixed(0)} / ${Number(s.dailyTotalPayouts).toFixed(0)} PKR`;
             document.getElementById('kpiLive').textContent = `#${live.roundNumber} (${live.phase}) · ${live.onlineSockets} Real (${live.displayedOnline || live.onlineSockets} Crowd) · ${live.activeBetCount || 0} Real Bets`;
+            renderUnifiedPoolStats({
+              profitDistributionPool: s.profitDistributionPool ?? s.carryForwardPool ?? 0,
+              carryForwardPool: s.carryForwardPool ?? s.profitDistributionPool ?? 0,
+              poolStatsByGame: s.poolStatsByGame || {},
+              dailyTotalBets: s.dailyTotalBets,
+              dailyTotalPayouts: s.dailyTotalPayouts,
+              dailyNetProfit: s.dailyNetProfit,
+            });
 
             const totalPending = Number(p.deposits || 0) + Number(p.withdrawals || 0);
             const navBadge = document.getElementById('navPendingBadge');
@@ -1551,13 +1637,13 @@
               mongoBanner.classList.add('hidden');
             }
 
-            // Financial Limits & Pool
+            // Financial Limits & Unified Pool
             const fl = s.financialLimits || {};
             document.getElementById('limMinDeposit').value = Number(fl.minDeposit ?? 50);
             document.getElementById('limMinWithdrawal').value = Number(fl.minWithdrawal ?? 100);
             document.getElementById('limWithdrawalFee').value = Number(fl.withdrawalFeePct ?? 2);
             document.getElementById('limMicroAutoApprove').value = Number(fl.microDepositAutoApproveLimit ?? 1000);
-            document.getElementById('limProfitDistPool').value = Number(s.profitDistributionPool ?? 10000);
+            document.getElementById('limProfitDistPool').value = Number(s.profitDistributionPool ?? s.carryForwardPool ?? 10000);
             const maskOn = s.maskMasterAccounts !== false;
             document.getElementById('limMaskAccounts').checked = maskOn;
             document.getElementById('limMaskStateText').textContent = maskOn ? 'Masked' : 'Unmasked';
