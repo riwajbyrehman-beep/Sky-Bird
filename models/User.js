@@ -3,12 +3,35 @@ import mongoose from 'mongoose';
 const betRecordSchema = new mongoose.Schema(
   {
     roundNumber: { type: Number, required: true },
+    game: { type: String, default: 'skywing-crash' },
     currencyMode: { type: String, enum: ['fun', 'real'], default: 'fun' },
     betAmount: { type: Number, required: true },
     cashoutMultiplier: { type: Number, default: null },
     payout: { type: Number, default: 0 },
     profit: { type: Number, default: 0 },
     crashedAt: { type: Number, required: true },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+const payoutAccountSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    method: {
+      type: String,
+      enum: ['EasyPaisa', 'JazzCash', 'Bank Account'],
+      required: true,
+    },
+    bankName: { type: String, default: '', trim: true },
+    accountTitle: { type: String, required: true, trim: true },
+    accountNumber: { type: String, required: true, trim: true },
+    cnic: {
+      type: String,
+      required: true,
+      trim: true,
+      match: [/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/, 'CNIC must match XXXXX-XXXXXXX-X'],
+    },
     createdAt: { type: Date, default: Date.now },
   },
   { _id: false }
@@ -31,6 +54,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       maxlength: 24,
+      default: '',
+    },
+    cnic: {
+      type: String,
+      trim: true,
       default: '',
     },
     passwordHash: {
@@ -76,6 +104,68 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: 0,
+    },
+    referralCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+      trim: true,
+    },
+    referredBy: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    firstDepositRewarded: {
+      type: Boolean,
+      default: false,
+    },
+    referralEarnings: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    lastDailyClaimAt: {
+      type: Date,
+      default: null,
+    },
+    lastWeeklyClaimAt: {
+      type: Date,
+      default: null,
+    },
+    savedPayoutAccounts: {
+      type: [payoutAccountSchema],
+      default: [],
+    },
+    registrationIp: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    lastLoginIp: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    deviceFingerprint: {
+      type: String,
+      default: '',
+      trim: true,
+      index: true,
+    },
+    bonusRestricted: {
+      type: Boolean,
+      default: false,
+    },
+    restrictionReason: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    acceptedTermsAt: {
+      type: Date,
+      default: Date.now,
     },
     // Legacy compatibility fields
     funCredits: { type: Number, default: 1000, min: 0 },

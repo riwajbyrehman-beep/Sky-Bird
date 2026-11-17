@@ -10,10 +10,12 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import cors from 'cors';
+import QRCode from 'qrcode';
 
 import User from './models/User.js';
 import Settings from './models/Settings.js';
 import Transaction from './models/Transaction.js';
+import SupportTicket from './models/SupportTicket.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +28,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'skywing_crash_dev_secret_change_me
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || '66442211';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '11224466';
+const DEFAULT_MASTER_PASSWORD = process.env.DEFAULT_MASTER_PASSWORD || 'Rehman@1256';
+const CNIC_REGEX = /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
 
 const MULTIPLIER_GROWTH_RATE = 0.068;
 const BETTING_DURATION_MS = 5000;
@@ -96,6 +100,92 @@ function defaultProfitControl() {
   };
 }
 
+function defaultFinancialLimits() {
+  return {
+    minDeposit: 50,
+    minWithdrawal: 100,
+    withdrawalFeePct: 0,
+    microDepositAutoApproveLimit: 1000,
+  };
+}
+
+function defaultWithdrawalHours() {
+  return {
+    enabled: false,
+    openTime: '09:00',
+    closeTime: '17:00',
+    noticeText: 'Withdrawals are only open from 9:00 AM to 5:00 PM.',
+  };
+}
+
+function defaultPlatformStatus() {
+  return {
+    mode: 'active',
+    message:
+      'SkyWing Crash is currently undergoing scheduled maintenance. Your wallet & bets are safe. Back shortly!',
+  };
+}
+
+function defaultRtpRiskConfig() {
+  return {
+    autoAdjustEnabled: true,
+    targetRtpPct: 96,
+    dynamicEdgeOffset: 0,
+    currentRiskIndex: 15,
+    lastEvaluatedAt: null,
+  };
+}
+
+function defaultGamesConfig() {
+  return [
+    {
+      id: 'skywing-crash',
+      name: 'SkyWing Crash',
+      tagline: 'Live Multiplayer Flying Bird',
+      enabled: true,
+      houseEdgePct: 4,
+      minBet: 1,
+      maxBet: 100000,
+    },
+    {
+      id: 'cyber-plinko',
+      name: 'Cyber Plinko',
+      tagline: '8-Row Neon Peg Multiplier Drop',
+      enabled: true,
+      houseEdgePct: 4,
+      minBet: 10,
+      maxBet: 50000,
+    },
+    {
+      id: 'golden-mines',
+      name: 'Golden Mines',
+      tagline: '5x5 Cyber Grid Treasure Hunt',
+      enabled: true,
+      houseEdgePct: 4,
+      minBet: 10,
+      maxBet: 50000,
+    },
+  ];
+}
+
+function defaultSecurityConfig() {
+  return {
+    masterPasswordHash: '',
+    totpEnabled: false,
+    totpSecret: '',
+    securityLogs: [],
+  };
+}
+
+function defaultTelegramBotConfig() {
+  return {
+    enabled: false,
+    botToken: '',
+    adminChatId: '',
+    webhookSecret: '',
+  };
+}
+
 function defaultSettingsObj() {
   return {
     key: 'global',
@@ -105,9 +195,18 @@ function defaultSettingsObj() {
     whatsappChannelUrl: 'https://whatsapp.com/channel/0029VaSkyWingOfficial',
     telegramChannelEnabled: true,
     telegramChannelUrl: 'https://t.me/SkyWingOfficial',
+    maskMasterAccounts: true,
     paymentAccounts: defaultPaymentAccounts(),
+    financialLimits: defaultFinancialLimits(),
+    withdrawalHours: defaultWithdrawalHours(),
+    platformStatus: defaultPlatformStatus(),
     audioConfig: defaultAudioConfig(),
     profitControl: defaultProfitControl(),
+    profitDistributionPool: 10000,
+    rtpRiskConfig: defaultRtpRiskConfig(),
+    gamesConfig: defaultGamesConfig(),
+    security: defaultSecurityConfig(),
+    telegramBot: defaultTelegramBotConfig(),
     dailyProfitTarget: 30000,
     varianceTolerancePct: 8,
     welcomeBonusCredits: 1000,
@@ -121,9 +220,57 @@ function defaultSettingsObj() {
   };
 }
 
+function hydrateSettingsObj(raw = {}) {
+  return {
+    ...defaultSettingsObj(),
+    ...raw,
+    paymentAccounts: {
+      ...defaultPaymentAccounts(),
+      ...(raw.paymentAccounts || {}),
+    },
+    financialLimits: {
+      ...defaultFinancialLimits(),
+      ...(raw.financialLimits || {}),
+    },
+    withdrawalHours: {
+      ...defaultWithdrawalHours(),
+      ...(raw.withdrawalHours || {}),
+    },
+    platformStatus: {
+      ...defaultPlatformStatus(),
+      ...(raw.platformStatus || {}),
+    },
+    audioConfig: {
+      ...defaultAudioConfig(),
+      ...(raw.audioConfig || {}),
+    },
+    profitControl: {
+      ...defaultProfitControl(),
+      ...(raw.profitControl || {}),
+    },
+    rtpRiskConfig: {
+      ...defaultRtpRiskConfig(),
+      ...(raw.rtpRiskConfig || {}),
+    },
+    gamesConfig:
+      Array.isArray(raw.gamesConfig) && raw.gamesConfig.length > 0
+        ? raw.gamesConfig
+        : defaultGamesConfig(),
+    security: {
+      ...defaultSecurityConfig(),
+      ...(raw.security || {}),
+    },
+    telegramBot: {
+      ...defaultTelegramBotConfig(),
+      ...(raw.telegramBot || {}),
+    },
+  };
+}
+
 let localStore = {
   users: [],
   transactions: [],
+  supportTickets: [],
   settings: defaultSettingsObj(),
 };
 
@@ -136,22 +283,8 @@ function loadLocalStore() {
       localStore = {
         users: Array.isArray(parsed.users) ? parsed.users : [],
         transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
-        settings: {
-          ...defaultSettingsObj(),
-          ...(parsed.settings || {}),
-          paymentAccounts: {
-            ...defaultPaymentAccounts(),
-            ...(parsed.settings?.paymentAccounts || {}),
-          },
-          audioConfig: {
-            ...defaultAudioConfig(),
-            ...(parsed.settings?.audioConfig || {}),
-          },
-          profitControl: {
-            ...defaultProfitControl(),
-            ...(parsed.settings?.profitControl || {}),
-          },
-        },
+        supportTickets: Array.isArray(parsed.supportTickets) ? parsed.supportTickets : [],
+        settings: hydrateSettingsObj(parsed.settings || {}),
       };
     } else {
       saveLocalStore();
@@ -193,6 +326,7 @@ async function attemptMongoConnect(isRetry = false) {
     await User.init();
     await Settings.init();
     await Transaction.init();
+    await SupportTicket.init();
     console.log('[MongoDB] Connected to MongoDB Atlas');
   } catch (err) {
     useMongo = false;
@@ -265,19 +399,7 @@ const db = {
         doc.carryForwardPool = 0;
         await doc.save();
       }
-      const obj = doc.toObject();
-      obj.paymentAccounts = {
-        ...defaultPaymentAccounts(),
-        ...(obj.paymentAccounts || {}),
-      };
-      obj.audioConfig = {
-        ...defaultAudioConfig(),
-        ...(obj.audioConfig || {}),
-      };
-      obj.profitControl = {
-        ...defaultProfitControl(),
-        ...(obj.profitControl || {}),
-      };
+      const obj = hydrateSettingsObj(doc.toObject());
       return obj;
     }
 
@@ -290,21 +412,7 @@ const db = {
       localStore.settings.carryForwardPool = 0;
       saveLocalStore();
     }
-    return {
-      ...localStore.settings,
-      paymentAccounts: {
-        ...defaultPaymentAccounts(),
-        ...(localStore.settings.paymentAccounts || {}),
-      },
-      audioConfig: {
-        ...defaultAudioConfig(),
-        ...(localStore.settings.audioConfig || {}),
-      },
-      profitControl: {
-        ...defaultProfitControl(),
-        ...(localStore.settings.profitControl || {}),
-      },
-    };
+    return hydrateSettingsObj(localStore.settings);
   },
 
   async updateSettings(patch) {
@@ -353,6 +461,24 @@ const db = {
     return found ? { ...found } : null;
   },
 
+  async findUserByCnic(cnic) {
+    const clean = String(cnic || '').trim();
+    if (!clean) return null;
+    if (isMongoReady()) {
+      const doc = await User.findOne({
+        $or: [{ cnic: clean }, { 'savedPayoutAccounts.cnic': clean }],
+      });
+      return doc ? doc.toObject() : null;
+    }
+    const found = localStore.users.find(
+      (u) =>
+        String(u.cnic || '').trim() === clean ||
+        (Array.isArray(u.savedPayoutAccounts) &&
+          u.savedPayoutAccounts.some((acc) => String(acc.cnic || '').trim() === clean))
+    );
+    return found ? { ...found } : null;
+  },
+
   async findUserById(id) {
     if (isMongoReady()) {
       if (!mongoose.Types.ObjectId.isValid(id)) return null;
@@ -363,15 +489,79 @@ const db = {
     return found ? { ...found } : null;
   },
 
-  async createUser({ phoneNumber, displayName, passwordHash, funBalance }) {
+  async findUserByReferralCode(referralCode) {
+    const clean = String(referralCode || '').trim().toUpperCase();
+    if (!clean) return null;
+    if (isMongoReady()) {
+      const doc = await User.findOne({ referralCode: clean });
+      return doc ? doc.toObject() : null;
+    }
+    const found = localStore.users.find((u) => String(u.referralCode || '').toUpperCase() === clean);
+    return found ? { ...found } : null;
+  },
+
+  async findUsersByIpOrFingerprint({ ip = '', fingerprint = '', excludeUserId = '' } = {}) {
+    const cleanIp = String(ip || '').trim();
+    const cleanFp = String(fingerprint || '').trim();
+    if (!cleanIp && !cleanFp) return [];
+
+    if (isMongoReady()) {
+      const or = [];
+      if (cleanFp && cleanFp.length >= 8) or.push({ deviceFingerprint: cleanFp });
+      if (cleanIp && cleanIp !== '127.0.0.1' && cleanIp !== '::1') {
+        or.push({ registrationIp: cleanIp }, { lastLoginIp: cleanIp });
+      }
+      if (!or.length) return [];
+      const docs = await User.find({ $or: or }).select('-passwordHash').limit(20);
+      return docs
+        .map((d) => d.toObject())
+        .filter((u) => !excludeUserId || String(u._id) !== String(excludeUserId));
+    }
+
+    return localStore.users
+      .filter((u) => {
+        if (excludeUserId && String(u._id) === String(excludeUserId)) return false;
+        const fpMatch = cleanFp && cleanFp.length >= 8 && u.deviceFingerprint === cleanFp;
+        const ipMatch =
+          cleanIp &&
+          cleanIp !== '127.0.0.1' &&
+          cleanIp !== '::1' &&
+          (u.registrationIp === cleanIp || u.lastLoginIp === cleanIp);
+        return fpMatch || ipMatch;
+      })
+      .slice(0, 20);
+  },
+
+  async createUser({
+    phoneNumber,
+    displayName,
+    passwordHash,
+    funBalance,
+    cnic = '',
+    referralCode = '',
+    referredBy = '',
+    registrationIp = '',
+    deviceFingerprint = '',
+    bonusRestricted = false,
+    restrictionReason = '',
+  }) {
     if (isMongoReady()) {
       const doc = await User.create({
         phoneNumber,
         displayName,
+        cnic,
         passwordHash,
         funBalance,
         funCredits: funBalance,
         realBalance: 0,
+        referralCode,
+        referredBy,
+        registrationIp,
+        lastLoginIp: registrationIp,
+        deviceFingerprint,
+        bonusRestricted,
+        restrictionReason,
+        acceptedTermsAt: new Date(),
       });
       return doc.toObject();
     }
@@ -384,6 +574,7 @@ const db = {
       _id: crypto.randomBytes(12).toString('hex'),
       phoneNumber,
       displayName,
+      cnic,
       passwordHash,
       funBalance,
       funCredits: funBalance,
@@ -396,6 +587,19 @@ const db = {
       totalWonReal: 0,
       totalWagered: 0,
       totalWon: 0,
+      referralCode,
+      referredBy,
+      firstDepositRewarded: false,
+      referralEarnings: 0,
+      lastDailyClaimAt: null,
+      lastWeeklyClaimAt: null,
+      savedPayoutAccounts: [],
+      registrationIp,
+      lastLoginIp: registrationIp,
+      deviceFingerprint,
+      bonusRestricted,
+      restrictionReason,
+      acceptedTermsAt: new Date().toISOString(),
       isBanned: false,
       recentBets: [],
       lastLoginAt: new Date().toISOString(),
@@ -427,6 +631,13 @@ const db = {
       const each = updateOps.$push.recentBets.$each || [];
       const slice = updateOps.$push.recentBets.$slice || 30;
       u.recentBets = [...each, ...(u.recentBets || [])].slice(0, slice);
+    }
+    if (updateOps.$push?.savedPayoutAccounts) {
+      u.savedPayoutAccounts = [...(u.savedPayoutAccounts || []), updateOps.$push.savedPayoutAccounts];
+    }
+    if (updateOps.$pull?.savedPayoutAccounts) {
+      const pullId = updateOps.$pull.savedPayoutAccounts.id;
+      u.savedPayoutAccounts = (u.savedPayoutAccounts || []).filter((acc) => acc.id !== pullId);
     }
 
     localStore.users[idx] = u;
@@ -522,16 +733,36 @@ const db = {
     }
     const tx = {
       _id: crypto.randomBytes(12).toString('hex'),
-      ...data,
       status: 'pending',
       rejectionReason: '',
       reviewedAt: null,
+      ...data,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     localStore.transactions.unshift(tx);
     saveLocalStore();
     return { ...tx };
+  },
+
+  async findTransactionByTid(tid) {
+    const clean = String(tid || '').trim();
+    if (!clean) return null;
+    if (isMongoReady()) {
+      const doc = await Transaction.findOne({
+        transactionId: clean,
+        type: 'deposit',
+        status: { $in: ['pending', 'approved'] },
+      });
+      return doc ? doc.toObject() : null;
+    }
+    const found = localStore.transactions.find(
+      (t) =>
+        t.type === 'deposit' &&
+        (t.status === 'pending' || t.status === 'approved') &&
+        String(t.transactionId || '').trim().toLowerCase() === clean.toLowerCase()
+    );
+    return found ? { ...found } : null;
   },
 
   async findTransactionById(id) {
@@ -589,16 +820,37 @@ const db = {
       .map(({ screenshotData, ...rest }) => rest);
   },
 
-  async listAdminTransactions({ status = 'all', type = 'all', limit = 100 } = {}) {
+  async listAdminTransactions({
+    status = 'all',
+    type = 'all',
+    startDate = '',
+    endDate = '',
+    limit = 100,
+  } = {}) {
+    const startMs = startDate ? new Date(`${startDate}T00:00:00.000Z`).getTime() : null;
+    const endMs = endDate ? new Date(`${endDate}T23:59:59.999Z`).getTime() : null;
+
     if (isMongoReady()) {
       const filter = {};
       if (status !== 'all') filter.status = status;
       if (type !== 'all') filter.type = type;
+      if (startMs || endMs) {
+        filter.createdAt = {};
+        if (startMs && Number.isFinite(startMs)) filter.createdAt.$gte = new Date(startMs);
+        if (endMs && Number.isFinite(endMs)) filter.createdAt.$lte = new Date(endMs);
+      }
       const docs = await Transaction.find(filter).sort({ createdAt: -1 }).limit(limit);
       return docs.map((d) => d.toObject());
     }
     return localStore.transactions
-      .filter((t) => (status === 'all' || t.status === status) && (type === 'all' || t.type === type))
+      .filter((t) => {
+        if (status !== 'all' && t.status !== status) return false;
+        if (type !== 'all' && t.type !== type) return false;
+        const tMs = new Date(t.createdAt).getTime();
+        if (startMs && Number.isFinite(startMs) && tMs < startMs) return false;
+        if (endMs && Number.isFinite(endMs) && tMs > endMs) return false;
+        return true;
+      })
       .slice(0, limit);
   },
 
@@ -617,6 +869,112 @@ const db = {
       (t) => t.status === 'pending' && t.type === 'withdrawal'
     ).length;
     return { deposits, withdrawals, total: deposits + withdrawals };
+  },
+
+  // Support Ticket Operations
+  async createSupportTicket({ userId, phoneNumber, displayName, subject, text }) {
+    const msg = { sender: 'user', text, createdAt: new Date() };
+    if (isMongoReady()) {
+      const doc = await SupportTicket.create({
+        userId: String(userId),
+        phoneNumber,
+        displayName,
+        subject,
+        status: 'open',
+        messages: [msg],
+        lastMessageAt: new Date(),
+      });
+      return doc.toObject();
+    }
+    const ticket = {
+      _id: crypto.randomBytes(12).toString('hex'),
+      userId: String(userId),
+      phoneNumber,
+      displayName,
+      subject,
+      status: 'open',
+      messages: [{ sender: 'user', text, createdAt: new Date().toISOString() }],
+      lastMessageAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+    localStore.supportTickets.unshift(ticket);
+    saveLocalStore();
+    return { ...ticket };
+  },
+
+  async listUserSupportTickets(userId) {
+    if (isMongoReady()) {
+      const docs = await SupportTicket.find({ userId: String(userId) })
+        .sort({ lastMessageAt: -1 })
+        .limit(30);
+      return docs.map((d) => d.toObject());
+    }
+    return localStore.supportTickets
+      .filter((t) => String(t.userId) === String(userId))
+      .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))
+      .slice(0, 30);
+  },
+
+  async listAllSupportTickets() {
+    if (isMongoReady()) {
+      const docs = await SupportTicket.find({}).sort({ status: 1, lastMessageAt: -1 }).limit(80);
+      return docs.map((d) => d.toObject());
+    }
+    return localStore.supportTickets
+      .slice()
+      .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))
+      .slice(0, 80);
+  },
+
+  async findSupportTicketById(id) {
+    if (isMongoReady()) {
+      if (!mongoose.Types.ObjectId.isValid(id)) return null;
+      const doc = await SupportTicket.findById(id);
+      return doc ? doc.toObject() : null;
+    }
+    const found = localStore.supportTickets.find((t) => String(t._id) === String(id));
+    return found ? { ...found } : null;
+  },
+
+  async addSupportMessage(id, sender, text) {
+    if (isMongoReady()) {
+      if (!mongoose.Types.ObjectId.isValid(id)) return null;
+      const doc = await SupportTicket.findByIdAndUpdate(
+        id,
+        {
+          $push: { messages: { sender, text, createdAt: new Date() } },
+          $set: { status: 'open', lastMessageAt: new Date() },
+        },
+        { new: true }
+      );
+      return doc ? doc.toObject() : null;
+    }
+    const idx = localStore.supportTickets.findIndex((t) => String(t._id) === String(id));
+    if (idx === -1) return null;
+    const t = { ...localStore.supportTickets[idx] };
+    t.messages = [...(t.messages || []), { sender, text, createdAt: new Date().toISOString() }];
+    t.status = 'open';
+    t.lastMessageAt = new Date().toISOString();
+    localStore.supportTickets[idx] = t;
+    saveLocalStore();
+    return { ...t };
+  },
+
+  async closeSupportTicket(id) {
+    if (isMongoReady()) {
+      if (!mongoose.Types.ObjectId.isValid(id)) return null;
+      const doc = await SupportTicket.findByIdAndUpdate(
+        id,
+        { $set: { status: 'closed' } },
+        { new: true }
+      );
+      return doc ? doc.toObject() : null;
+    }
+    const idx = localStore.supportTickets.findIndex((t) => String(t._id) === String(id));
+    if (idx === -1) return null;
+    localStore.supportTickets[idx].status = 'closed';
+    saveLocalStore();
+    return { ...localStore.supportTickets[idx] };
   },
 };
 
@@ -645,6 +1003,239 @@ function maskPhone(phone) {
   return `${s.slice(0, 4)}•••${s.slice(-4)}`;
 }
 
+function maskMerchantNumber(num, maskEnabled = true) {
+  const s = String(num || '').trim();
+  if (!maskEnabled || s.length < 7) return s;
+  return `${s.slice(0, 4)}${'•'.repeat(Math.max(4, s.length - 7))}${s.slice(-3)}`;
+}
+
+function maskPaymentAccountsForPublic(paymentAccounts, maskEnabled = true) {
+  const pa = paymentAccounts || defaultPaymentAccounts();
+  return {
+    easypaisa: {
+      enabled: pa.easypaisa?.enabled !== false,
+      accountTitle: pa.easypaisa?.accountTitle || 'SkyWing Official',
+      accountNumber: maskMerchantNumber(pa.easypaisa?.accountNumber || '', maskEnabled),
+      masked: Boolean(maskEnabled),
+    },
+    jazzcash: {
+      enabled: pa.jazzcash?.enabled !== false,
+      accountTitle: pa.jazzcash?.accountTitle || 'SkyWing Official',
+      accountNumber: maskMerchantNumber(pa.jazzcash?.accountNumber || '', maskEnabled),
+      masked: Boolean(maskEnabled),
+    },
+    bank: {
+      enabled: pa.bank?.enabled !== false,
+      bankName: pa.bank?.bankName || 'Meezan Bank',
+      accountTitle: pa.bank?.accountTitle || 'SkyWing Enterprises',
+      accountNumber: maskMerchantNumber(pa.bank?.accountNumber || '', maskEnabled),
+      masked: Boolean(maskEnabled),
+    },
+  };
+}
+
+function getClientIp(req) {
+  const xff = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  const raw = xff || req.ip || req.socket?.remoteAddress || '';
+  return raw.replace(/^::ffff:/, '');
+}
+
+function generateReferralCode() {
+  return `SW${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+}
+
+function computeVipTier(totalWageredReal = 0) {
+  const w = Number(totalWageredReal || 0);
+  if (w >= 200000) {
+    return { tier: 'Platinum', cashbackPct: 10, dailyFun: 1000, dailyReal: 75, nextTier: null, nextTarget: 200000 };
+  }
+  if (w >= 50000) {
+    return { tier: 'Gold', cashbackPct: 6, dailyFun: 500, dailyReal: 35, nextTier: 'Platinum', nextTarget: 200000 };
+  }
+  if (w >= 10000) {
+    return { tier: 'Silver', cashbackPct: 4, dailyFun: 250, dailyReal: 15, nextTier: 'Gold', nextTarget: 50000 };
+  }
+  return { tier: 'Bronze', cashbackPct: 2, dailyFun: 100, dailyReal: 5, nextTier: 'Silver', nextTarget: 10000 };
+}
+
+function isWithinWithdrawalHours(wh = defaultWithdrawalHours()) {
+  if (!wh || !wh.enabled) return { allowed: true };
+  const [openH = 9, openM = 0] = String(wh.openTime || '09:00').split(':').map(Number);
+  const [closeH = 17, closeM = 0] = String(wh.closeTime || '17:00').split(':').map(Number);
+  const now = new Date();
+  const curMins = now.getHours() * 60 + now.getMinutes();
+  const openMins = openH * 60 + openM;
+  const closeMins = closeH * 60 + closeM;
+
+  const allowed =
+    openMins <= closeMins
+      ? curMins >= openMins && curMins < closeMins
+      : curMins >= openMins || curMins < closeMins;
+
+  return {
+    allowed,
+    noticeText: wh.noticeText || 'Withdrawals are only open from 9:00 AM to 5:00 PM.',
+    serverTime: now.toTimeString().slice(0, 5),
+  };
+}
+
+// RFC 6238 6-Digit TOTP Authenticator Helpers
+const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function generateBase32Secret(bytesLen = 20) {
+  const buf = crypto.randomBytes(bytesLen);
+  let bits = 0;
+  let value = 0;
+  let out = '';
+  for (let i = 0; i < buf.length; i++) {
+    value = (value << 8) | buf[i];
+    bits += 8;
+    while (bits >= 5) {
+      out += BASE32_ALPHABET[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) out += BASE32_ALPHABET[(value << (5 - bits)) & 31];
+  return out;
+}
+
+function base32ToBuffer(base32) {
+  const clean = String(base32 || '').toUpperCase().replace(/[^A-Z2-7]/g, '');
+  let bits = 0;
+  let value = 0;
+  const bytes = [];
+  for (let i = 0; i < clean.length; i++) {
+    const idx = BASE32_ALPHABET.indexOf(clean[i]);
+    if (idx === -1) continue;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+function computeTotpCode(secret, stepOffset = 0) {
+  const key = base32ToBuffer(secret);
+  const counter = Math.floor(Date.now() / 1000 / 30) + stepOffset;
+  const msg = Buffer.alloc(8);
+  msg.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
+  msg.writeUInt32BE(counter >>> 0, 4);
+  const hmac = crypto.createHmac('sha1', key).update(msg).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const code =
+    (((hmac[offset] & 0x7f) << 24) |
+      ((hmac[offset + 1] & 0xff) << 16) |
+      ((hmac[offset + 2] & 0xff) << 8) |
+      (hmac[offset + 3] & 0xff)) %
+    1000000;
+  return String(code).padStart(6, '0');
+}
+
+function verifyTotp(secret, token) {
+  const clean = String(token || '').replace(/\s+/g, '');
+  if (!/^[0-9]{6}$/.test(clean) || !secret) return false;
+  for (const offset of [-1, 0, 1]) {
+    if (computeTotpCode(secret, offset) === clean) return true;
+  }
+  return false;
+}
+
+async function ensureMasterPasswordInitialized() {
+  try {
+    const settings = await db.getSettings();
+    if (!settings.security?.masterPasswordHash) {
+      const hash = await bcrypt.hash(DEFAULT_MASTER_PASSWORD, 10);
+      await db.updateSettings({
+        'security.masterPasswordHash': hash,
+        security: { ...settings.security, masterPasswordHash: hash },
+      });
+    }
+  } catch (err) {
+    console.warn('[Security Init Warning]', err.message);
+  }
+}
+
+async function verifyMasterPassword(plainPassword) {
+  const settings = await db.getSettings();
+  const hash = settings.security?.masterPasswordHash;
+  if (!hash) {
+    return String(plainPassword || '') === DEFAULT_MASTER_PASSWORD;
+  }
+  return bcrypt.compare(String(plainPassword || ''), hash);
+}
+
+async function logSecurityEvent(event, severity = 'info', details = '', ip = '') {
+  try {
+    const entry = { event, severity, details, ip, createdAt: new Date() };
+    const settings = await db.getSettings();
+    const prevLogs = Array.isArray(settings.security?.securityLogs) ? settings.security.securityLogs : [];
+    const nextLogs = [entry, ...prevLogs].slice(0, 80);
+    await db.updateSettings({
+      security: {
+        ...settings.security,
+        securityLogs: nextLogs,
+      },
+    });
+    io.to('admins').emit('admin:security_alert', entry);
+    if (severity === 'critical') {
+      sendTelegramAlert(settings, `🚨 <b>SECURITY ALERT: ${event}</b>\n${details}\nIP: ${ip || 'N/A'}`).catch(() => {});
+    }
+  } catch {
+    // ignore log failures
+  }
+}
+
+async function sendTelegramAlert(settings, htmlText, inlineKeyboard = null) {
+  try {
+    const tg = settings?.telegramBot;
+    if (!tg || !tg.enabled || !tg.botToken || !tg.adminChatId) return false;
+    const body = {
+      chat_id: tg.adminChatId,
+      text: htmlText,
+      parse_mode: 'HTML',
+    };
+    if (inlineKeyboard) {
+      body.reply_markup = { inline_keyboard: inlineKeyboard };
+    }
+    const resp = await fetch(`https://api.telegram.org/bot${tg.botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}
+
+function buildPublicSettingsPayload(settings) {
+  const maskEnabled = settings.maskMasterAccounts !== false;
+  const whStatus = isWithinWithdrawalHours(settings.withdrawalHours);
+  return {
+    whatsappSupportEnabled: settings.whatsappSupportEnabled !== false,
+    whatsappSupportNumber: settings.whatsappSupportNumber,
+    whatsappChannelEnabled: settings.whatsappChannelEnabled !== false,
+    whatsappChannelUrl: settings.whatsappChannelUrl,
+    telegramChannelEnabled: settings.telegramChannelEnabled !== false,
+    telegramChannelUrl: settings.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
+    welcomeBonusCredits: settings.welcomeBonusCredits,
+    maskMasterAccounts: maskEnabled,
+    paymentAccounts: maskPaymentAccountsForPublic(settings.paymentAccounts, maskEnabled),
+    financialLimits: settings.financialLimits || defaultFinancialLimits(),
+    withdrawalHours: {
+      ...(settings.withdrawalHours || defaultWithdrawalHours()),
+      currentlyOpen: whStatus.allowed,
+      serverTime: whStatus.serverTime,
+    },
+    platformStatus: settings.platformStatus || defaultPlatformStatus(),
+    gamesConfig: settings.gamesConfig || defaultGamesConfig(),
+    audioConfig: settings.audioConfig || defaultAudioConfig(),
+  };
+}
+
 function sanitizeUser(user) {
   if (!user) return null;
   const funBalance = Math.round(Number(user.funBalance ?? user.funCredits ?? 1000) * 100) / 100;
@@ -658,11 +1249,13 @@ function sanitizeUser(user) {
     Math.round((totalDeposited - totalWageredReal) * 100) / 100
   );
   const wageringRequirementMet = totalWageredReal >= totalDeposited;
+  const vip = computeVipTier(totalWageredReal);
 
   return {
     id: String(user._id),
     phoneNumber: user.phoneNumber,
     displayName: user.displayName || maskPhone(user.phoneNumber),
+    cnic: user.cnic || '',
     funBalance,
     realBalance,
     funCredits: funBalance,
@@ -677,6 +1270,17 @@ function sanitizeUser(user) {
     netProfitLoss: Math.round((totalWonReal - totalWageredReal) * 100) / 100,
     totalWagered: Math.round(Number(user.totalWagered ?? 0) * 100) / 100,
     totalWon: Math.round(Number(user.totalWon ?? 0) * 100) / 100,
+    referralCode: user.referralCode || '',
+    referredBy: user.referredBy || '',
+    referralEarnings: Math.round(Number(user.referralEarnings || 0) * 100) / 100,
+    firstDepositRewarded: Boolean(user.firstDepositRewarded),
+    savedPayoutAccounts: Array.isArray(user.savedPayoutAccounts) ? user.savedPayoutAccounts : [],
+    bonusRestricted: Boolean(user.bonusRestricted),
+    restrictionReason: user.restrictionReason || '',
+    registrationIp: user.registrationIp || '',
+    lastLoginIp: user.lastLoginIp || '',
+    deviceFingerprint: user.deviceFingerprint || '',
+    vip,
     isBanned: Boolean(user.isBanned),
     recentBets: (user.recentBets || []).slice(0, 20),
     createdAt: user.createdAt,
@@ -692,9 +1296,15 @@ function sanitizeTransaction(tx) {
     displayName: tx.displayName || maskPhone(tx.phoneNumber),
     type: tx.type,
     amount: Math.round(Number(tx.amount || 0) * 100) / 100,
+    feeAmount: Math.round(Number(tx.feeAmount || 0) * 100) / 100,
+    netAmount: Math.round(Number(tx.netAmount ?? tx.amount ?? 0) * 100) / 100,
     method: tx.method,
+    senderName: tx.senderName || '',
+    senderNumber: tx.senderNumber || '',
+    qrReference: tx.qrReference || '',
     transactionId: tx.transactionId || '',
     screenshotData: tx.screenshotData || '',
+    autoApproved: Boolean(tx.autoApproved),
     accountDetails: tx.accountDetails || {},
     status: tx.status,
     rejectionReason: tx.rejectionReason || '',
@@ -776,14 +1386,19 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Health check for Render.com / Railway & uptime monitors
 app.get('/health', (req, res) => {
+  const now = Date.now();
   res.status(200).json({
     status: 'ok',
     service: 'SkyWing Crash',
     uptime: Math.round(process.uptime()),
     database: isMongoReady() ? 'mongodb-connected' : 'local-fallback',
     mongoNotice: lastMongoError ? 'Atlas IP whitelist (0.0.0.0/0) or URI check required' : null,
+    currentRoundId: gameState.currentRoundId,
     round: gameState.roundNumber,
     phase: gameState.phase,
+    flightState: String(gameState.phase || 'BETTING').toLowerCase(),
+    currentMultiplier: gameState.currentMultiplier,
+    serverTimestamp: now,
   });
 });
 
@@ -793,33 +1408,34 @@ app.get(['/admin', '/admin/*'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Public Settings (WhatsApp + Telegram Toggles + Payment Accounts + Audio Config)
+// Public Settings (Masked Merchant Accounts, Limits, Operating Hours, Maintenance, Games & Audio)
 app.get('/api/public-settings', async (req, res) => {
   try {
     const settings = await db.getSettings();
-    res.json({
-      whatsappSupportEnabled: settings.whatsappSupportEnabled !== false,
-      whatsappSupportNumber: settings.whatsappSupportNumber,
-      whatsappChannelEnabled: settings.whatsappChannelEnabled !== false,
-      whatsappChannelUrl: settings.whatsappChannelUrl,
-      telegramChannelEnabled: settings.telegramChannelEnabled !== false,
-      telegramChannelUrl: settings.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
-      welcomeBonusCredits: settings.welcomeBonusCredits,
-      paymentAccounts: settings.paymentAccounts,
-      audioConfig: settings.audioConfig || defaultAudioConfig(),
-    });
+    res.json(buildPublicSettingsPayload(settings));
   } catch {
     res.status(500).json({ error: 'Failed to fetch settings' });
   }
 });
 
-// User Registration (Strict Pakistani 03XX 11-digit number, min 6 char password)
+// User Registration (Strict Pakistani 03XX, 18+ Agreement, Referral & Anti-Fraud)
 app.post('/api/auth/register', async (req, res) => {
   try {
     const phoneNumber = normalizePakistaniPhone(req.body.phoneNumber);
     const password = String(req.body.password || '');
     const displayName = String(req.body.displayName || '').trim().slice(0, 24);
+    const referralInput = String(req.body.referralCode || '').trim().toUpperCase();
+    const acceptedTerms = Boolean(req.body.acceptedTerms);
+    const deviceFingerprint = String(req.body.deviceFingerprint || req.headers['x-device-fingerprint'] || '')
+      .trim()
+      .slice(0, 128);
+    const clientIp = getClientIp(req);
 
+    if (!acceptedTerms) {
+      return res.status(400).json({
+        error: 'You must confirm you are 18+ and accept the User Agreement to register.',
+      });
+    }
     if (!isValidPakistaniPhone(phoneNumber)) {
       return res.status(400).json({
         error: 'Enter a valid 11-digit Pakistani mobile number starting with 03 (e.g. 03001234567).',
@@ -838,16 +1454,51 @@ app.post('/api/auth/register', async (req, res) => {
       });
     }
 
+    let validReferredBy = '';
+    if (referralInput) {
+      const refOwner = await db.findUserByReferralCode(referralInput);
+      if (refOwner) {
+        validReferredBy = refOwner.referralCode;
+      }
+    }
+
+    // Real-time Anti-Fraud IP & Device Fingerprint multi-account screening
+    const matches = await db.findUsersByIpOrFingerprint({
+      ip: clientIp,
+      fingerprint: deviceFingerprint,
+    });
+    const bonusRestricted = matches.length > 0;
+    const restrictionReason = bonusRestricted
+      ? `Multi-account IP/device match detected (${matches.length} existing account(s))`
+      : '';
+
     const settings = await db.getSettings();
     const passwordHash = await bcrypt.hash(password, 10);
-    const startingCredits = Number(settings.welcomeBonusCredits ?? 1000);
+    const startingCredits = bonusRestricted ? 100 : Number(settings.welcomeBonusCredits ?? 1000);
+    const referralCode = generateReferralCode();
 
     const created = await db.createUser({
       phoneNumber,
       displayName: displayName || maskPhone(phoneNumber),
+      cnic: '',
       passwordHash,
       funBalance: startingCredits,
+      referralCode,
+      referredBy: validReferredBy,
+      registrationIp: clientIp,
+      deviceFingerprint,
+      bonusRestricted,
+      restrictionReason,
     });
+
+    if (bonusRestricted) {
+      await logSecurityEvent(
+        'Multi-Account Registration Flagged',
+        'warning',
+        `${phoneNumber} matched existing IP/Device (${matches.map((m) => m.phoneNumber).join(', ')})`,
+        clientIp
+      );
+    }
 
     const token = signUserToken(created);
     res.status(201).json({
@@ -866,12 +1517,16 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// User & Admin Flexible Login (Strict 03XX enforced only on player registration)
+// User & Admin Flexible Login (with IP/Device fraud check)
 app.post('/api/auth/login', async (req, res) => {
   try {
     const rawIdentifier = String(req.body.phoneNumber || '').trim();
     const phoneNumber = normalizePakistaniPhone(rawIdentifier);
     const password = String(req.body.password || '');
+    const deviceFingerprint = String(req.body.deviceFingerprint || req.headers['x-device-fingerprint'] || '')
+      .trim()
+      .slice(0, 128);
+    const clientIp = getClientIp(req);
 
     if (!phoneNumber && !rawIdentifier) {
       return res.status(400).json({
@@ -882,11 +1537,18 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Password is required.' });
     }
 
-    // Allow Admin credentials to authenticate cleanly via the main login modal as well
     if (
       (rawIdentifier === ADMIN_USERNAME || phoneNumber === ADMIN_USERNAME) &&
       password === ADMIN_PASSWORD
     ) {
+      const settings = await db.getSettings();
+      if (settings.security?.totpEnabled) {
+        return res.json({
+          isAdmin: true,
+          requires2FA: true,
+          redirectUrl: '/admin',
+        });
+      }
       return res.json({
         isAdmin: true,
         adminToken: signAdminToken(),
@@ -911,9 +1573,30 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid mobile number or password.' });
     }
 
-    const updated = await db.updateUserById(user._id, {
-      $set: { lastLoginAt: new Date() },
+    const dupMatches = await db.findUsersByIpOrFingerprint({
+      ip: clientIp,
+      fingerprint: deviceFingerprint,
+      excludeUserId: user._id,
     });
+
+    const patch = {
+      lastLoginAt: new Date(),
+      lastLoginIp: clientIp,
+    };
+    if (deviceFingerprint) patch.deviceFingerprint = deviceFingerprint;
+    if (!user.referralCode) patch.referralCode = generateReferralCode();
+    if (dupMatches.length > 0 && !user.bonusRestricted) {
+      patch.bonusRestricted = true;
+      patch.restrictionReason = `Multi-account IP/device match on login (${dupMatches.length} accounts)`;
+      await logSecurityEvent(
+        'Multi-Account Login Flagged',
+        'warning',
+        `${user.phoneNumber} shares IP/fingerprint with ${dupMatches.map((m) => m.phoneNumber).join(', ')}`,
+        clientIp
+      );
+    }
+
+    const updated = await db.updateUserById(user._id, { $set: patch });
 
     const settings = await db.getSettings();
     const token = signUserToken(updated || user);
@@ -928,36 +1611,323 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Self-Service Password Reset (Accepts Registered Mobile Number OR CNIC)
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const rawIdentifier = String(req.body.identifier || '').trim();
+    const rawPhone = normalizePakistaniPhone(req.body.phoneNumber);
+    const rawCnic = String(req.body.cnic || '').trim();
+    const newPassword = String(req.body.newPassword || '');
+    const clientIp = getClientIp(req);
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+    }
+
+    let user = null;
+    let verifiedVia = '';
+
+    if (rawIdentifier) {
+      if (CNIC_REGEX.test(rawIdentifier)) {
+        user = await db.findUserByCnic(rawIdentifier);
+        verifiedVia = `CNIC ${rawIdentifier}`;
+      } else {
+        const normalized = normalizePakistaniPhone(rawIdentifier);
+        if (!isValidPakistaniPhone(normalized)) {
+          return res.status(400).json({
+            error: 'Enter a valid 11-digit 03XX mobile number or Pakistani CNIC (XXXXX-XXXXXXX-X).',
+          });
+        }
+        user = await db.findUserByPhone(normalized);
+        verifiedVia = `Mobile ${normalized}`;
+      }
+      if (!user) {
+        await logSecurityEvent(
+          'Failed Password Reset Attempt',
+          'warning',
+          `No account matched recovery input "${rawIdentifier}"`,
+          clientIp
+        );
+        return res.status(404).json({ error: 'No registered account found matching that Number or CNIC.' });
+      }
+    } else if (rawPhone && rawCnic) {
+      if (!isValidPakistaniPhone(rawPhone)) {
+        return res.status(400).json({ error: 'Enter your valid 11-digit 03XX mobile number.' });
+      }
+      if (!CNIC_REGEX.test(rawCnic)) {
+        return res.status(400).json({ error: 'Enter a valid Pakistani CNIC (XXXXX-XXXXXXX-X).' });
+      }
+      user = await db.findUserByPhone(rawPhone);
+      if (!user) {
+        return res.status(404).json({ error: 'No account found with that mobile number.' });
+      }
+      const cnicMatchesProfile = user.cnic && user.cnic === rawCnic;
+      const cnicMatchesSavedPayout =
+        Array.isArray(user.savedPayoutAccounts) &&
+        user.savedPayoutAccounts.some((acc) => acc.cnic === rawCnic);
+      if (!cnicMatchesProfile && !cnicMatchesSavedPayout) {
+        await logSecurityEvent(
+          'Failed Password Reset Attempt',
+          'warning',
+          `CNIC mismatch for ${rawPhone}`,
+          clientIp
+        );
+        return res.status(403).json({
+          error: 'CNIC verification failed. Please double-check your registered CNIC.',
+        });
+      }
+      verifiedVia = `Mobile + CNIC (${rawPhone})`;
+    } else if (rawPhone) {
+      if (!isValidPakistaniPhone(rawPhone)) {
+        return res.status(400).json({ error: 'Enter a valid 11-digit 03XX mobile number.' });
+      }
+      user = await db.findUserByPhone(rawPhone);
+      if (!user) return res.status(404).json({ error: 'No account found with that mobile number.' });
+      verifiedVia = `Mobile ${rawPhone}`;
+    } else if (rawCnic) {
+      if (!CNIC_REGEX.test(rawCnic)) {
+        return res.status(400).json({ error: 'Enter a valid Pakistani CNIC (XXXXX-XXXXXXX-X).' });
+      }
+      user = await db.findUserByCnic(rawCnic);
+      if (!user) return res.status(404).json({ error: 'No account found with that CNIC.' });
+      verifiedVia = `CNIC ${rawCnic}`;
+    } else {
+      return res.status(400).json({
+        error: 'Enter your registered 03XX mobile number or Pakistani CNIC (XXXXX-XXXXXXX-X).',
+      });
+    }
+
+    if (user.isBanned) {
+      return res.status(403).json({ error: 'This account is suspended.' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await db.updateUserById(user._id, { $set: { passwordHash } });
+    await logSecurityEvent(
+      'Self-Service Password Reset',
+      'info',
+      `${user.phoneNumber} reset password via ${verifiedVia}`,
+      clientIp
+    );
+    res.json({ ok: true, message: 'Password reset successfully! You can now log in.' });
+  } catch (err) {
+    console.error('[Reset Password Error]', err);
+    res.status(500).json({ error: 'Password reset failed.' });
+  }
+});
+
 // Current User Profile & Dual Balances
 app.get('/api/auth/me', requireAuth, async (req, res) => {
+  let user = req.user;
+  if (!user.referralCode) {
+    user = (await db.updateUserById(user._id, { $set: { referralCode: generateReferralCode() } })) || user;
+  }
   const settings = await db.getSettings();
   res.json({
-    user: sanitizeUser(req.user),
-    publicSettings: {
-      whatsappSupportEnabled: settings.whatsappSupportEnabled !== false,
-      whatsappSupportNumber: settings.whatsappSupportNumber,
-      whatsappChannelEnabled: settings.whatsappChannelEnabled !== false,
-      whatsappChannelUrl: settings.whatsappChannelUrl,
-      telegramChannelEnabled: settings.telegramChannelEnabled !== false,
-      telegramChannelUrl: settings.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
-      paymentAccounts: settings.paymentAccounts,
-      audioConfig: settings.audioConfig || defaultAudioConfig(),
-    },
+    user: sanitizeUser(user),
+    publicSettings: buildPublicSettingsPayload(settings),
   });
 });
 
 // ============================================================================
-// Real Money PKR Deposit & Withdrawal Routes (User)
+// Saved Pakistani Payout Accounts + CNIC Verification
 // ============================================================================
-app.post('/api/transactions/deposit', requireAuth, async (req, res) => {
+app.get('/api/payout-accounts', requireAuth, async (req, res) => {
+  res.json({ accounts: Array.isArray(req.user.savedPayoutAccounts) ? req.user.savedPayoutAccounts : [] });
+});
+
+app.post('/api/payout-accounts', requireAuth, async (req, res) => {
   try {
+    const method = String(req.body.method || '').trim();
+    const bankName = String(req.body.bankName || '').trim().slice(0, 60);
+    const accountTitle = String(req.body.accountTitle || '').trim().slice(0, 60);
+    const accountNumber = String(req.body.accountNumber || '').trim().slice(0, 60);
+    const cnic = String(req.body.cnic || '').trim();
+
+    if (!['EasyPaisa', 'JazzCash', 'Bank Account'].includes(method)) {
+      return res.status(400).json({ error: 'Select EasyPaisa, JazzCash, or Bank Account.' });
+    }
+    if (!accountTitle || !accountNumber) {
+      return res.status(400).json({ error: 'Account Holder Name and Account Number are required.' });
+    }
+    if (method === 'Bank Account' && !bankName) {
+      return res.status(400).json({ error: 'Bank Name is required for bank accounts.' });
+    }
+    if (!CNIC_REGEX.test(cnic)) {
+      return res.status(400).json({
+        error: 'Valid Pakistani CNIC is required (format: XXXXX-XXXXXXX-X).',
+      });
+    }
+
+    const existing = Array.isArray(req.user.savedPayoutAccounts) ? req.user.savedPayoutAccounts : [];
+    if (existing.length >= 6) {
+      return res.status(400).json({ error: 'Maximum 6 saved payout accounts allowed.' });
+    }
+
+    const newAcc = {
+      id: crypto.randomBytes(8).toString('hex'),
+      method,
+      bankName: method === 'Bank Account' ? bankName : '',
+      accountTitle,
+      accountNumber,
+      cnic,
+      createdAt: new Date(),
+    };
+
+    const ops = { $push: { savedPayoutAccounts: newAcc } };
+    if (!req.user.cnic) {
+      ops.$set = { cnic };
+    }
+    const updated = await db.updateUserById(req.user._id, ops);
+    res.status(201).json({
+      account: newAcc,
+      accounts: updated?.savedPayoutAccounts || [newAcc],
+      user: sanitizeUser(updated),
+    });
+  } catch (err) {
+    console.error('[Save Payout Account Error]', err);
+    res.status(500).json({ error: 'Failed to save payout account.' });
+  }
+});
+
+app.delete('/api/payout-accounts/:id', requireAuth, async (req, res) => {
+  try {
+    const accId = String(req.params.id || '');
+    const updated = await db.updateUserById(req.user._id, {
+      $pull: { savedPayoutAccounts: { id: accId } },
+    });
+    res.json({
+      accounts: updated?.savedPayoutAccounts || [],
+      user: sanitizeUser(updated),
+    });
+  } catch {
+    res.status(500).json({ error: 'Failed to delete payout account.' });
+  }
+});
+
+// ============================================================================
+// Automated QR Deposit Gateway, Account Masking & Micro-Deposit Auto-Approval
+// ============================================================================
+app.post('/api/transactions/deposit/qr', requireAuth, async (req, res) => {
+  try {
+    const settings = await db.getSettings();
+    const limits = settings.financialLimits || defaultFinancialLimits();
+    const minDep = Number(limits.minDeposit || 50);
+
     const amount = Math.round(Number(req.body.amount) * 100) / 100;
     const method = String(req.body.method || '').trim();
+    const senderName = String(req.body.senderName || '').trim().slice(0, 60);
+    const senderNumber = String(req.body.senderNumber || '').trim().slice(0, 32);
+
+    if (!['EasyPaisa', 'JazzCash', 'Bank Account'].includes(method)) {
+      return res.status(400).json({ error: 'Select a valid payment gateway.' });
+    }
+    if (!Number.isFinite(amount) || amount < minDep || amount > 1000000) {
+      return res.status(400).json({
+        error: `Deposit amount must be between ${minDep.toLocaleString()} and 1,000,000 PKR.`,
+      });
+    }
+    if (senderName.length < 2 || senderNumber.length < 7) {
+      return res.status(400).json({
+        error: 'Enter your Sender Name and Sender Account / Mobile Number first.',
+      });
+    }
+
+    const pa = settings.paymentAccounts || defaultPaymentAccounts();
+    const acct =
+      method === 'EasyPaisa' ? pa.easypaisa : method === 'JazzCash' ? pa.jazzcash : pa.bank;
+    if (!acct || acct.enabled === false) {
+      return res.status(400).json({ error: `${method} deposits are currently disabled by Admin.` });
+    }
+
+    const qrReference = `SW-${Date.now().toString(36).toUpperCase()}-${crypto
+      .randomBytes(2)
+      .toString('hex')
+      .toUpperCase()}`;
+
+    // Encode merchant payment instruction & unique reference into scannable QR payload
+    const qrPayload = [
+      `PAY:${method.toUpperCase()}`,
+      `TO:${acct.accountTitle}`,
+      `ACC:${acct.accountNumber}`,
+      acct.bankName ? `BANK:${acct.bankName}` : '',
+      `AMT:${amount} PKR`,
+      `REF:${qrReference}`,
+    ]
+      .filter(Boolean)
+      .join('|');
+
+    const qrDataUrl = await QRCode.toDataURL(qrPayload, {
+      width: 260,
+      margin: 2,
+      color: { dark: '#060913', light: '#ffffff' },
+    });
+
+    const maskEnabled = settings.maskMasterAccounts !== false;
+    res.json({
+      qrReference,
+      qrDataUrl,
+      method,
+      amount,
+      maskedAccountNumber: maskMerchantNumber(acct.accountNumber, maskEnabled),
+      accountTitle: acct.accountTitle,
+      bankName: acct.bankName || '',
+      microAutoApproveLimit: Number(limits.microDepositAutoApproveLimit || 0),
+    });
+  } catch (err) {
+    console.error('[Deposit QR Error]', err);
+    res.status(500).json({ error: 'Failed to generate payment QR code.' });
+  }
+});
+
+async function grantFirstDepositReferralRewardIfEligible(userId, depositAmount) {
+  try {
+    const depositor = await db.findUserById(userId);
+    if (!depositor || depositor.firstDepositRewarded || !depositor.referredBy) return;
+    if (depositor.bonusRestricted) return;
+
+    const referrer = await db.findUserByReferralCode(depositor.referredBy);
+    if (!referrer || String(referrer._id) === String(depositor._id)) return;
+    if (referrer.bonusRestricted) return;
+
+    const bonus = Math.round(Number(depositAmount) * 0.15 * 100) / 100;
+    if (bonus <= 0) return;
+
+    await db.updateUserById(depositor._id, { $set: { firstDepositRewarded: true } });
+    const updatedRef = await db.adjustBalanceAtomic(referrer._id, 'real', bonus);
+    await db.updateUserById(referrer._id, { $inc: { referralEarnings: bonus } });
+
+    if (updatedRef) {
+      emitUserBalances(updatedRef);
+      emitToUser(referrer._id, 'referral:bonus', {
+        amount: bonus,
+        fromUser: depositor.displayName || maskPhone(depositor.phoneNumber),
+      });
+    }
+  } catch (err) {
+    console.warn('[Referral Bonus Warning]', err.message);
+  }
+}
+
+app.post('/api/transactions/deposit', requireAuth, async (req, res) => {
+  try {
+    const settings = await db.getSettings();
+    const limits = settings.financialLimits || defaultFinancialLimits();
+    const minDep = Number(limits.minDeposit || 50);
+    const microLimit = Number(limits.microDepositAutoApproveLimit ?? 1000);
+
+    const amount = Math.round(Number(req.body.amount) * 100) / 100;
+    const method = String(req.body.method || '').trim();
+    const senderName = String(req.body.senderName || '').trim().slice(0, 60);
+    const senderNumber = String(req.body.senderNumber || '').trim().slice(0, 32);
+    const qrReference = String(req.body.qrReference || '').trim().slice(0, 60);
     const transactionId = String(req.body.transactionId || '').trim().slice(0, 80);
     const screenshotData = String(req.body.screenshotData || '').trim();
 
-    if (!Number.isFinite(amount) || amount < 50 || amount > 1000000) {
-      return res.status(400).json({ error: 'Deposit amount must be between 50 and 1,000,000 PKR.' });
+    if (!Number.isFinite(amount) || amount < minDep || amount > 1000000) {
+      return res.status(400).json({
+        error: `Deposit amount must be between ${minDep.toLocaleString()} and 1,000,000 PKR.`,
+      });
     }
     if (!['EasyPaisa', 'JazzCash', 'Bank Account'].includes(method)) {
       return res.status(400).json({ error: 'Select a valid payment method.' });
@@ -976,24 +1946,79 @@ app.post('/api/transactions/deposit', requireAuth, async (req, res) => {
       }
     }
 
+    if (transactionId) {
+      const dupTid = await db.findTransactionByTid(transactionId);
+      if (dupTid) {
+        await logSecurityEvent(
+          'Duplicate TID Replay Blocked',
+          'warning',
+          `User ${req.user.phoneNumber} tried reusing TID "${transactionId}"`,
+          getClientIp(req)
+        );
+        return res.status(409).json({
+          error: 'This Transaction ID (TID) has already been submitted. Duplicate TIDs are not allowed.',
+        });
+      }
+    }
+
+    const canAutoApprove =
+      microLimit > 0 &&
+      amount <= microLimit &&
+      transactionId.length >= 6 &&
+      /^[A-Za-z0-9\-_]{6,40}$/.test(transactionId);
+
     const tx = await db.createTransaction({
       userId: String(req.user._id),
       phoneNumber: req.user.phoneNumber,
       displayName: req.user.displayName || maskPhone(req.user.phoneNumber),
       type: 'deposit',
       amount,
+      feeAmount: 0,
+      netAmount: amount,
       method,
+      senderName,
+      senderNumber,
+      qrReference,
       transactionId,
       screenshotData,
+      autoApproved: canAutoApprove,
+      status: canAutoApprove ? 'approved' : 'pending',
+      reviewedAt: canAutoApprove ? new Date() : null,
       accountDetails: {},
     });
 
     const cleanTx = sanitizeTransaction(tx);
 
-    // Trigger real-time Pop-Up Notification in Admin Panel
-    io.to('admins').emit('admin:deposit_alert', cleanTx);
+    if (canAutoApprove) {
+      await db.adjustBalanceAtomic(String(req.user._id), 'real', amount);
+      const updatedUser = await db.updateUserById(String(req.user._id), {
+        $inc: { totalDeposited: amount },
+      });
+      await grantFirstDepositReferralRewardIfEligible(req.user._id, amount);
+      if (updatedUser) emitUserBalances(updatedUser);
+      emitToUser(String(req.user._id), 'transaction:updated', cleanTx);
+      io.to('admins').emit('admin:transaction_resolved', cleanTx);
+      sendTelegramAlert(
+        settings,
+        `⚡ <b>Micro-Deposit Auto-Approved</b>\nUser: ${req.user.phoneNumber}\nAmount: <b>${amount.toLocaleString()} PKR</b>\nMethod: ${method}\nTID: <code>${transactionId}</code>`
+      ).catch(() => {});
+      return res.status(201).json({ transaction: cleanTx, autoApproved: true, user: sanitizeUser(updatedUser) });
+    }
 
-    res.status(201).json({ transaction: cleanTx });
+    // Trigger real-time Pop-Up Notification in Admin Panel + Telegram Bot Approve/Reject Alert
+    io.to('admins').emit('admin:deposit_alert', cleanTx);
+    sendTelegramAlert(
+      settings,
+      `💰 <b>New PKR Deposit Request</b>\nUser: ${req.user.phoneNumber} (${req.user.displayName})\nAmount: <b>${amount.toLocaleString()} PKR</b>\nMethod: ${method}\nSender: ${senderName || '-'} (${senderNumber || '-'})\nTID: <code>${transactionId || 'Screenshot'}</code>`,
+      [
+        [
+          { text: '✅ Approve Deposit', callback_data: `approve:${cleanTx.id}` },
+          { text: '❌ Reject', callback_data: `reject:${cleanTx.id}` },
+        ],
+      ]
+    ).catch(() => {});
+
+    res.status(201).json({ transaction: cleanTx, autoApproved: false });
   } catch (err) {
     console.error('[Deposit Error]', err);
     res.status(500).json({ error: 'Failed to submit deposit request.' });
@@ -1002,14 +2027,30 @@ app.post('/api/transactions/deposit', requireAuth, async (req, res) => {
 
 app.post('/api/transactions/withdraw', requireAuth, async (req, res) => {
   try {
+    const settings = await db.getSettings();
+    const whStatus = isWithinWithdrawalHours(settings.withdrawalHours);
+    if (!whStatus.allowed) {
+      return res.status(403).json({
+        error: whStatus.noticeText || 'Withdrawals are only open from 9:00 AM to 5:00 PM.',
+        outsideOperatingHours: true,
+      });
+    }
+
+    const limits = settings.financialLimits || defaultFinancialLimits();
+    const minWd = Number(limits.minWithdrawal || 100);
+    const feePct = Math.min(25, Math.max(0, Number(limits.withdrawalFeePct || 0)));
+
     const amount = Math.round(Number(req.body.amount) * 100) / 100;
     const method = String(req.body.method || '').trim();
     const accountTitle = String(req.body.accountTitle || '').trim().slice(0, 60);
     const accountNumber = String(req.body.accountNumber || '').trim().slice(0, 60);
     const bankName = String(req.body.bankName || '').trim().slice(0, 60);
+    const cnic = String(req.body.cnic || '').trim();
 
-    if (!Number.isFinite(amount) || amount < 100 || amount > 1000000) {
-      return res.status(400).json({ error: 'Withdrawal amount must be between 100 and 1,000,000 PKR.' });
+    if (!Number.isFinite(amount) || amount < minWd || amount > 1000000) {
+      return res.status(400).json({
+        error: `Withdrawal amount must be between ${minWd.toLocaleString()} and 1,000,000 PKR.`,
+      });
     }
     if (!['EasyPaisa', 'JazzCash', 'Bank Account'].includes(method)) {
       return res.status(400).json({ error: 'Select a valid withdrawal method.' });
@@ -1019,6 +2060,11 @@ app.post('/api/transactions/withdraw', requireAuth, async (req, res) => {
     }
     if (method === 'Bank Account' && !bankName) {
       return res.status(400).json({ error: 'Enter your Bank Name.' });
+    }
+    if (!CNIC_REGEX.test(cnic)) {
+      return res.status(400).json({
+        error: 'Valid Pakistani CNIC is required for withdrawals (format: XXXXX-XXXXXXX-X).',
+      });
     }
 
     // Strict Mandatory 1x Wagering (Rollover) Check: totalWageredReal >= totalDeposited
@@ -1044,21 +2090,36 @@ app.post('/api/transactions/withdraw', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Insufficient Real Money (PKR) balance.' });
     }
 
+    const feeAmount = Math.round(amount * (feePct / 100) * 100) / 100;
+    const netAmount = Math.max(0, Math.round((amount - feeAmount) * 100) / 100);
+
     const tx = await db.createTransaction({
       userId: String(req.user._id),
       phoneNumber: req.user.phoneNumber,
       displayName: req.user.displayName || maskPhone(req.user.phoneNumber),
       type: 'withdrawal',
       amount,
+      feeAmount,
+      netAmount,
       method,
       transactionId: '',
       screenshotData: '',
-      accountDetails: { accountTitle, accountNumber, bankName },
+      accountDetails: { accountTitle, accountNumber, bankName, cnic },
     });
 
     const cleanTx = sanitizeTransaction(tx);
     emitUserBalances(updatedUser);
     io.to('admins').emit('admin:withdrawal_alert', cleanTx);
+    sendTelegramAlert(
+      settings,
+      `💸 <b>New PKR Withdrawal Request</b>\nUser: ${req.user.phoneNumber}\nGross: <b>${amount.toLocaleString()} PKR</b> (Fee: ${feeAmount.toLocaleString()} PKR | Net Payout: <b>${netAmount.toLocaleString()} PKR</b>)\nMethod: ${method}\nAccount: ${accountTitle} · ${accountNumber}\nCNIC: ${cnic}`,
+      [
+        [
+          { text: '✅ Approve Payout', callback_data: `approve:${cleanTx.id}` },
+          { text: '❌ Reject & Refund', callback_data: `reject:${cleanTx.id}` },
+        ],
+      ]
+    ).catch(() => {});
 
     res.status(201).json({
       transaction: cleanTx,
@@ -1080,17 +2141,653 @@ app.get('/api/transactions/my', requireAuth, async (req, res) => {
 });
 
 // ============================================================================
+// VIP Loyalty Tiers, Daily Login & Cashback + Referral System
+// ============================================================================
+app.get('/api/rewards/status', requireAuth, async (req, res) => {
+  const user = req.user;
+  const vip = computeVipTier(user.totalWageredReal);
+  const eligible = Number(user.totalDeposited || 0) > 0 && !user.bonusRestricted;
+  const now = Date.now();
+  const lastDaily = user.lastDailyClaimAt ? new Date(user.lastDailyClaimAt).getTime() : 0;
+  const lastWeekly = user.lastWeeklyClaimAt ? new Date(user.lastWeeklyClaimAt).getTime() : 0;
+  const dailyCooldownMs = Math.max(0, lastDaily + 24 * 3600 * 1000 - now);
+  const weeklyCooldownMs = Math.max(0, lastWeekly + 7 * 24 * 3600 * 1000 - now);
+
+  const netLoss = Math.max(0, Number(user.totalWageredReal || 0) - Number(user.totalWonReal || 0));
+  const estimatedCashback =
+    eligible && Number(user.totalWageredReal || 0) >= 100
+      ? Math.min(10000, Math.max(10, Math.round(netLoss * (vip.cashbackPct / 100))))
+      : 0;
+
+  res.json({
+    vip,
+    eligible,
+    bonusRestricted: Boolean(user.bonusRestricted),
+    restrictionReason: user.restrictionReason || '',
+    hasDeposited: Number(user.totalDeposited || 0) > 0,
+    dailyReady: eligible && dailyCooldownMs === 0,
+    dailyCooldownMs,
+    weeklyReady: eligible && weeklyCooldownMs === 0 && estimatedCashback > 0,
+    weeklyCooldownMs,
+    estimatedCashback,
+    referralCode: user.referralCode || '',
+    referralEarnings: Number(user.referralEarnings || 0),
+  });
+});
+
+app.post('/api/rewards/daily', requireAuth, async (req, res) => {
+  try {
+    const user = await db.findUserById(req.user._id);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    if (user.bonusRestricted) {
+      return res.status(403).json({ error: 'Account is restricted from promotional bonuses due to multi-account detection.' });
+    }
+    if (Number(user.totalDeposited || 0) <= 0) {
+      return res.status(403).json({
+        error: 'Make your first Real PKR deposit to unlock Daily Login Rewards!',
+      });
+    }
+
+    const lastDaily = user.lastDailyClaimAt ? new Date(user.lastDailyClaimAt).getTime() : 0;
+    const nextAllowed = lastDaily + 24 * 3600 * 1000;
+    if (Date.now() < nextAllowed) {
+      const hrs = Math.ceil((nextAllowed - Date.now()) / 3600000);
+      return res.status(429).json({ error: `Daily reward already claimed. Next claim in ~${hrs}h.` });
+    }
+
+    const vip = computeVipTier(user.totalWageredReal);
+    await db.adjustBalanceAtomic(user._id, 'fun', vip.dailyFun);
+    await db.adjustBalanceAtomic(user._id, 'real', vip.dailyReal);
+    const updated = await db.updateUserById(user._id, {
+      $set: { lastDailyClaimAt: new Date() },
+    });
+    if (updated) emitUserBalances(updated);
+    res.json({
+      ok: true,
+      awardedFun: vip.dailyFun,
+      awardedReal: vip.dailyReal,
+      tier: vip.tier,
+      user: sanitizeUser(updated),
+    });
+  } catch (err) {
+    console.error('[Daily Reward Error]', err);
+    res.status(500).json({ error: 'Failed to claim daily reward.' });
+  }
+});
+
+app.post('/api/rewards/weekly', requireAuth, async (req, res) => {
+  try {
+    const user = await db.findUserById(req.user._id);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    if (user.bonusRestricted) {
+      return res.status(403).json({ error: 'Account is restricted from promotional bonuses.' });
+    }
+    if (Number(user.totalDeposited || 0) <= 0 || Number(user.totalWageredReal || 0) < 100) {
+      return res.status(403).json({
+        error: 'Weekly VIP Cashback requires at least 1 approved deposit and 100 PKR wagered.',
+      });
+    }
+
+    const lastWeekly = user.lastWeeklyClaimAt ? new Date(user.lastWeeklyClaimAt).getTime() : 0;
+    const nextAllowed = lastWeekly + 7 * 24 * 3600 * 1000;
+    if (Date.now() < nextAllowed) {
+      const days = Math.ceil((nextAllowed - Date.now()) / (24 * 3600 * 1000));
+      return res.status(429).json({ error: `Weekly cashback already claimed. Next claim in ${days}d.` });
+    }
+
+    const vip = computeVipTier(user.totalWageredReal);
+    const netLoss = Math.max(0, Number(user.totalWageredReal || 0) - Number(user.totalWonReal || 0));
+    const cashback = Math.min(10000, Math.max(10, Math.round(netLoss * (vip.cashbackPct / 100))));
+
+    await db.adjustBalanceAtomic(user._id, 'real', cashback);
+    const updated = await db.updateUserById(user._id, {
+      $set: { lastWeeklyClaimAt: new Date() },
+    });
+    if (updated) emitUserBalances(updated);
+    res.json({
+      ok: true,
+      cashback,
+      tier: vip.tier,
+      user: sanitizeUser(updated),
+    });
+  } catch (err) {
+    console.error('[Weekly Cashback Error]', err);
+    res.status(500).json({ error: 'Failed to claim weekly cashback.' });
+  }
+});
+
+// ============================================================================
+// Multi-Game Playable Arcade Engines (Cyber Plinko & Golden Mines)
+// ============================================================================
+const PLINKO_TABLES = {
+  low: [5.6, 2.1, 1.1, 1.0, 0.5, 1.0, 1.1, 2.1, 5.6],
+  medium: [13.0, 3.0, 1.3, 0.7, 0.4, 0.7, 1.3, 3.0, 13.0],
+  high: [29.0, 4.0, 1.5, 0.3, 0.2, 0.3, 1.5, 4.0, 29.0],
+};
+
+const activeMinesGames = new Map(); // userId -> { currencyMode, betAmount, minesCount, mines: Set<number>, revealed: number[], gameOver: boolean }
+
+function computeMinesMultiplier(revealedCount, minesCount, houseEdgePct = 4) {
+  if (revealedCount <= 0) return 1.0;
+  let prob = 1.0;
+  for (let i = 0; i < revealedCount; i++) {
+    prob *= (25 - minesCount - i) / (25 - i);
+  }
+  const edgeFactor = Math.max(0.75, 1 - houseEdgePct / 100);
+  return Math.max(1.01, Math.round((edgeFactor / prob) * 100) / 100);
+}
+
+app.post('/api/games/plinko/play', requireAuth, async (req, res) => {
+  try {
+    const settings = await db.getSettings();
+    if (settings.platformStatus?.mode && settings.platformStatus.mode !== 'active') {
+      return res.status(503).json({ error: settings.platformStatus.message || 'Platform under maintenance.' });
+    }
+    const gameCfg = (settings.gamesConfig || defaultGamesConfig()).find((g) => g.id === 'cyber-plinko');
+    if (gameCfg && gameCfg.enabled === false) {
+      return res.status(403).json({ error: 'Cyber Plinko is currently disabled by Admin.' });
+    }
+
+    const currencyMode = req.body.currencyMode === 'real' ? 'real' : 'fun';
+    const risk = ['low', 'medium', 'high'].includes(req.body.risk) ? req.body.risk : 'medium';
+    const amount = Math.round(Number(req.body.amount) * 100) / 100;
+    const minBet = Number(gameCfg?.minBet || 10);
+    const maxBet = Number(gameCfg?.maxBet || 50000);
+
+    if (!Number.isFinite(amount) || amount < minBet || amount > maxBet) {
+      return res.status(400).json({ error: `Bet must be between ${minBet} and ${maxBet.toLocaleString()}.` });
+    }
+
+    const userId = String(req.user._id);
+    const afterDeduct = await db.adjustBalanceAtomic(userId, currencyMode, -amount);
+    if (!afterDeduct) {
+      return res.status(400).json({
+        error: currencyMode === 'real' ? 'Insufficient Real PKR balance.' : 'Insufficient Fun Credits.',
+      });
+    }
+
+    // 8 cryptographic coin flips for Plinko peg path
+    const bytes = crypto.randomBytes(8);
+    const pathArr = [];
+    let slot = 0;
+    for (let i = 0; i < 8; i++) {
+      const bit = bytes[i] & 1;
+      pathArr.push(bit);
+      slot += bit;
+    }
+
+    const table = PLINKO_TABLES[risk];
+    let mult = table[slot] ?? 1.0;
+    // Apply configured houseEdge / risk offset gently to top slots
+    const edgePct = Math.min(25, Math.max(0, Number(gameCfg?.houseEdgePct ?? 4) + Number(settings.rtpRiskConfig?.dynamicEdgeOffset || 0)));
+    if (mult > 1.5 && edgePct > 4) {
+      mult = Math.round(mult * Math.max(0.75, 1 - (edgePct - 4) / 100) * 100) / 100;
+    }
+
+    const payout = Math.round(amount * mult * 100) / 100;
+    const profit = Math.round((payout - amount) * 100) / 100;
+
+    const afterWin = payout > 0 ? await db.adjustBalanceAtomic(userId, currencyMode, payout) : afterDeduct;
+    const wagerField = currencyMode === 'real' ? 'totalWageredReal' : 'totalWageredFun';
+    const wonField = currencyMode === 'real' ? 'totalWonReal' : 'totalWonFun';
+
+    const updatedUser = await db.updateUserById(userId, {
+      $inc: {
+        [wagerField]: amount,
+        [wonField]: payout,
+        totalWagered: amount,
+        totalWon: payout,
+      },
+      $push: {
+        recentBets: {
+          $each: [
+            {
+              roundNumber: Math.floor(Date.now() / 1000) % 100000,
+              game: 'cyber-plinko',
+              currencyMode,
+              betAmount: amount,
+              cashoutMultiplier: mult,
+              payout,
+              profit,
+              crashedAt: mult,
+              createdAt: new Date(),
+            },
+          ],
+          $slice: 30,
+        },
+      },
+    });
+
+    if (currencyMode === 'real') {
+      const dailyBets = Math.round((Number(settings.dailyTotalBets || 0) + amount) * 100) / 100;
+      const dailyPayouts = Math.round((Number(settings.dailyTotalPayouts || 0) + payout) * 100) / 100;
+      const dailyNet = Math.round((dailyBets - dailyPayouts) * 100) / 100;
+      const poolDelta = Math.round((amount - payout) * 100) / 100;
+      const nextPool = Math.max(0, Math.round((Number(settings.profitDistributionPool || 0) + poolDelta) * 100) / 100);
+      await db.updateSettings({
+        dailyTotalBets: dailyBets,
+        dailyTotalPayouts: dailyPayouts,
+        dailyNetProfit: dailyNet,
+        profitDistributionPool: nextPool,
+      });
+    }
+
+    if (updatedUser || afterWin) emitUserBalances(updatedUser || afterWin);
+
+    res.json({
+      path: pathArr,
+      slot,
+      multiplier: mult,
+      payout,
+      profit,
+      currencyMode,
+      user: sanitizeUser(updatedUser || afterWin),
+    });
+  } catch (err) {
+    console.error('[Plinko Error]', err);
+    res.status(500).json({ error: 'Plinko round failed.' });
+  }
+});
+
+app.post('/api/games/mines/start', requireAuth, async (req, res) => {
+  try {
+    const settings = await db.getSettings();
+    if (settings.platformStatus?.mode && settings.platformStatus.mode !== 'active') {
+      return res.status(503).json({ error: settings.platformStatus.message || 'Platform under maintenance.' });
+    }
+    const gameCfg = (settings.gamesConfig || defaultGamesConfig()).find((g) => g.id === 'golden-mines');
+    if (gameCfg && gameCfg.enabled === false) {
+      return res.status(403).json({ error: 'Golden Mines is currently disabled by Admin.' });
+    }
+
+    const userId = String(req.user._id);
+    if (activeMinesGames.has(userId)) {
+      return res.status(409).json({ error: 'Finish or cash out your current Golden Mines board first.' });
+    }
+
+    const currencyMode = req.body.currencyMode === 'real' ? 'real' : 'fun';
+    const amount = Math.round(Number(req.body.amount) * 100) / 100;
+    const minesCount = Math.min(20, Math.max(3, Math.floor(Number(req.body.minesCount || 3))));
+    const minBet = Number(gameCfg?.minBet || 10);
+    const maxBet = Number(gameCfg?.maxBet || 50000);
+
+    if (!Number.isFinite(amount) || amount < minBet || amount > maxBet) {
+      return res.status(400).json({ error: `Bet must be between ${minBet} and ${maxBet.toLocaleString()}.` });
+    }
+
+    const afterDeduct = await db.adjustBalanceAtomic(userId, currencyMode, -amount);
+    if (!afterDeduct) {
+      return res.status(400).json({
+        error: currencyMode === 'real' ? 'Insufficient Real PKR balance.' : 'Insufficient Fun Credits.',
+      });
+    }
+
+    const wagerField = currencyMode === 'real' ? 'totalWageredReal' : 'totalWageredFun';
+    const updatedUser = await db.updateUserById(userId, {
+      $inc: { [wagerField]: amount, totalWagered: amount },
+    });
+
+    const mines = new Set();
+    while (mines.size < minesCount) {
+      mines.add(crypto.randomInt(0, 25));
+    }
+
+    const session = {
+      currencyMode,
+      betAmount: amount,
+      minesCount,
+      mines,
+      revealed: [],
+      houseEdgePct: Number(gameCfg?.houseEdgePct ?? 4),
+    };
+    activeMinesGames.set(userId, session);
+
+    if (currencyMode === 'real') {
+      const dailyBets = Math.round((Number(settings.dailyTotalBets || 0) + amount) * 100) / 100;
+      const dailyNet = Math.round((dailyBets - Number(settings.dailyTotalPayouts || 0)) * 100) / 100;
+      await db.updateSettings({
+        dailyTotalBets: dailyBets,
+        dailyNetProfit: dailyNet,
+        profitDistributionPool: Math.round((Number(settings.profitDistributionPool || 0) + amount) * 100) / 100,
+      });
+    }
+
+    emitUserBalances(updatedUser || afterDeduct);
+    res.json({
+      ok: true,
+      minesCount,
+      betAmount: amount,
+      currencyMode,
+      nextMultiplier: computeMinesMultiplier(1, minesCount, session.houseEdgePct),
+      user: sanitizeUser(updatedUser || afterDeduct),
+    });
+  } catch (err) {
+    console.error('[Mines Start Error]', err);
+    res.status(500).json({ error: 'Could not start Golden Mines.' });
+  }
+});
+
+app.post('/api/games/mines/reveal', requireAuth, async (req, res) => {
+  try {
+    const userId = String(req.user._id);
+    const session = activeMinesGames.get(userId);
+    if (!session) {
+      return res.status(404).json({ error: 'No active Golden Mines session.' });
+    }
+    const index = Math.floor(Number(req.body.index));
+    if (!Number.isFinite(index) || index < 0 || index >= 25) {
+      return res.status(400).json({ error: 'Invalid tile index.' });
+    }
+    if (session.revealed.includes(index)) {
+      return res.status(400).json({ error: 'Tile already revealed.' });
+    }
+
+    if (session.mines.has(index)) {
+      const mineList = Array.from(session.mines);
+      activeMinesGames.delete(userId);
+      const updatedUser = await db.updateUserById(userId, {
+        $push: {
+          recentBets: {
+            $each: [
+              {
+                roundNumber: Math.floor(Date.now() / 1000) % 100000,
+                game: 'golden-mines',
+                currencyMode: session.currencyMode,
+                betAmount: session.betAmount,
+                cashoutMultiplier: null,
+                payout: 0,
+                profit: -session.betAmount,
+                crashedAt: 0,
+                createdAt: new Date(),
+              },
+            ],
+            $slice: 30,
+          },
+        },
+      });
+      return res.json({
+        boom: true,
+        index,
+        mines: mineList,
+        revealed: session.revealed,
+        multiplier: 0,
+        payout: 0,
+        user: sanitizeUser(updatedUser),
+      });
+    }
+
+    session.revealed.push(index);
+    const mult = computeMinesMultiplier(session.revealed.length, session.minesCount, session.houseEdgePct);
+    const nextMultiplier =
+      session.revealed.length < 25 - session.minesCount
+        ? computeMinesMultiplier(session.revealed.length + 1, session.minesCount, session.houseEdgePct)
+        : mult;
+
+    // Auto-cashout if all safe gems uncovered
+    if (session.revealed.length >= 25 - session.minesCount) {
+      const mineList = Array.from(session.mines);
+      const payout = Math.round(session.betAmount * mult * 100) / 100;
+      activeMinesGames.delete(userId);
+      const afterWin = await db.adjustBalanceAtomic(userId, session.currencyMode, payout);
+      const wonField = session.currencyMode === 'real' ? 'totalWonReal' : 'totalWonFun';
+      const updatedUser = await db.updateUserById(userId, {
+        $inc: { [wonField]: payout, totalWon: payout },
+      });
+      if (session.currencyMode === 'real') {
+        const s = await db.getSettings();
+        const dailyPayouts = Math.round((Number(s.dailyTotalPayouts || 0) + payout) * 100) / 100;
+        await db.updateSettings({
+          dailyTotalPayouts: dailyPayouts,
+          dailyNetProfit: Math.round((Number(s.dailyTotalBets || 0) - dailyPayouts) * 100) / 100,
+          profitDistributionPool: Math.max(0, Math.round((Number(s.profitDistributionPool || 0) - payout) * 100) / 100),
+        });
+      }
+      emitUserBalances(updatedUser || afterWin);
+      return res.json({
+        boom: false,
+        clearedAll: true,
+        index,
+        revealed: session.revealed,
+        mines: mineList,
+        multiplier: mult,
+        payout,
+        user: sanitizeUser(updatedUser || afterWin),
+      });
+    }
+
+    res.json({
+      boom: false,
+      clearedAll: false,
+      index,
+      revealed: session.revealed,
+      multiplier: mult,
+      nextMultiplier,
+      potentialPayout: Math.round(session.betAmount * mult * 100) / 100,
+    });
+  } catch (err) {
+    console.error('[Mines Reveal Error]', err);
+    res.status(500).json({ error: 'Tile reveal failed.' });
+  }
+});
+
+app.post('/api/games/mines/cashout', requireAuth, async (req, res) => {
+  try {
+    const userId = String(req.user._id);
+    const session = activeMinesGames.get(userId);
+    if (!session) {
+      return res.status(404).json({ error: 'No active Golden Mines session.' });
+    }
+    if (session.revealed.length === 0) {
+      return res.status(400).json({ error: 'Reveal at least 1 diamond before cashing out.' });
+    }
+
+    const mult = computeMinesMultiplier(session.revealed.length, session.minesCount, session.houseEdgePct);
+    const payout = Math.round(session.betAmount * mult * 100) / 100;
+    const profit = Math.round((payout - session.betAmount) * 100) / 100;
+    const mineList = Array.from(session.mines);
+    activeMinesGames.delete(userId);
+
+    const afterWin = await db.adjustBalanceAtomic(userId, session.currencyMode, payout);
+    const wonField = session.currencyMode === 'real' ? 'totalWonReal' : 'totalWonFun';
+    const updatedUser = await db.updateUserById(userId, {
+      $inc: { [wonField]: payout, totalWon: payout },
+      $push: {
+        recentBets: {
+          $each: [
+            {
+              roundNumber: Math.floor(Date.now() / 1000) % 100000,
+              game: 'golden-mines',
+              currencyMode: session.currencyMode,
+              betAmount: session.betAmount,
+              cashoutMultiplier: mult,
+              payout,
+              profit,
+              crashedAt: mult,
+              createdAt: new Date(),
+            },
+          ],
+          $slice: 30,
+        },
+      },
+    });
+
+    if (session.currencyMode === 'real') {
+      const s = await db.getSettings();
+      const dailyPayouts = Math.round((Number(s.dailyTotalPayouts || 0) + payout) * 100) / 100;
+      await db.updateSettings({
+        dailyTotalPayouts: dailyPayouts,
+        dailyNetProfit: Math.round((Number(s.dailyTotalBets || 0) - dailyPayouts) * 100) / 100,
+        profitDistributionPool: Math.max(0, Math.round((Number(s.profitDistributionPool || 0) - payout) * 100) / 100),
+      });
+    }
+
+    emitUserBalances(updatedUser || afterWin);
+    res.json({
+      ok: true,
+      multiplier: mult,
+      payout,
+      profit,
+      mines: mineList,
+      currencyMode: session.currencyMode,
+      user: sanitizeUser(updatedUser || afterWin),
+    });
+  } catch (err) {
+    console.error('[Mines Cashout Error]', err);
+    res.status(500).json({ error: 'Mines cashout failed.' });
+  }
+});
+
+// ============================================================================
+// In-App Live Support Ticket Chat (Player Routes)
+// ============================================================================
+app.get('/api/support/tickets/my', requireAuth, async (req, res) => {
+  try {
+    const tickets = await db.listUserSupportTickets(req.user._id);
+    res.json({ tickets });
+  } catch {
+    res.status(500).json({ error: 'Failed to load support tickets.' });
+  }
+});
+
+app.post('/api/support/tickets', requireAuth, async (req, res) => {
+  try {
+    const subject = String(req.body.subject || '').trim().slice(0, 120);
+    const text = String(req.body.text || '').trim().slice(0, 1000);
+    if (!subject || !text) {
+      return res.status(400).json({ error: 'Subject and message are required.' });
+    }
+    const ticket = await db.createSupportTicket({
+      userId: req.user._id,
+      phoneNumber: req.user.phoneNumber,
+      displayName: req.user.displayName || maskPhone(req.user.phoneNumber),
+      subject,
+      text,
+    });
+    io.to('admins').emit('support:ticket_updated', ticket);
+    res.status(201).json({ ticket });
+  } catch (err) {
+    console.error('[Support Create Error]', err);
+    res.status(500).json({ error: 'Failed to create support ticket.' });
+  }
+});
+
+app.post('/api/support/tickets/:id/message', requireAuth, async (req, res) => {
+  try {
+    const existing = await db.findSupportTicketById(req.params.id);
+    if (!existing || String(existing.userId) !== String(req.user._id)) {
+      return res.status(404).json({ error: 'Support ticket not found.' });
+    }
+    const text = String(req.body.text || '').trim().slice(0, 1000);
+    if (!text) return res.status(400).json({ error: 'Message cannot be empty.' });
+    const updated = await db.addSupportMessage(req.params.id, 'user', text);
+    io.to('admins').emit('support:ticket_updated', updated);
+    emitToUser(req.user._id, 'support:ticket_updated', updated);
+    res.json({ ticket: updated });
+  } catch {
+    res.status(500).json({ error: 'Failed to send message.' });
+  }
+});
+
+// Telegram Webhook Handler (Inline [Approve] / [Reject] buttons)
+app.post('/api/telegram/webhook', async (req, res) => {
+  try {
+    const settings = await db.getSettings();
+    const tg = settings.telegramBot || {};
+    const cbq = req.body?.callback_query;
+    if (!cbq || !cbq.data) {
+      return res.json({ ok: true });
+    }
+    const chatId = String(cbq.message?.chat?.id || cbq.from?.id || '');
+    if (tg.adminChatId && chatId !== String(tg.adminChatId)) {
+      return res.json({ ok: false });
+    }
+    const [action, txId] = String(cbq.data).split(':');
+    if (action === 'approve' && txId) {
+      const existingTx = await db.findTransactionById(txId);
+      if (existingTx && existingTx.status === 'pending') {
+        const resolved = await db.resolveTransactionIfPending(txId, 'approved', '');
+        if (resolved) {
+          if (resolved.type === 'deposit') {
+            await db.adjustBalanceAtomic(resolved.userId, 'real', resolved.amount);
+            const u = await db.updateUserById(resolved.userId, { $inc: { totalDeposited: resolved.amount } });
+            await grantFirstDepositReferralRewardIfEligible(resolved.userId, resolved.amount);
+            if (u) emitUserBalances(u);
+          } else {
+            const u = await db.updateUserById(resolved.userId, { $inc: { totalWithdrawn: resolved.amount } });
+            if (u) emitUserBalances(u);
+          }
+          const clean = sanitizeTransaction(resolved);
+          emitToUser(resolved.userId, 'transaction:updated', clean);
+          io.to('admins').emit('admin:transaction_resolved', clean);
+          await sendTelegramAlert(settings, `✅ Transaction <code>${txId}</code> (${resolved.amount} PKR) approved via Telegram.`);
+        }
+      }
+    } else if (action === 'reject' && txId) {
+      const resolved = await db.resolveTransactionIfPending(txId, 'rejected', 'Rejected via Telegram Admin');
+      if (resolved) {
+        if (resolved.type === 'withdrawal') {
+          const u = await db.adjustBalanceAtomic(resolved.userId, 'real', resolved.amount);
+          if (u) emitUserBalances(u);
+        }
+        const clean = sanitizeTransaction(resolved);
+        emitToUser(resolved.userId, 'transaction:updated', clean);
+        io.to('admins').emit('admin:transaction_resolved', clean);
+        await sendTelegramAlert(settings, `❌ Transaction <code>${txId}</code> rejected via Telegram.`);
+      }
+    }
+    res.json({ ok: true });
+  } catch {
+    res.json({ ok: true });
+  }
+});
+
+// ============================================================================
 // Admin Routes
 // ============================================================================
-app.post('/api/admin/login', (req, res) => {
-  const username = String(req.body.username || '').trim();
-  const password = String(req.body.password || '');
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const username = String(req.body.username || '').trim();
+    const password = String(req.body.password || '');
+    const totpCode = String(req.body.totpCode || '').trim();
+    const clientIp = getClientIp(req);
 
-  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+      await logSecurityEvent('Admin Login Failed', 'critical', `Bad credentials attempt for "${username}"`, clientIp);
+      return res.status(401).json({ error: 'Invalid admin credentials.' });
+    }
+
+    const settings = await db.getSettings();
+    if (settings.security?.totpEnabled) {
+      if (!totpCode) {
+        return res.status(200).json({ requires2FA: true });
+      }
+      if (!verifyTotp(settings.security.totpSecret, totpCode)) {
+        await logSecurityEvent('Admin 2FA Failed', 'critical', 'Invalid Google Authenticator 2FA code', clientIp);
+        return res.status(401).json({ error: 'Invalid 2FA Authenticator code.', requires2FA: true });
+      }
+    }
+
+    await logSecurityEvent('Admin Logged In', 'info', `Admin console unlocked`, clientIp);
     return res.json({ token: signAdminToken(), username: ADMIN_USERNAME });
+  } catch {
+    return res.status(500).json({ error: 'Admin login error.' });
   }
-  return res.status(401).json({ error: 'Invalid admin credentials.' });
 });
+
+function computeLiveRtpTelemetry(settings) {
+  const totalBets = Number(settings.dailyTotalBets || 0);
+  const totalPayouts = Number(settings.dailyTotalPayouts || 0);
+  const actualRtp = totalBets > 0 ? Math.round((totalPayouts / totalBets) * 10000) / 100 : 96;
+  const rtpCfg = settings.rtpRiskConfig || defaultRtpRiskConfig();
+  return {
+    actualRtp,
+    targetRtpPct: Number(rtpCfg.targetRtpPct ?? 96),
+    dynamicEdgeOffset: Number(rtpCfg.dynamicEdgeOffset ?? 0),
+    currentRiskIndex: Number(rtpCfg.currentRiskIndex ?? 15),
+    autoAdjustEnabled: rtpCfg.autoAdjustEnabled !== false,
+    lastEvaluatedAt: rtpCfg.lastEvaluatedAt || null,
+  };
+}
 
 app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
   try {
@@ -1112,9 +2809,26 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
         whatsappChannelUrl: settings.whatsappChannelUrl,
         telegramChannelEnabled: settings.telegramChannelEnabled !== false,
         telegramChannelUrl: settings.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
+        maskMasterAccounts: settings.maskMasterAccounts !== false,
         paymentAccounts: settings.paymentAccounts,
+        financialLimits: settings.financialLimits || defaultFinancialLimits(),
+        withdrawalHours: settings.withdrawalHours || defaultWithdrawalHours(),
+        platformStatus: settings.platformStatus || defaultPlatformStatus(),
         audioConfig: settings.audioConfig || defaultAudioConfig(),
         profitControl: settings.profitControl || defaultProfitControl(),
+        profitDistributionPool: Math.round(Number(settings.profitDistributionPool ?? 10000) * 100) / 100,
+        rtpRiskConfig: settings.rtpRiskConfig || defaultRtpRiskConfig(),
+        gamesConfig: settings.gamesConfig || defaultGamesConfig(),
+        telegramBot: {
+          enabled: Boolean(settings.telegramBot?.enabled),
+          botToken: settings.telegramBot?.botToken || '',
+          adminChatId: settings.telegramBot?.adminChatId || '',
+          webhookSecret: settings.telegramBot?.webhookSecret || '',
+        },
+        securitySummary: {
+          totpEnabled: Boolean(settings.security?.totpEnabled),
+          masterPasswordSet: Boolean(settings.security?.masterPasswordHash),
+        },
         dailyProfitTarget: target,
         varianceTolerancePct: tolerance,
         welcomeBonusCredits: settings.welcomeBonusCredits,
@@ -1128,6 +2842,7 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
         recentRounds: (settings.recentRounds || []).slice(0, 20),
       },
       pendingCounts,
+      telemetry: computeLiveRtpTelemetry(settings),
       live: {
         onlineSockets: io.engine.clientsCount,
         displayedOnline: getDisplayedOnlineCount(),
@@ -1297,21 +3012,369 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
       carryForwardPool,
     });
 
-    io.emit('settings:updated', {
-      whatsappSupportEnabled: updated.whatsappSupportEnabled !== false,
-      whatsappSupportNumber: updated.whatsappSupportNumber,
-      whatsappChannelEnabled: updated.whatsappChannelEnabled !== false,
-      whatsappChannelUrl: updated.whatsappChannelUrl,
-      telegramChannelEnabled: updated.telegramChannelEnabled !== false,
-      telegramChannelUrl: updated.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
-      paymentAccounts: updated.paymentAccounts,
-      audioConfig: updated.audioConfig || audioConfig,
-    });
+    io.emit('settings:updated', buildPublicSettingsPayload(updated));
 
     res.json({ settings: updated });
   } catch (err) {
     console.error('[Admin Settings Update Error]', err);
     res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+// Admin Financial Limits, Operating Hours, Maintenance, Games Hub, RTP Risk, Security & Reports
+app.put('/api/admin/financial-limits', requireAdmin, async (req, res) => {
+  try {
+    const current = await db.getSettings();
+    const curLim = current.financialLimits || defaultFinancialLimits();
+    const financialLimits = {
+      minDeposit: Math.max(10, Number(req.body.minDeposit ?? curLim.minDeposit) || 50),
+      minWithdrawal: Math.max(10, Number(req.body.minWithdrawal ?? curLim.minWithdrawal) || 100),
+      withdrawalFeePct: Math.min(25, Math.max(0, Number(req.body.withdrawalFeePct ?? curLim.withdrawalFeePct) || 0)),
+      microDepositAutoApproveLimit: Math.max(
+        0,
+        Number(req.body.microDepositAutoApproveLimit ?? curLim.microDepositAutoApproveLimit) || 0
+      ),
+    };
+    const maskMasterAccounts =
+      req.body.maskMasterAccounts !== undefined
+        ? Boolean(req.body.maskMasterAccounts)
+        : current.maskMasterAccounts !== false;
+    const profitDistributionPool =
+      req.body.profitDistributionPool !== undefined
+        ? Math.max(0, Number(req.body.profitDistributionPool) || 0)
+        : Number(current.profitDistributionPool ?? 10000);
+
+    const updated = await db.updateSettings({
+      financialLimits,
+      maskMasterAccounts,
+      profitDistributionPool,
+    });
+    io.emit('settings:updated', buildPublicSettingsPayload(updated));
+    res.json({ financialLimits: updated.financialLimits, maskMasterAccounts: updated.maskMasterAccounts, profitDistributionPool: updated.profitDistributionPool });
+  } catch {
+    res.status(500).json({ error: 'Failed to save financial limits.' });
+  }
+});
+
+app.put('/api/admin/withdrawal-hours', requireAdmin, async (req, res) => {
+  try {
+    const current = await db.getSettings();
+    const curWh = current.withdrawalHours || defaultWithdrawalHours();
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    const openTime = timeRegex.test(String(req.body.openTime || '')) ? req.body.openTime : curWh.openTime;
+    const closeTime = timeRegex.test(String(req.body.closeTime || '')) ? req.body.closeTime : curWh.closeTime;
+    const withdrawalHours = {
+      enabled: req.body.enabled !== undefined ? Boolean(req.body.enabled) : Boolean(curWh.enabled),
+      openTime,
+      closeTime,
+      noticeText: String(req.body.noticeText ?? curWh.noticeText).trim().slice(0, 200) || 'Withdrawals are only open from 9:00 AM to 5:00 PM.',
+    };
+    const updated = await db.updateSettings({ withdrawalHours });
+    io.emit('settings:updated', buildPublicSettingsPayload(updated));
+    res.json({ withdrawalHours: updated.withdrawalHours });
+  } catch {
+    res.status(500).json({ error: 'Failed to update withdrawal operating hours.' });
+  }
+});
+
+app.put('/api/admin/platform-status', requireAdmin, async (req, res) => {
+  try {
+    const mode = ['active', 'maintenance', 'disabled'].includes(req.body.mode) ? req.body.mode : 'active';
+    const message = String(req.body.message || '').trim().slice(0, 300) || defaultPlatformStatus().message;
+    const masterPassword = String(req.body.masterPassword || '');
+
+    if (mode !== 'active') {
+      const okMaster = await verifyMasterPassword(masterPassword);
+      if (!okMaster) {
+        await logSecurityEvent('Unauthorized Maintenance Switch Attempt', 'critical', `Attempted to switch platform to ${mode} with invalid Master Password`, getClientIp(req));
+        return res.status(403).json({ error: 'Invalid Master Password. Maintenance / Disable switch denied.' });
+      }
+    }
+
+    const platformStatus = { mode, message };
+    const updated = await db.updateSettings({ platformStatus });
+    await logSecurityEvent('Platform Status Changed', mode === 'active' ? 'info' : 'critical', `Platform mode set to "${mode}"`, getClientIp(req));
+    io.emit('platform:status', platformStatus);
+    io.emit('settings:updated', buildPublicSettingsPayload(updated));
+    res.json({ platformStatus: updated.platformStatus });
+  } catch {
+    res.status(500).json({ error: 'Failed to update platform status.' });
+  }
+});
+
+app.put('/api/admin/games-config', requireAdmin, async (req, res) => {
+  try {
+    const incoming = Array.isArray(req.body.gamesConfig) ? req.body.gamesConfig : [];
+    const current = await db.getSettings();
+    const curGames = current.gamesConfig || defaultGamesConfig();
+    const nextGames = curGames.map((g) => {
+      const match = incoming.find((item) => item.id === g.id);
+      if (!match) return g;
+      return {
+        id: g.id,
+        name: String(match.name || g.name).trim().slice(0, 40),
+        tagline: String(match.tagline || g.tagline).trim().slice(0, 80),
+        enabled: match.enabled !== undefined ? Boolean(match.enabled) : g.enabled,
+        houseEdgePct: Math.min(25, Math.max(0, Number(match.houseEdgePct ?? g.houseEdgePct) || 4)),
+        minBet: Math.max(1, Number(match.minBet ?? g.minBet) || 1),
+        maxBet: Math.max(10, Number(match.maxBet ?? g.maxBet) || 50000),
+      };
+    });
+    const updated = await db.updateSettings({ gamesConfig: nextGames });
+    io.emit('settings:updated', buildPublicSettingsPayload(updated));
+    res.json({ gamesConfig: updated.gamesConfig });
+  } catch {
+    res.status(500).json({ error: 'Failed to update games configuration.' });
+  }
+});
+
+app.put('/api/admin/rtp-risk', requireAdmin, async (req, res) => {
+  try {
+    const current = await db.getSettings();
+    const cur = current.rtpRiskConfig || defaultRtpRiskConfig();
+    const rtpRiskConfig = {
+      ...cur,
+      autoAdjustEnabled: req.body.autoAdjustEnabled !== undefined ? Boolean(req.body.autoAdjustEnabled) : cur.autoAdjustEnabled,
+      targetRtpPct: Math.min(99, Math.max(75, Number(req.body.targetRtpPct ?? cur.targetRtpPct) || 96)),
+      dynamicEdgeOffset: Math.min(8, Math.max(-3, Number(req.body.dynamicEdgeOffset ?? cur.dynamicEdgeOffset) || 0)),
+    };
+    const updated = await db.updateSettings({ rtpRiskConfig });
+    res.json({ rtpRiskConfig: updated.rtpRiskConfig, telemetry: computeLiveRtpTelemetry(updated) });
+  } catch {
+    res.status(500).json({ error: 'Failed to update RTP risk settings.' });
+  }
+});
+
+// Admin Security: Master Password + 2FA Setup + Fraud Logs
+app.get('/api/admin/security/overview', requireAdmin, async (req, res) => {
+  try {
+    const [settings, users] = await Promise.all([db.getSettings(), db.searchUsers('')]);
+    const flaggedUsers = users.filter((u) => u.bonusRestricted).map(sanitizeUser);
+    res.json({
+      totpEnabled: Boolean(settings.security?.totpEnabled),
+      securityLogs: (settings.security?.securityLogs || []).slice(0, 50),
+      flaggedUsers,
+    });
+  } catch {
+    res.status(500).json({ error: 'Failed to load security overview.' });
+  }
+});
+
+app.post('/api/admin/security/master-password', requireAdmin, async (req, res) => {
+  try {
+    const oldPassword = String(req.body.oldPassword || '');
+    const newPassword = String(req.body.newPassword || '');
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New Master Password must be at least 6 characters.' });
+    }
+    const okOld = await verifyMasterPassword(oldPassword);
+    if (!okOld) {
+      await logSecurityEvent('Master Password Change Denied', 'critical', 'Old master password mismatch', getClientIp(req));
+      return res.status(403).json({ error: 'Current Master Password is incorrect.' });
+    }
+    const settings = await db.getSettings();
+    const masterPasswordHash = await bcrypt.hash(newPassword, 10);
+    await db.updateSettings({
+      security: { ...settings.security, masterPasswordHash },
+    });
+    await logSecurityEvent('Master Password Updated', 'info', 'Admin updated Master Password', getClientIp(req));
+    res.json({ ok: true, message: 'Master Password updated successfully.' });
+  } catch {
+    res.status(500).json({ error: 'Failed to update Master Password.' });
+  }
+});
+
+app.post('/api/admin/security/2fa/setup', requireAdmin, async (req, res) => {
+  try {
+    const settings = await db.getSettings();
+    const secret = generateBase32Secret(20);
+    const otpauthUrl = `otpauth://totp/SkyWingAdmin:${ADMIN_USERNAME}?secret=${secret}&issuer=SkyWingCrash`;
+    const qrDataUrl = await QRCode.toDataURL(otpauthUrl, { width: 220, margin: 2 });
+    await db.updateSettings({
+      security: { ...settings.security, totpSecret: secret, totpEnabled: false },
+    });
+    res.json({ secret, otpauthUrl, qrDataUrl });
+  } catch {
+    res.status(500).json({ error: 'Failed to generate 2FA secret.' });
+  }
+});
+
+app.post('/api/admin/security/2fa/verify', requireAdmin, async (req, res) => {
+  try {
+    const code = String(req.body.code || '').trim();
+    const settings = await db.getSettings();
+    const secret = settings.security?.totpSecret;
+    if (!secret) {
+      return res.status(400).json({ error: 'Generate a 2FA QR secret first.' });
+    }
+    if (!verifyTotp(secret, code)) {
+      return res.status(400).json({ error: 'Invalid 6-digit Authenticator code.' });
+    }
+    await db.updateSettings({
+      security: { ...settings.security, totpEnabled: true },
+    });
+    await logSecurityEvent('Admin 2FA Enabled', 'info', 'Google Authenticator TOTP 2FA enabled', getClientIp(req));
+    res.json({ ok: true, totpEnabled: true });
+  } catch {
+    res.status(500).json({ error: 'Failed to verify 2FA.' });
+  }
+});
+
+app.post('/api/admin/security/2fa/disable', requireAdmin, async (req, res) => {
+  try {
+    const masterPassword = String(req.body.masterPassword || '');
+    const okMaster = await verifyMasterPassword(masterPassword);
+    if (!okMaster) {
+      return res.status(403).json({ error: 'Valid Master Password required to disable 2FA.' });
+    }
+    const settings = await db.getSettings();
+    await db.updateSettings({
+      security: { ...settings.security, totpEnabled: false, totpSecret: '' },
+    });
+    await logSecurityEvent('Admin 2FA Disabled', 'warning', '2FA disabled using Master Password', getClientIp(req));
+    res.json({ ok: true, totpEnabled: false });
+  } catch {
+    res.status(500).json({ error: 'Failed to disable 2FA.' });
+  }
+});
+
+// Admin Telegram Bot Config & Test
+app.put('/api/admin/telegram', requireAdmin, async (req, res) => {
+  try {
+    const current = await db.getSettings();
+    const cur = current.telegramBot || defaultTelegramBotConfig();
+    const telegramBot = {
+      enabled: req.body.enabled !== undefined ? Boolean(req.body.enabled) : Boolean(cur.enabled),
+      botToken: String(req.body.botToken ?? cur.botToken).trim(),
+      adminChatId: String(req.body.adminChatId ?? cur.adminChatId).trim(),
+      webhookSecret: String(req.body.webhookSecret ?? cur.webhookSecret).trim(),
+    };
+    const updated = await db.updateSettings({ telegramBot });
+    res.json({ telegramBot: updated.telegramBot });
+  } catch {
+    res.status(500).json({ error: 'Failed to save Telegram bot settings.' });
+  }
+});
+
+app.post('/api/admin/telegram/test', requireAdmin, async (req, res) => {
+  try {
+    const settings = await db.getSettings();
+    const ok = await sendTelegramAlert(
+      settings,
+      `🛸 <b>SkyWing Operations Test Alert</b>\nTelegram Bot integration is active and ready for deposit, withdrawal, and security alerts!`
+    );
+    if (!ok) {
+      return res.status(400).json({ error: 'Failed to send test alert. Verify Bot Token, Chat ID, and Enabled switch.' });
+    }
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Telegram test failed.' });
+  }
+});
+
+// Admin Support Ticket Queue
+app.get('/api/admin/support/tickets', requireAdmin, async (req, res) => {
+  try {
+    const tickets = await db.listAllSupportTickets();
+    res.json({ tickets });
+  } catch {
+    res.status(500).json({ error: 'Failed to load support tickets.' });
+  }
+});
+
+app.post('/api/admin/support/tickets/:id/reply', requireAdmin, async (req, res) => {
+  try {
+    const text = String(req.body.text || '').trim().slice(0, 1000);
+    if (!text) return res.status(400).json({ error: 'Reply text is required.' });
+    const updated = await db.addSupportMessage(req.params.id, 'admin', text);
+    if (!updated) return res.status(404).json({ error: 'Ticket not found.' });
+    emitToUser(updated.userId, 'support:ticket_updated', updated);
+    io.to('admins').emit('support:ticket_updated', updated);
+    res.json({ ticket: updated });
+  } catch {
+    res.status(500).json({ error: 'Failed to send admin reply.' });
+  }
+});
+
+app.post('/api/admin/support/tickets/:id/close', requireAdmin, async (req, res) => {
+  try {
+    const updated = await db.closeSupportTicket(req.params.id);
+    if (!updated) return res.status(404).json({ error: 'Ticket not found.' });
+    emitToUser(updated.userId, 'support:ticket_updated', updated);
+    io.to('admins').emit('support:ticket_updated', updated);
+    res.json({ ticket: updated });
+  } catch {
+    res.status(500).json({ error: 'Failed to close ticket.' });
+  }
+});
+
+// Admin Financial Reports & UTF-8 BOM CSV/Excel Export
+app.get('/api/admin/reports/transactions', requireAdmin, async (req, res) => {
+  try {
+    const status = String(req.query.status || 'all');
+    const type = String(req.query.type || 'all');
+    const startDate = String(req.query.startDate || '');
+    const endDate = String(req.query.endDate || '');
+    const list = await db.listAdminTransactions({ status, type, startDate, endDate, limit: 500 });
+    res.json({ transactions: list.map(sanitizeTransaction) });
+  } catch {
+    res.status(500).json({ error: 'Failed to load financial report.' });
+  }
+});
+
+app.get('/api/admin/reports/export.csv', requireAdmin, async (req, res) => {
+  try {
+    const status = String(req.query.status || 'all');
+    const type = String(req.query.type || 'all');
+    const startDate = String(req.query.startDate || '');
+    const endDate = String(req.query.endDate || '');
+    const list = await db.listAdminTransactions({ status, type, startDate, endDate, limit: 2000 });
+
+    const csvEscape = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+    const headers = [
+      'Transaction ID',
+      'Date',
+      'Type',
+      'Status',
+      'User Phone',
+      'Display Name',
+      'Method',
+      'Gross Amount (PKR)',
+      'Fee (PKR)',
+      'Net Amount (PKR)',
+      'TID / Reference',
+      'Auto Approved',
+      'Payout Title',
+      'Payout Account',
+      'CNIC',
+      'Rejection Reason',
+    ];
+    const rows = list.map((t) => [
+      String(t._id),
+      new Date(t.createdAt).toISOString(),
+      t.type,
+      t.status,
+      t.phoneNumber,
+      t.displayName,
+      t.method,
+      t.amount,
+      t.feeAmount || 0,
+      t.netAmount ?? t.amount,
+      t.transactionId || t.qrReference || '',
+      t.autoApproved ? 'YES' : 'NO',
+      t.accountDetails?.accountTitle || '',
+      t.accountDetails?.accountNumber || '',
+      t.accountDetails?.cnic || '',
+      t.rejectionReason || '',
+    ]);
+    const csvBody =
+      '\uFEFF' + [headers.map(csvEscape).join(','), ...rows.map((r) => r.map(csvEscape).join(','))].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="skywing-audit-${getTodayKey()}.csv"`);
+    res.send(csvBody);
+  } catch {
+    res.status(500).json({ error: 'Failed to export CSV audit.' });
   }
 });
 
@@ -1432,6 +3495,7 @@ app.post('/api/admin/transactions/:id/approve', requireAdmin, async (req, res) =
       updatedUser = await db.updateUserById(resolved.userId, {
         $inc: { totalDeposited: resolved.amount },
       });
+      await grantFirstDepositReferralRewardIfEligible(resolved.userId, resolved.amount);
     } else {
       updatedUser = await db.updateUserById(resolved.userId, {
         $inc: { totalWithdrawn: resolved.amount },
@@ -1721,6 +3785,7 @@ function scheduleSimulatedRoundBets(roundNum) {
 
 const gameState = {
   phase: 'BETTING',
+  currentRoundId: 1001,
   roundNumber: 1001,
   nonce: 1001,
   clientSeed: `skywing-${getTodayKey()}`,
@@ -1730,6 +3795,8 @@ const gameState = {
   serverSeedHash: '',
   bettingEndsAt: Date.now() + BETTING_DURATION_MS,
   flightStartedAt: 0,
+  crashedAt: 0,
+  crashHoldEndsAt: 0,
   currentMultiplier: 1.0,
   scheduledCrashPoint: 2.0,
   maxAllowedRoundPayout: Infinity,
@@ -1744,11 +3811,64 @@ const gameState = {
 
 let tickTimer = null;
 let phaseTimer = null;
+let bettingTransitionInFlight = false;
+let flightTickInFlight = false;
+
+function buildAuthoritativeState(includeDetails = false) {
+  const now = Date.now();
+  const phase = gameState.phase;
+  const flightState = String(phase || 'BETTING').toLowerCase();
+  const countdownRemainingMs =
+    phase === 'BETTING' ? Math.max(0, gameState.bettingEndsAt - now) : 0;
+  const elapsedMs =
+    phase === 'FLYING' && gameState.flightStartedAt > 0
+      ? Math.max(0, now - gameState.flightStartedAt)
+      : 0;
+  const crashHoldRemainingMs =
+    phase === 'CRASHED' && gameState.crashHoldEndsAt > 0
+      ? Math.max(0, gameState.crashHoldEndsAt - now)
+      : 0;
+
+  const payload = {
+    currentRoundId: gameState.currentRoundId,
+    roundNumber: gameState.roundNumber,
+    phase,
+    flightState,
+    multiplier: gameState.currentMultiplier,
+    currentMultiplier: gameState.currentMultiplier,
+    crashPoint: phase === 'CRASHED' ? gameState.currentMultiplier : null,
+    serverTimestamp: now,
+    serverTickTimestamp: now,
+    bettingDurationMs: BETTING_DURATION_MS,
+    countdownRemainingMs,
+    elapsedMs,
+    crashHoldRemainingMs,
+    bettingEndsAt: gameState.bettingEndsAt,
+    flightStartedAt: gameState.flightStartedAt,
+    crashedAt: gameState.crashedAt,
+    serverSeedHash: gameState.serverSeedHash,
+    clientSeed: gameState.clientSeed,
+    nonce: gameState.nonce,
+  };
+
+  if (phase === 'CRASHED' && gameState.serverSeed) {
+    payload.serverSeed = gameState.serverSeed;
+  }
+
+  if (includeDetails) {
+    payload.bets = publicBetsList();
+    payload.history = publicHistoryList();
+    payload.totalRoundBet = gameState.totalRoundBet;
+  }
+
+  return payload;
+}
 
 function generateProvablyFairSeeds(nonce) {
+  const entropySalt = crypto.randomBytes(8).toString('hex');
   const serverSeed = crypto.randomBytes(32).toString('hex');
   const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
-  const clientSeed = gameState.nextClientSeedOverride || `skywing-${getTodayKey()}`;
+  const clientSeed = gameState.nextClientSeedOverride || `skywing-${getTodayKey()}-${entropySalt}`;
   return { serverSeed, serverSeedHash, clientSeed, nonce };
 }
 
@@ -1787,10 +3907,35 @@ function broadcastOnlineCount() {
   io.emit('players:online', { count: getDisplayedOnlineCount() });
 }
 
+async function runBettingTick() {
+  if (gameState.phase !== 'BETTING') return;
+  const tickPayload = buildAuthoritativeState(false);
+
+  if (tickPayload.countdownRemainingMs <= 0) {
+    if (bettingTransitionInFlight) return;
+    bettingTransitionInFlight = true;
+    clearInterval(tickTimer);
+    tickTimer = null;
+    try {
+      await startFlyingPhase();
+    } catch (err) {
+      console.error('[Flight Start Error]', err);
+    } finally {
+      bettingTransitionInFlight = false;
+    }
+    return;
+  }
+
+  io.emit('round:tick', tickPayload);
+  io.emit('game:state', tickPayload);
+}
+
 async function startBettingPhase() {
   clearTimeout(phaseTimer);
   clearInterval(tickTimer);
   clearBotBetTimers();
+  bettingTransitionInFlight = false;
+  flightTickInFlight = false;
 
   const settings = await db.getSettings();
   const nextRound = Number(settings.roundCounter || 1000) + 1;
@@ -1800,6 +3945,7 @@ async function startBettingPhase() {
   simulatedOnlineCrowd = Math.min(96, Math.max(36, simulatedOnlineCrowd + Math.floor(Math.random() * 9) - 4));
 
   gameState.phase = 'BETTING';
+  gameState.currentRoundId = nextRound;
   gameState.roundNumber = nextRound;
   gameState.nonce = seeds.nonce;
   gameState.clientSeed = seeds.clientSeed;
@@ -1807,6 +3953,8 @@ async function startBettingPhase() {
   gameState.serverSeedHash = seeds.serverSeedHash;
   gameState.bettingEndsAt = Date.now() + BETTING_DURATION_MS;
   gameState.flightStartedAt = 0;
+  gameState.crashedAt = 0;
+  gameState.crashHoldEndsAt = 0;
   gameState.currentMultiplier = 1.0;
   gameState.totalRoundBet = 0;
   gameState.totalRealRoundBet = 0;
@@ -1827,30 +3975,28 @@ async function startBettingPhase() {
     }));
   }
 
-  io.emit('round:betting', {
-    roundNumber: gameState.roundNumber,
-    bettingEndsAt: gameState.bettingEndsAt,
+  const startPayload = {
+    ...buildAuthoritativeState(true),
     countdownMs: BETTING_DURATION_MS,
-    serverSeedHash: gameState.serverSeedHash,
-    clientSeed: gameState.clientSeed,
-    nonce: gameState.nonce,
-    bets: [],
-    history: publicHistoryList(),
-  });
+  };
+  io.emit('round:betting', startPayload);
+  io.emit('game:state', startPayload);
   broadcastOnlineCount();
 
   // Launch realistic simulated players placing staggered bets
   scheduleSimulatedRoundBets(nextRound);
 
-  phaseTimer = setTimeout(() => {
-    startFlyingPhase().catch((err) => console.error('[Flight Start Error]', err));
-  }, BETTING_DURATION_MS);
+  // Centralized 20Hz server loop drives betting countdown directly to all clients
+  tickTimer = setInterval(() => {
+    runBettingTick().catch((err) => console.error('[Betting Tick Error]', err));
+  }, TICK_INTERVAL_MS);
 }
 
 async function startFlyingPhase() {
   clearTimeout(phaseTimer);
   clearInterval(tickTimer);
   clearBotBetTimers();
+  flightTickInFlight = false;
 
   const settings = await db.getSettings();
   // STRICT REAL DATA: Only genuine non-bot player bets count toward pool/accounting
@@ -1886,56 +4032,72 @@ async function startFlyingPhase() {
   );
 
   const profitCtrl = settings.profitControl || defaultProfitControl();
+  const rtpRisk = settings.rtpRiskConfig || defaultRtpRiskConfig();
   const maxCrashCap = Math.min(100, Math.max(1.05, Number(profitCtrl.maxCrashCap ?? 100)));
-  const houseEdgePct = Math.min(25, Math.max(0, Number(profitCtrl.houseEdgePct ?? 4)));
+  const effectiveEdgePct = Math.min(
+    25,
+    Math.max(0, Number(profitCtrl.houseEdgePct ?? 4) + Number(rtpRisk.dynamicEdgeOffset ?? 0))
+  );
+
+  // Reset per-round crash state cleanly before evaluating RNG + Pool
+  gameState.scheduledCrashPoint = 1.0;
+  gameState.maxAllowedRoundPayout = Infinity;
+  gameState.protectionActive = false;
 
   if (gameState.nextRoundForcedCrash !== null) {
     crashPoint = Math.min(100, Math.max(1.0, gameState.nextRoundForcedCrash));
     gameState.nextRoundForcedCrash = null;
     io.to('admins').emit('admin:profit_override', { nextRoundForcedCrash: null });
   } else {
-    if (Math.random() * 100 < houseEdgePct) {
-      crashPoint = Math.min(crashPoint, Math.round((1.0 + Math.random() * 0.25) * 100) / 100);
+    const entropyRoll = crypto.randomBytes(4).readUInt32BE(0) / 0xffffffff;
+    if (entropyRoll * 100 < effectiveEdgePct) {
+      crashPoint = Math.min(crashPoint, Math.round((1.0 + (crypto.randomBytes(2).readUInt16BE(0) / 65535) * 0.35) * 100) / 100);
     }
     if (profitCtrl.mode === 'low-crash') {
-      crashPoint = Math.min(crashPoint, Math.round((1.05 + Math.random() * 0.78) * 100) / 100);
+      const jitter = (crypto.randomBytes(2).readUInt16BE(0) / 65535) * 0.85;
+      crashPoint = Math.min(crashPoint, Math.round((1.05 + jitter) * 100) / 100);
     } else if (profitCtrl.mode === 'house-edge') {
-      crashPoint = Math.max(1.0, Math.round((1 + (crashPoint - 1) * 0.68) * 100) / 100);
+      crashPoint = Math.max(1.0, Math.round((1 + (crashPoint - 1) * 0.72) * 100) / 100);
+    } else if (profitCtrl.mode === 'generous') {
+      crashPoint = Math.round(Math.min(maxCrashCap, 1 + (crashPoint - 1) * 1.35) * 100) / 100;
     }
     crashPoint = Math.min(maxCrashCap, crashPoint);
   }
 
+  // Dynamic Pool-Aware Variance Engine (Fixes consecutive 1.49x / 3.49x single-player Real PKR bug)
   const target = Number(settings.dailyProfitTarget || 0);
   const tolerancePct = Math.min(10, Math.max(5, Number(settings.varianceTolerancePct || 8)));
   const protectedFloor = Math.max(0, target * (1 - tolerancePct / 100));
+  const distributionPool = Number(settings.profitDistributionPool ?? 10000);
+  const carryPool = Number(settings.carryForwardPool || 0);
+  const availablePool = Math.max(0, distributionPool + carryPool);
   const surplusPool = Math.max(0, projectedDailyNet - target);
 
   let maxAllowedRoundPayout = Infinity;
   let protectionActive = false;
 
-  if (gameState.totalRealRoundBet > 0) {
-    if (profitCtrl.mode === 'generous' && surplusPool > 0 && target > 0) {
-      const boostRatio = Math.min(surplusPool / gameState.totalRealRoundBet, 8.0);
-      const boostedFloor = Math.min(maxCrashCap, Math.max(crashPoint, 1.45 + boostRatio));
-      crashPoint = Math.round(boostedFloor * 100) / 100;
-      maxAllowedRoundPayout = Math.max(0, projectedDailyNet - protectedFloor);
+  if (gameState.totalRealRoundBet > 0 && gameState.nextRoundForcedCrash === null) {
+    if (availablePool >= gameState.totalRealRoundBet * 2) {
+      // Pool has healthy funds: allow genuine random cryptographic variance (1.8x - 15x+ naturally)
+      // without deterministic 1.5x or 3.5x hard clamping!
+      const poolCoverageLimit = Math.max(
+        gameState.totalRealRoundBet * 15,
+        availablePool + gameState.totalRealRoundBet
+      );
+      maxAllowedRoundPayout = poolCoverageLimit;
       protectionActive = true;
     } else if (surplusPool > 0 && target > 0) {
-      const boostRatio = Math.min(surplusPool / gameState.totalRealRoundBet, 6.0);
-      const boostedFloor = Math.min(maxCrashCap, Math.max(crashPoint, 1.35 + boostRatio));
-      crashPoint = Math.round(boostedFloor * 100) / 100;
-      maxAllowedRoundPayout = Math.max(0, projectedDailyNet - protectedFloor);
-      protectionActive = true;
-    } else if (projectedDailyNet >= protectedFloor && target > 0) {
       maxAllowedRoundPayout = Math.max(
-        gameState.totalRealRoundBet * 1.5,
+        gameState.totalRealRoundBet * (3 + (crypto.randomBytes(2).readUInt16BE(0) / 65535) * 6),
         projectedDailyNet - protectedFloor
       );
       protectionActive = true;
     } else {
+      // Pool depleted: randomized variance floor so consecutive rounds still differ naturally
+      const randomMultFloor = 1.18 + (crypto.randomBytes(2).readUInt16BE(0) / 65535) * 3.1;
       maxAllowedRoundPayout = Math.max(
-        gameState.totalRealRoundBet * 3.5,
-        target * (tolerancePct / 100)
+        availablePool + gameState.totalRealRoundBet * 0.9,
+        gameState.totalRealRoundBet * randomMultFloor
       );
       protectionActive = true;
     }
@@ -1948,12 +4110,9 @@ async function startFlyingPhase() {
   gameState.flightStartedAt = Date.now();
   gameState.currentMultiplier = 1.0;
 
-  io.emit('round:flying', {
-    roundNumber: gameState.roundNumber,
-    flightStartedAt: gameState.flightStartedAt,
-    totalRoundBet: gameState.totalRoundBet,
-    bets: publicBetsList(),
-  });
+  const flyPayload = buildAuthoritativeState(true);
+  io.emit('round:flying', flyPayload);
+  io.emit('game:state', flyPayload);
 
   if (crashPoint <= 1.0) {
     await triggerCrash(1.0);
@@ -1961,7 +4120,13 @@ async function startFlyingPhase() {
   }
 
   tickTimer = setInterval(() => {
-    runFlightTick().catch((err) => console.error('[Flight Tick Error]', err));
+    if (flightTickInFlight) return;
+    flightTickInFlight = true;
+    runFlightTick()
+      .catch((err) => console.error('[Flight Tick Error]', err))
+      .finally(() => {
+        flightTickInFlight = false;
+      });
   }, TICK_INTERVAL_MS);
 }
 
@@ -2082,12 +4247,10 @@ async function runFlightTick() {
     }
   }
 
-  // 4. Broadcast live multiplier tick
-  io.emit('round:tick', {
-    roundNumber: gameState.roundNumber,
-    multiplier: currentMult,
-    elapsedMs: Date.now() - gameState.flightStartedAt,
-  });
+  // 4. Broadcast unified live multiplier & authoritative round tick
+  const tickPayload = buildAuthoritativeState(false);
+  io.emit('round:tick', tickPayload);
+  io.emit('game:state', tickPayload);
 }
 
 async function triggerCrash(finalMultiplier) {
@@ -2099,6 +4262,8 @@ async function triggerCrash(finalMultiplier) {
   gameState.phase = 'CRASHED';
   const crashPoint = Math.max(1.0, Math.round(finalMultiplier * 100) / 100);
   gameState.currentMultiplier = crashPoint;
+  gameState.crashedAt = Date.now();
+  gameState.crashHoldEndsAt = gameState.crashedAt + CRASH_HOLD_MS;
 
   // Strictly only record losses for genuine registered users (never bots)
   const losingBets = gameState.bets.filter((b) => !b.isBot && !b.cashedOut);
@@ -2133,11 +4298,19 @@ async function triggerCrash(finalMultiplier) {
   const target = Number(settings.dailyProfitTarget || 0);
   const carryForwardPool = Math.max(0, Math.round((updatedNet - target) * 100) / 100);
 
+  const roundNetDelta =
+    Math.round((gameState.totalRealRoundBet - gameState.totalRealRoundPayouts) * 100) / 100;
+  const nextDistPool = Math.max(
+    0,
+    Math.round((Number(settings.profitDistributionPool ?? 10000) + roundNetDelta) * 100) / 100
+  );
+
   if (gameState.totalRealRoundBet > 0 || gameState.totalRealRoundPayouts > 0) {
     await db.updateSettings({
       dailyTotalPayouts: updatedPayouts,
       dailyNetProfit: updatedNet,
       carryForwardPool,
+      profitDistributionPool: nextDistPool,
     });
   }
 
@@ -2146,8 +4319,7 @@ async function triggerCrash(finalMultiplier) {
     crashPoint,
     totalBets: gameState.totalRealRoundBet,
     totalPayouts: gameState.totalRealRoundPayouts,
-    netDelta:
-      Math.round((gameState.totalRealRoundBet - gameState.totalRealRoundPayouts) * 100) / 100,
+    netDelta: roundNetDelta,
     serverSeed: gameState.serverSeed,
     serverSeedHash: gameState.serverSeedHash,
     clientSeed: gameState.clientSeed,
@@ -2156,6 +4328,7 @@ async function triggerCrash(finalMultiplier) {
   };
 
   await db.pushRoundHistory(roundRecord, 20);
+  evaluateRtpRiskDaemon().catch(() => {});
 
   gameState.history = [
     {
@@ -2169,21 +4342,71 @@ async function triggerCrash(finalMultiplier) {
     ...gameState.history,
   ].slice(0, 15);
 
-  io.emit('round:crashed', {
-    roundNumber: gameState.roundNumber,
+  const crashPayload = {
+    ...buildAuthoritativeState(true),
     crashPoint,
     serverSeed: gameState.serverSeed,
-    serverSeedHash: gameState.serverSeedHash,
-    clientSeed: gameState.clientSeed,
-    nonce: gameState.nonce,
     totalBets: gameState.totalRoundBet,
     totalPayouts: gameState.totalRoundPayouts,
-    history: publicHistoryList(),
-  });
+  };
+  io.emit('round:crashed', crashPayload);
+  io.emit('game:state', crashPayload);
 
-  phaseTimer = setTimeout(() => {
-    startBettingPhase().catch((err) => console.error('[Next Round Error]', err));
-  }, CRASH_HOLD_MS);
+  // Stream authoritative crash hold ticks until the next betting round starts
+  tickTimer = setInterval(() => {
+    if (gameState.phase !== 'CRASHED') return;
+    const holdPayload = buildAuthoritativeState(false);
+    if (holdPayload.crashHoldRemainingMs <= 0) {
+      clearInterval(tickTimer);
+      tickTimer = null;
+      startBettingPhase().catch((err) => console.error('[Next Round Error]', err));
+      return;
+    }
+    io.emit('round:tick', holdPayload);
+    io.emit('game:state', holdPayload);
+  }, TICK_INTERVAL_MS);
+}
+
+// ============================================================================
+// Automated RTP & House Risk Management Daemon
+// ============================================================================
+async function evaluateRtpRiskDaemon() {
+  try {
+    const settings = await db.getSettings();
+    const totalBets = Number(settings.dailyTotalBets || 0);
+    const totalPayouts = Number(settings.dailyTotalPayouts || 0);
+    const cfg = settings.rtpRiskConfig || defaultRtpRiskConfig();
+    const targetRtp = Number(cfg.targetRtpPct ?? 96);
+
+    let actualRtp = targetRtp;
+    if (totalBets >= 100) {
+      actualRtp = Math.round((totalPayouts / totalBets) * 10000) / 100;
+    }
+
+    const rtpExcess = actualRtp - targetRtp;
+    const riskIndex = Math.min(100, Math.max(5, Math.round(20 + rtpExcess * 3.5)));
+
+    let dynamicEdgeOffset = Number(cfg.dynamicEdgeOffset ?? 0);
+    if (cfg.autoAdjustEnabled !== false && totalBets >= 200) {
+      if (rtpExcess > 3) {
+        dynamicEdgeOffset = Math.min(6, Math.round((dynamicEdgeOffset + 0.5) * 10) / 10);
+      } else if (rtpExcess < -4) {
+        dynamicEdgeOffset = Math.max(-1.5, Math.round((dynamicEdgeOffset - 0.5) * 10) / 10);
+      }
+    }
+
+    const nextCfg = {
+      ...cfg,
+      dynamicEdgeOffset,
+      currentRiskIndex: riskIndex,
+      lastEvaluatedAt: new Date(),
+    };
+
+    const updated = await db.updateSettings({ rtpRiskConfig: nextCfg });
+    io.to('admins').emit('admin:telemetry', computeLiveRtpTelemetry(updated));
+  } catch {
+    // ignore daemon transient errors
+  }
 }
 
 // ============================================================================
@@ -2213,18 +4436,21 @@ io.on('connection', async (socket) => {
   }
   broadcastOnlineCount();
 
-  socket.emit('game:init', {
-    phase: gameState.phase,
-    roundNumber: gameState.roundNumber,
-    bettingEndsAt: gameState.bettingEndsAt,
-    flightStartedAt: gameState.flightStartedAt,
-    currentMultiplier: gameState.currentMultiplier,
-    serverSeedHash: gameState.serverSeedHash,
-    clientSeed: gameState.clientSeed,
-    nonce: gameState.nonce,
-    bets: publicBetsList(),
-    history: publicHistoryList(),
+  const initPayload = {
+    ...buildAuthoritativeState(true),
     onlineCount: getDisplayedOnlineCount(),
+  };
+  socket.emit('game:init', initPayload);
+  socket.emit('game:state', initPayload);
+
+  socket.on('game:sync', (cb) => {
+    const snapshot = {
+      ...buildAuthoritativeState(true),
+      onlineCount: getDisplayedOnlineCount(),
+    };
+    socket.emit('game:init', snapshot);
+    socket.emit('game:state', snapshot);
+    cb?.({ ok: true, state: snapshot });
   });
 
   // Update next-round Provably Fair client seed
@@ -2284,6 +4510,14 @@ io.on('connection', async (socket) => {
       if (!socket.user) {
         return cb?.({ ok: false, error: 'Please log in to place a bet.' });
       }
+      const settings = await db.getSettings();
+      if (settings.platformStatus?.mode && settings.platformStatus.mode !== 'active') {
+        return cb?.({ ok: false, error: settings.platformStatus.message || 'Platform under maintenance.' });
+      }
+      const crashCfg = (settings.gamesConfig || defaultGamesConfig()).find((g) => g.id === 'skywing-crash');
+      if (crashCfg && crashCfg.enabled === false) {
+        return cb?.({ ok: false, error: 'SkyWing Crash is currently disabled by Admin.' });
+      }
       const freshUser = await db.findUserById(socket.user._id);
       if (!freshUser || freshUser.isBanned) {
         return cb?.({ ok: false, error: 'Account suspended or not found.' });
@@ -2295,10 +4529,12 @@ io.on('connection', async (socket) => {
       const mode = currencyMode === 'real' ? 'real' : 'fun';
       const slotNum = slot === 2 ? 2 : 1;
       const betAmount = Math.round(Number(amount) * 100) / 100;
-      if (!Number.isFinite(betAmount) || betAmount < 1 || betAmount > 100000) {
+      const minBet = Number(crashCfg?.minBet || 1);
+      const maxBet = Number(crashCfg?.maxBet || 100000);
+      if (!Number.isFinite(betAmount) || betAmount < minBet || betAmount > maxBet) {
         return cb?.({
           ok: false,
-          error: `Bet must be between 1 and 100,000 ${mode === 'real' ? 'PKR' : 'FC'}.`,
+          error: `Bet must be between ${minBet} and ${maxBet.toLocaleString()} ${mode === 'real' ? 'PKR' : 'FC'}.`,
         });
       }
 
@@ -2434,11 +4670,8 @@ io.on('connection', async (socket) => {
         return cb?.({ ok: false, error: 'No active un-cashed bet on this panel.' });
       }
 
-      const elapsedSec = (Date.now() - gameState.flightStartedAt) / 1000;
-      const liveMult = Math.max(
-        1.0,
-        Math.floor(Math.exp(MULTIPLIER_GROWTH_RATE * elapsedSec) * 100) / 100
-      );
+      // Lock cashout to the exact server-authoritative multiplier
+      const liveMult = Math.max(1.0, Number(gameState.currentMultiplier || 1.0));
 
       if (liveMult >= gameState.scheduledCrashPoint) {
         return cb?.({ ok: false, error: 'Too late! The bird already flew away.' });
@@ -2485,7 +4718,11 @@ app.get('*', (req, res) => {
 // ============================================================================
 async function boot() {
   await connectDatabase();
+  await ensureMasterPasswordInitialized();
   await startBettingPhase();
+  setInterval(() => {
+    evaluateRtpRiskDaemon().catch(() => {});
+  }, 15000);
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`[SkyWing] Unified server listening on http://0.0.0.0:${PORT}`);
     console.log(`[SkyWing] Admin Panel available at http://0.0.0.0:${PORT}/admin`);

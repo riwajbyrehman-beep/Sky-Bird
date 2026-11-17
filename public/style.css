@@ -2338,3 +2338,746 @@ select:focus-visible {
   }
 }
 
+/* ============================================================================
+   Platform Maintenance & Disable Overlay (Non-Dismissible Security Lock)
+   ============================================================================ */
+.maintenance-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(4, 7, 15, 0.94);
+  backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  pointer-events: all;
+}
+
+.maintenance-card {
+  width: 100%;
+  max-width: 480px;
+  background: linear-gradient(165deg, rgba(17, 25, 48, 0.96), rgba(9, 14, 29, 0.98));
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: 18px;
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.72), 0 0 40px rgba(245, 158, 11, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.maintenance-icon-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fbbf24;
+}
+
+.maintenance-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  color: #fca5a5;
+}
+
+/* ============================================================================
+   Withdrawal Operating Hours Warning Banner
+   ============================================================================ */
+.hours-warning-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #fde68a;
+  font-size: 0.82rem;
+  flex-wrap: wrap;
+}
+
+/* ============================================================================
+   Multi-Game Lobby Carousel & Arcade Game Arenas (Plinko & Mines)
+   ============================================================================ */
+.game-lobby-bar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.game-lobby-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-hairline);
+  background: rgba(13, 20, 38, 0.78);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.16s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  min-width: 0;
+}
+
+.game-lobby-card:hover:not(.is-disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(20, 30, 56, 0.92);
+}
+
+.game-lobby-card.active {
+  border-color: rgba(251, 191, 36, 0.85);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(14, 22, 42, 0.95));
+  box-shadow: 0 0 22px rgba(245, 158, 11, 0.16);
+}
+
+.game-lobby-card.is-disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.game-lobby-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.game-lobby-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.game-lobby-card.active .game-lobby-icon {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(251, 191, 36, 0.55);
+  color: #fbbf24;
+}
+
+.game-lobby-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-lobby-sub {
+  font-size: 0.71rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-lobby-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 3px 7px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.game-lobby-card.is-disabled .game-lobby-badge {
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+@media (max-width: 720px) {
+  .game-lobby-bar {
+    gap: 6px;
+  }
+  .game-lobby-card {
+    padding: 8px 9px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  .game-lobby-icon {
+    width: 26px;
+    height: 26px;
+  }
+  .game-lobby-title {
+    font-size: 0.76rem;
+  }
+  .game-lobby-sub {
+    display: none;
+  }
+}
+
+/* Arcade Shared Wrapper (Plinko + Mines) */
+.arcade-panel-card {
+  background: linear-gradient(160deg, rgba(13, 20, 38, 0.96), rgba(6, 10, 22, 0.98));
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.arcade-grid-split {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .arcade-grid-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.arcade-side-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(6, 9, 19, 0.65);
+  border: 1px solid var(--border-hairline);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+/* Cyber Plinko Canvas & Buckets */
+.plinko-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.08), rgba(6, 9, 19, 0.85));
+  border: 1px solid var(--border-hairline);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+#plinkoCanvas {
+  width: 100%;
+  max-width: 440px;
+  height: 280px;
+  display: block;
+}
+
+.plinko-bucket-row {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  max-width: 440px;
+}
+
+.plinko-bucket {
+  padding: 6px 2px;
+  border-radius: 7px;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: rgba(15, 23, 42, 0.9);
+  color: #fde68a;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.plinko-bucket.hit {
+  transform: scale(1.12);
+  background: rgba(245, 158, 11, 0.9);
+  color: #060913;
+  box-shadow: 0 0 18px rgba(251, 191, 36, 0.65);
+}
+
+/* Golden Mines 5x5 Grid */
+.mines-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  background: radial-gradient(circle at 50% 25%, rgba(245, 158, 11, 0.07), rgba(6, 9, 19, 0.85));
+  border: 1px solid var(--border-hairline);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.mines-stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid var(--border-hairline);
+  font-size: 0.82rem;
+}
+
+.mines-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.mine-tile {
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: linear-gradient(155deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+  color: var(--text-primary);
+  font-size: 1.35rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.14s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.mine-tile:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(251, 191, 36, 0.65);
+}
+
+.mine-tile:disabled {
+  cursor: default;
+}
+
+.mine-tile.revealed-gem {
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.28), rgba(6, 78, 59, 0.65));
+  border-color: #34d399;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);
+}
+
+.mine-tile.revealed-mine {
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.34), rgba(127, 29, 29, 0.68));
+  border-color: #f87171;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.32);
+}
+
+/* ============================================================================
+   2-Step QR Deposit, Saved Payout Accounts & 18+ Terms Agreement
+   ============================================================================ */
+.qr-preview-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(6, 9, 19, 0.72);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  text-align: center;
+}
+
+.qr-img-box {
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.qr-img-box img {
+  display: block;
+  width: 190px;
+  height: 190px;
+}
+
+.masked-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #7dd3fc;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.fee-summary-box {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(6, 9, 19, 0.65);
+  border: 1px solid var(--border-hairline);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.saved-payouts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.saved-payout-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--border-hairline);
+  font-size: 0.8rem;
+}
+
+.terms-check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.62);
+  border: 1px solid var(--border-hairline);
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.terms-check-row input[type='checkbox'] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: #10b981;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.terms-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #fbbf24;
+  text-decoration: underline;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+/* ============================================================================
+   VIP Loyalty Tiers, Rewards & Referral Cards
+   ============================================================================ */
+.vip-banner-card {
+  padding: 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(15, 23, 42, 0.92));
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vip-tier-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: rgba(251, 191, 36, 0.2);
+  color: #fde047;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+}
+
+.vip-progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  overflow: hidden;
+}
+
+.vip-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f59e0b, #fde047);
+  transition: width 0.3s ease;
+}
+
+.rewards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 520px) {
+  .rewards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reward-card {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(6, 9, 19, 0.65);
+  border: 1px solid var(--border-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.referral-code-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px dashed rgba(52, 211, 153, 0.45);
+}
+
+/* ============================================================================
+   In-App Live Support Ticket Chat
+   ============================================================================ */
+.support-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 290px;
+}
+
+@media (max-width: 640px) {
+  .support-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ticket-item {
+  text-align: left;
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border-hairline);
+  background: rgba(6, 9, 19, 0.6);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ticket-item.active {
+  border-color: rgba(56, 189, 248, 0.7);
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 230px;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(6, 9, 19, 0.72);
+  border: 1px solid var(--border-hairline);
+}
+
+.chat-msg {
+  max-width: 82%;
+  padding: 8px 11px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.chat-msg.user {
+  align-self: flex-end;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  color: #ecfdf5;
+}
+
+.chat-msg.admin {
+  align-self: flex-start;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #e0f2fe;
+}
+
+.chat-msg-time {
+  font-size: 0.66rem;
+  opacity: 0.7;
+  margin-top: 3px;
+  display: block;
+}
+
+.chat-compose-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ============================================================================
+   Admin Extensions: Sub-Menus, Live RTP Telemetry, Maintenance & Reports
+   ============================================================================ */
+.admin-nav-subgroup {
+  font-size: 0.67rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 10px 8px 4px;
+}
+
+.rtp-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.rtp-chart-wrap {
+  width: 100%;
+  background: rgba(6, 9, 19, 0.68);
+  border: 1px solid var(--border-hairline);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+#rtpChartCanvas {
+  width: 100%;
+  height: 165px;
+  display: block;
+}
+
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.risk-low {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.risk-med {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+}
+
+.risk-high {
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+.platform-status-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 680px) {
+  .platform-status-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.status-mode-card {
+  padding: 12px;
+  border-radius: 11px;
+  border: 1px solid var(--border-hairline);
+  background: rgba(6, 9, 19, 0.58);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  color: var(--text-primary);
+}
+
+.status-mode-card.active {
+  border-color: #fbbf24;
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.twofa-qr-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(6, 9, 19, 0.6);
+  border: 1px solid var(--border-hairline);
+}
+
+.audit-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.audit-log-item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(6, 9, 19, 0.55);
+  border: 1px solid var(--border-hairline);
+  font-size: 0.77rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.report-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}

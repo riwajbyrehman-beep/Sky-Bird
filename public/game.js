@@ -4,14 +4,185 @@
 
   const MULTIPLIER_GROWTH_RATE = 0.068;
   const PK_PHONE_REGEX = /^03[0-9]{9}$/;
+  const CNIC_REGEX = /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
+
+  const PLINKO_TABLES = {
+    low: [5.6, 2.1, 1.1, 1.0, 0.5, 1.0, 1.1, 2.1, 5.6],
+    medium: [13.0, 3.0, 1.3, 0.7, 0.4, 0.7, 1.3, 3.0, 13.0],
+    high: [29.0, 4.0, 1.5, 0.3, 0.2, 0.3, 1.5, 4.0, 29.0],
+  };
+
+  // Persistent LocalStorage & Cookie Session Vault
+  function setVaultCookie(name, value, days = 30) {
+    try {
+      const maxAge = days * 86400;
+      document.cookie = `${name}=${encodeURIComponent(String(value || ''))}; path=/; max-age=${maxAge}; SameSite=Lax`;
+    } catch {
+      // ignore cookie write errors in restricted frames
+    }
+  }
+
+  function getVaultCookie(name) {
+    try {
+      const prefix = `${name}=`;
+      const parts = String(document.cookie || '').split(';');
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (trimmed.startsWith(prefix)) {
+          return decodeURIComponent(trimmed.slice(prefix.length));
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return '';
+  }
+
+  function deleteVaultCookie(name) {
+    try {
+      document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+    } catch {
+      // ignore
+    }
+  }
+
+  function readStoredToken() {
+    const lsToken = localStorage.getItem('skywing_token') || '';
+    const ckToken = getVaultCookie('skywing_token') || '';
+    const token = lsToken || ckToken;
+    if (token) {
+      if (!lsToken) localStorage.setItem('skywing_token', token);
+      if (!ckToken) setVaultCookie('skywing_token', token);
+    }
+    return token;
+  }
+
+  function readStoredUserCache() {
+    let cached = null;
+    try {
+      const raw = localStorage.getItem('skywing_user_cache') || getVaultCookie('skywing_user_cache');
+      if (raw) cached = JSON.parse(raw);
+    } catch {
+      cached = null;
+    }
+    if (cached && typeof cached === 'object') return cached;
+
+    const uid = localStorage.getItem('skywing_user_id') || getVaultCookie('skywing_user_id') || '';
+    const uname = localStorage.getItem('skywing_username') || getVaultCookie('skywing_username') || '';
+    const phone = localStorage.getItem('skywing_phone') || getVaultCookie('skywing_phone') || '';
+    if (uid || uname) {
+      return {
+        id: uid,
+        displayName: uname || phone || 'Player',
+        phoneNumber: phone || uname,
+        funBalance: Number(localStorage.getItem('skywing_fun_balance') || 0),
+        realBalance: Number(localStorage.getItem('skywing_real_balance') || 0),
+        totalDeposited: 0,
+        totalWithdrawn: 0,
+      };
+    }
+    return null;
+  }
+
+  function saveSessionVault(token, user) {
+    if (token) {
+      localStorage.setItem('skywing_token', token);
+      setVaultCookie('skywing_token', token);
+      sessionStorage.setItem('skywing_tab_auth', '1');
+    }
+    if (user && typeof user === 'object') {
+      const uid = String(user.id || user._id || '');
+      const uname = String(user.displayName || user.phoneNumber || '');
+      const phone = String(user.phoneNumber || '');
+      if (uid) {
+        localStorage.setItem('skywing_user_id', uid);
+        setVaultCookie('skywing_user_id', uid);
+      }
+      if (uname) {
+        localStorage.setItem('skywing_username', uname);
+        setVaultCookie('skywing_username', uname);
+      }
+      if (phone) {
+        localStorage.setItem('skywing_phone', phone);
+        setVaultCookie('skywing_phone', phone);
+      }
+      localStorage.setItem('skywing_fun_balance', String(Number(user.funBalance ?? 0)));
+      localStorage.setItem('skywing_real_balance', String(Number(user.realBalance ?? 0)));
+      try {
+        const compactCache = JSON.stringify({
+          id: uid,
+          phoneNumber: phone,
+          displayName: uname,
+          funBalance: Number(user.funBalance ?? 0),
+          realBalance: Number(user.realBalance ?? 0),
+          totalDeposited: Number(user.totalDeposited ?? 0),
+          totalWithdrawn: Number(user.totalWithdrawn ?? 0),
+          totalWageredReal: Number(user.totalWageredReal ?? 0),
+          remainingWagering: Number(user.remainingWagering ?? 0),
+          wageringRequirementMet: Boolean(user.wageringRequirementMet),
+          referralCode: user.referralCode || '',
+          referralEarnings: Number(user.referralEarnings ?? 0),
+          vip: user.vip || null,
+          savedPayoutAccounts: Array.isArray(user.savedPayoutAccounts) ? user.savedPayoutAccounts : [],
+        });
+        localStorage.setItem('skywing_user_cache', compactCache);
+        setVaultCookie('skywing_user_cache', compactCache);
+      } catch {
+        // ignore serialization quota errors
+      }
+    }
+  }
+
+  function clearSessionVault() {
+    localStorage.removeItem('skywing_token');
+    localStorage.removeItem('skywing_user_id');
+    localStorage.removeItem('skywing_username');
+    localStorage.removeItem('skywing_phone');
+    localStorage.removeItem('skywing_fun_balance');
+    localStorage.removeItem('skywing_real_balance');
+    localStorage.removeItem('skywing_user_cache');
+    sessionStorage.removeItem('skywing_tab_auth');
+    deleteVaultCookie('skywing_token');
+    deleteVaultCookie('skywing_user_id');
+    deleteVaultCookie('skywing_username');
+    deleteVaultCookie('skywing_phone');
+    deleteVaultCookie('skywing_user_cache');
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlRefCode = String(urlParams.get('ref') || '').trim().toUpperCase().slice(0, 16);
+  if (urlRefCode) {
+    localStorage.setItem('skywing_ref', urlRefCode);
+  }
+
+  function getOrCreateDeviceFingerprint() {
+    let fp = localStorage.getItem('skywing_device_id');
+    if (!fp) {
+      const navPart = `${navigator.platform || 'x'}|${screen.width}x${screen.height}|${Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'}`;
+      let hash = 2166136261;
+      for (let i = 0; i < navPart.length; i++) {
+        hash ^= navPart.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      const randHex = Math.random().toString(16).slice(2, 10);
+      fp = `swfp-${(hash >>> 0).toString(16)}-${randHex}`;
+      localStorage.setItem('skywing_device_id', fp);
+    }
+    return fp;
+  }
+  const DEVICE_FINGERPRINT = getOrCreateDeviceFingerprint();
+
+  const initialRestoredToken = readStoredToken();
+  const initialRestoredUser = initialRestoredToken ? readStoredUserCache() : null;
 
   // ==========================================================================
   // Application State
   // ==========================================================================
   const state = {
-    token: localStorage.getItem('skywing_token') || '',
-    user: null,
+    token: initialRestoredToken,
+    user: initialRestoredUser,
     currencyMode: localStorage.getItem('skywing_mode') === 'real' ? 'real' : 'fun',
+    activeGameId: 'skywing-crash',
     publicSettings: {
       whatsappSupportEnabled: true,
       whatsappSupportNumber: '923001234567',
@@ -19,7 +190,30 @@
       whatsappChannelUrl: 'https://whatsapp.com/channel/0029VaSkyWingOfficial',
       telegramChannelEnabled: true,
       telegramChannelUrl: 'https://t.me/SkyWingOfficial',
+      maskMasterAccounts: true,
       paymentAccounts: null,
+      financialLimits: {
+        minDeposit: 50,
+        minWithdrawal: 100,
+        withdrawalFeePct: 2,
+        microDepositAutoApproveLimit: 1000,
+      },
+      withdrawalHours: {
+        enabled: true,
+        openTime: '09:00',
+        closeTime: '17:00',
+        currentlyOpen: true,
+        noticeText: 'Withdrawals are only open from 9:00 AM to 5:00 PM.',
+      },
+      platformStatus: {
+        mode: 'active',
+        message: 'Platform is undergoing scheduled maintenance. Please check back shortly.',
+      },
+      gamesConfig: [
+        { id: 'skywing-crash', name: 'SkyWing Crash', enabled: true, minBet: 10, maxBet: 100000 },
+        { id: 'cyber-plinko', name: 'Cyber Plinko', enabled: true, minBet: 10, maxBet: 50000 },
+        { id: 'golden-mines', name: 'Golden Mines', enabled: true, minBet: 10, maxBet: 50000 },
+      ],
       audioConfig: {
         bgmEnabled: true,
         soundPreset: 'aviator-jet',
@@ -30,13 +224,36 @@
     sidebarTab: 'live', // 'live' | 'mine' | 'wallet'
     transactions: [],
     depositScreenshotData: '',
+    qrDepositRef: '',
     deferredInstallPrompt: null,
+    supportTickets: [],
+    activeTicketId: '',
+    plinkoRisk: 'medium',
+    plinkoBusy: false,
+    mines: {
+      active: false,
+      revealed: [],
+      minesCount: 3,
+      betAmount: 50,
+      multiplier: 1.0,
+      nextMultiplier: 1.1,
+      potentialPayout: 0,
+      minesShown: [],
+    },
 
     game: {
       phase: 'BETTING',
+      flightState: 'betting',
+      currentRoundId: 0,
       roundNumber: 0,
-      bettingEndsAt: Date.now() + 5000,
+      bettingDurationMs: 5000,
+      countdownRemainingMs: 5000,
+      elapsedMs: 0,
+      bettingEndsAt: 0,
       flightStartedAt: 0,
+      serverTimestamp: 0,
+      serverTickTimestamp: 0,
+      lastSyncPerfMs: performance.now(),
       currentMultiplier: 1.0,
       crashPoint: 1.0,
       serverSeedHash: '',
@@ -83,6 +300,36 @@
     userAccountLabel: document.getElementById('userAccountLabel'),
     historyList: document.getElementById('historyList'),
 
+    // Maintenance & Operating Hours & Game Lobby
+    maintenanceOverlay: document.getElementById('maintenanceOverlay'),
+    maintenanceStatusPill: document.getElementById('maintenanceStatusPill'),
+    maintenanceTitle: document.getElementById('maintenanceTitle'),
+    maintenanceMessage: document.getElementById('maintenanceMessage'),
+    maintenanceSupportLink: document.getElementById('maintenanceSupportLink'),
+    withdrawalHoursBanner: document.getElementById('withdrawalHoursBanner'),
+    withdrawalHoursBannerText: document.getElementById('withdrawalHoursBannerText'),
+    withdrawalHoursWindowTag: document.getElementById('withdrawalHoursWindowTag'),
+    gameLobbyBar: document.getElementById('gameLobbyBar'),
+    crashArenaContainer: document.getElementById('crashArenaContainer'),
+    plinkoArena: document.getElementById('plinkoArena'),
+    minesArena: document.getElementById('minesArena'),
+
+    // Plinko & Mines
+    plinkoCanvas: document.getElementById('plinkoCanvas'),
+    plinkoBucketsRow: document.getElementById('plinkoBucketsRow'),
+    plinkoAmount: document.getElementById('plinkoAmount'),
+    plinkoDropBtn: document.getElementById('plinkoDropBtn'),
+    plinkoLastResultPill: document.getElementById('plinkoLastResultPill'),
+    minesAmount: document.getElementById('minesAmount'),
+    minesCountSelect: document.getElementById('minesCountSelect'),
+    minesStartBtn: document.getElementById('minesStartBtn'),
+    minesCashoutBtn: document.getElementById('minesCashoutBtn'),
+    minesGrid: document.getElementById('minesGrid'),
+    minesMultPill: document.getElementById('minesMultPill'),
+    minesNextMult: document.getElementById('minesNextMult'),
+    minesCurrentPayout: document.getElementById('minesCurrentPayout'),
+    minesHintText: document.getElementById('minesHintText'),
+
     canvas: document.getElementById('flightCanvas'),
     hudRoundNumber: document.getElementById('hudRoundNumber'),
     hudSeedShort: document.getElementById('hudSeedShort'),
@@ -113,11 +360,22 @@
     loginForm: document.getElementById('loginForm'),
     loginPhone: document.getElementById('loginPhone'),
     loginPassword: document.getElementById('loginPassword'),
-    forgotPasswordBtn: document.getElementById('forgotPasswordBtn'),
+    openForgotResetBtn: document.getElementById('openForgotResetBtn'),
     registerForm: document.getElementById('registerForm'),
     regPhone: document.getElementById('regPhone'),
     regName: document.getElementById('regName'),
+    regRefCode: document.getElementById('regRefCode'),
     regPassword: document.getElementById('regPassword'),
+    regAgeAgreement: document.getElementById('regAgeAgreement'),
+    openTermsLink: document.getElementById('openTermsLink'),
+
+    // Forgot Password Self-Reset Modal
+    forgotResetForm: document.getElementById('forgotResetForm'),
+    forgotResetIdentifier: document.getElementById('forgotResetIdentifier'),
+    forgotResetNewPass: document.getElementById('forgotResetNewPass'),
+    forgotResetError: document.getElementById('forgotResetError'),
+    forgotResetSuccess: document.getElementById('forgotResetSuccess'),
+    backToLoginBtn: document.getElementById('backToLoginBtn'),
 
     // Profile Modal
     profileModal: document.getElementById('profileModal'),
@@ -127,20 +385,39 @@
     profileRealBalance: document.getElementById('profileRealBalance'),
     profileDeposited: document.getElementById('profileDeposited'),
     profileWithdrawn: document.getElementById('profileWithdrawn'),
+    profileRefEarnings: document.getElementById('profileRefEarnings'),
+    profileVipBadge: document.getElementById('profileVipBadge'),
+    profileVipCashback: document.getElementById('profileVipCashback'),
+    profileRefCode: document.getElementById('profileRefCode'),
+    profileCopyRefBtn: document.getElementById('profileCopyRefBtn'),
     profileDepositBtn: document.getElementById('profileDepositBtn'),
     profileWithdrawBtn: document.getElementById('profileWithdrawBtn'),
+    profileRewardsBtn: document.getElementById('profileRewardsBtn'),
+    profileSupportBtn: document.getElementById('profileSupportBtn'),
     profileChannelBtn: document.getElementById('profileChannelBtn'),
     logoutBtn: document.getElementById('logoutBtn'),
 
-    // Deposit Modal
+    // Deposit Modal (2-Step QR)
     depositModal: document.getElementById('depositModal'),
     depositAccountsList: document.getElementById('depositAccountsList'),
     depGatewayCards: document.getElementById('depGatewayCards'),
     depositErrorBox: document.getElementById('depositErrorBox'),
     depositSuccessBox: document.getElementById('depositSuccessBox'),
     depositForm: document.getElementById('depositForm'),
+    depositStep1: document.getElementById('depositStep1'),
+    depositQrStep2: document.getElementById('depositQrStep2'),
     depMethod: document.getElementById('depMethod'),
     depAmount: document.getElementById('depAmount'),
+    depSenderName: document.getElementById('depSenderName'),
+    depSenderNumber: document.getElementById('depSenderNumber'),
+    depLimitInfoText: document.getElementById('depLimitInfoText'),
+    depGenQrBtn: document.getElementById('depGenQrBtn'),
+    depBackStepBtn: document.getElementById('depBackStepBtn'),
+    depQrRefBadge: document.getElementById('depQrRefBadge'),
+    depMaskedDest: document.getElementById('depMaskedDest'),
+    depQrImg: document.getElementById('depQrImg'),
+    depQrSummaryText: document.getElementById('depQrSummaryText'),
+    depMicroHint: document.getElementById('depMicroHint'),
     depTid: document.getElementById('depTid'),
     depScreenshot: document.getElementById('depScreenshot'),
     depPreviewWrap: document.getElementById('depPreviewWrap'),
@@ -150,24 +427,63 @@
 
     // Withdraw Modal
     withdrawModal: document.getElementById('withdrawModal'),
+    withdrawHoursAlert: document.getElementById('withdrawHoursAlert'),
     withdrawAvailBalance: document.getElementById('withdrawAvailBalance'),
     withdrawRolloverBox: document.getElementById('withdrawRolloverBox'),
     withdrawRolloverTitle: document.getElementById('withdrawRolloverTitle'),
     withdrawRolloverRatio: document.getElementById('withdrawRolloverRatio'),
     withdrawRolloverBar: document.getElementById('withdrawRolloverBar'),
     withdrawRolloverHint: document.getElementById('withdrawRolloverHint'),
+    savedPayoutsList: document.getElementById('savedPayoutsList'),
     wdGatewayCards: document.getElementById('wdGatewayCards'),
     withdrawErrorBox: document.getElementById('withdrawErrorBox'),
     withdrawSuccessBox: document.getElementById('withdrawSuccessBox'),
     withdrawForm: document.getElementById('withdrawForm'),
     wdMethod: document.getElementById('wdMethod'),
     wdAmount: document.getElementById('wdAmount'),
+    wdFeeGross: document.getElementById('wdFeeGross'),
+    wdFeePctLabel: document.getElementById('wdFeePctLabel'),
+    wdFeeAmt: document.getElementById('wdFeeAmt'),
+    wdFeeNet: document.getElementById('wdFeeNet'),
     wdBankNameGroup: document.getElementById('wdBankNameGroup'),
     wdBankName: document.getElementById('wdBankName'),
     wdAccountTitle: document.getElementById('wdAccountTitle'),
+    wdCnic: document.getElementById('wdCnic'),
     wdAccountNumber: document.getElementById('wdAccountNumber'),
     wdCopyNumBtn: document.getElementById('wdCopyNumBtn'),
+    wdSaveAccountChk: document.getElementById('wdSaveAccountChk'),
     wdSubmitBtn: document.getElementById('wdSubmitBtn'),
+
+    // Rewards, Audio & Support Modals
+    rewardsVipTierName: document.getElementById('rewardsVipTierName'),
+    rewardsNextTierLabel: document.getElementById('rewardsNextTierLabel'),
+    rewardsVipProgress: document.getElementById('rewardsVipProgress'),
+    rewardsEligibilityHint: document.getElementById('rewardsEligibilityHint'),
+    rewardsDailyDesc: document.getElementById('rewardsDailyDesc'),
+    rewardsWeeklyDesc: document.getElementById('rewardsWeeklyDesc'),
+    claimDailyRewardBtn: document.getElementById('claimDailyRewardBtn'),
+    claimWeeklyRewardBtn: document.getElementById('claimWeeklyRewardBtn'),
+    rewardsRefCodeText: document.getElementById('rewardsRefCodeText'),
+    rewardsRefEarnedText: document.getElementById('rewardsRefEarnedText'),
+    copyReferralLinkBtn: document.getElementById('copyReferralLinkBtn'),
+
+    playerAudioBgm: document.getElementById('playerAudioBgm'),
+    playerAudioBgmLabel: document.getElementById('playerAudioBgmLabel'),
+    playerAudioPreset: document.getElementById('playerAudioPreset'),
+    playerAudioVolume: document.getElementById('playerAudioVolume'),
+    playerAudioVolVal: document.getElementById('playerAudioVolVal'),
+    playerAudioResetBtn: document.getElementById('playerAudioResetBtn'),
+
+    newTicketToggleBtn: document.getElementById('newTicketToggleBtn'),
+    newTicketForm: document.getElementById('newTicketForm'),
+    newTicketSubject: document.getElementById('newTicketSubject'),
+    newTicketText: document.getElementById('newTicketText'),
+    userTicketList: document.getElementById('userTicketList'),
+    activeTicketSubject: document.getElementById('activeTicketSubject'),
+    activeTicketStatus: document.getElementById('activeTicketStatus'),
+    userChatThread: document.getElementById('userChatThread'),
+    userChatReplyForm: document.getElementById('userChatReplyForm'),
+    userChatReplyInput: document.getElementById('userChatReplyInput'),
 
     channelModal: document.getElementById('channelModal'),
     whatsappChannelDirectLink: document.getElementById('whatsappChannelDirectLink'),
@@ -388,26 +704,157 @@
   });
 
   // ==========================================================================
-  // Public Settings & Admin Payment Accounts
+  // Public Settings, Maintenance Lock, Operating Hours, Audio & Multi-Game UI
   // ==========================================================================
+  function getEffectiveAudioConfig(serverCfg) {
+    const base = serverCfg || state.publicSettings.audioConfig || { bgmEnabled: true, soundPreset: 'aviator-jet', masterVolume: 75 };
+    try {
+      const savedRaw = localStorage.getItem('skywing_player_audio');
+      if (savedRaw) {
+        const parsed = JSON.parse(savedRaw);
+        return {
+          bgmEnabled: parsed.bgmEnabled !== undefined ? Boolean(parsed.bgmEnabled) : base.bgmEnabled,
+          soundPreset: parsed.soundPreset || base.soundPreset,
+          masterVolume: parsed.masterVolume !== undefined ? Number(parsed.masterVolume) : base.masterVolume,
+        };
+      }
+    } catch {
+      // ignore parse errors
+    }
+    return base;
+  }
+
+  function syncPlayerAudioDrawerUI() {
+    const cfg = getEffectiveAudioConfig(state.publicSettings.audioConfig);
+    if (el.playerAudioBgm) el.playerAudioBgm.checked = cfg.bgmEnabled !== false;
+    if (el.playerAudioBgmLabel) el.playerAudioBgmLabel.textContent = cfg.bgmEnabled !== false ? 'ON' : 'OFF';
+    if (el.playerAudioPreset) el.playerAudioPreset.value = cfg.soundPreset || 'aviator-jet';
+    if (el.playerAudioVolume) el.playerAudioVolume.value = Number(cfg.masterVolume ?? 75);
+    if (el.playerAudioVolVal) el.playerAudioVolVal.textContent = `${Number(cfg.masterVolume ?? 75)}%`;
+  }
+
+  function applyPublicSettingsPayload(data) {
+    if (!data) return;
+    state.publicSettings = {
+      ...state.publicSettings,
+      ...data,
+    };
+    const effectiveAudio = getEffectiveAudioConfig(state.publicSettings.audioConfig);
+    audio.setConfig(effectiveAudio, state.soundEnabled);
+    syncPlayerAudioDrawerUI();
+    syncChannelLinks();
+    renderPaymentAccounts();
+    syncPlatformStatusUI();
+    syncWithdrawalHoursUI();
+    syncGamesLobbyUI();
+  }
+
+  function syncPlatformStatusUI() {
+    const ps = state.publicSettings.platformStatus || { mode: 'active', message: '' };
+    const isLocked = ps.mode && ps.mode !== 'active';
+    if (!el.maintenanceOverlay) return;
+    el.maintenanceOverlay.classList.toggle('hidden', !isLocked);
+    if (isLocked) {
+      if (el.maintenanceStatusPill) {
+        el.maintenanceStatusPill.textContent = ps.mode === 'disabled' ? 'PLATFORM DISABLED' : 'PLATFORM MAINTENANCE';
+      }
+      if (el.maintenanceTitle) {
+        el.maintenanceTitle.textContent =
+          ps.mode === 'disabled' ? 'Platform Temporarily Disabled' : 'SkyWing Servers Under Maintenance';
+      }
+      if (el.maintenanceMessage) {
+        el.maintenanceMessage.textContent = ps.message || 'Platform is undergoing maintenance. Please check back shortly.';
+      }
+      const supportNum = String(state.publicSettings.whatsappSupportNumber || '923001234567').replace(/\D/g, '');
+      if (el.maintenanceSupportLink) {
+        el.maintenanceSupportLink.href = `https://wa.me/${supportNum}`;
+      }
+    }
+  }
+
+  function syncWithdrawalHoursUI() {
+    const wh = state.publicSettings.withdrawalHours || {};
+    const closed = Boolean(wh.enabled) && wh.currentlyOpen === false;
+    if (el.withdrawalHoursBanner) {
+      el.withdrawalHoursBanner.classList.toggle('hidden', !closed);
+      if (closed) {
+        el.withdrawalHoursBannerText.textContent = wh.noticeText || 'Withdrawals are only open from 9:00 AM to 5:00 PM.';
+        el.withdrawalHoursWindowTag.textContent = `${wh.openTime || '09:00'} – ${wh.closeTime || '17:00'}`;
+      }
+    }
+    if (el.withdrawHoursAlert) {
+      el.withdrawHoursAlert.classList.toggle('hidden', !closed);
+      if (closed) {
+        el.withdrawHoursAlert.textContent = wh.noticeText || 'Withdrawals are only open from 9:00 AM to 5:00 PM.';
+      }
+    }
+    if (el.wdSubmitBtn) {
+      el.wdSubmitBtn.disabled = closed;
+    }
+    const limits = state.publicSettings.financialLimits || {};
+    if (el.depLimitInfoText) {
+      el.depLimitInfoText.textContent = `Min Deposit: ${Number(limits.minDeposit || 50)} PKR · Micro-deposits up to ${Number(limits.microDepositAutoApproveLimit || 1000).toLocaleString()} PKR with valid TID are auto-approved instantly!`;
+    }
+  }
+
+  function syncGamesLobbyUI() {
+    const games = state.publicSettings.gamesConfig || [];
+    if (!el.gameLobbyBar) return;
+    el.gameLobbyBar.querySelectorAll('.game-lobby-card').forEach((card) => {
+      const gid = card.dataset.game;
+      const cfg = games.find((g) => g.id === gid);
+      const enabled = cfg ? cfg.enabled !== false : true;
+      card.classList.toggle('is-disabled', !enabled);
+      card.classList.toggle('active', state.activeGameId === gid);
+      const badge = card.querySelector(`[data-game-badge="${gid}"]`);
+      if (badge) {
+        badge.textContent = enabled ? 'LIVE' : 'OFF';
+      }
+    });
+
+    const activeCfg = games.find((g) => g.id === state.activeGameId);
+    if (activeCfg && activeCfg.enabled === false) {
+      const fallback = games.find((g) => g.enabled !== false);
+      if (fallback && fallback.id !== state.activeGameId) {
+        switchActiveGame(fallback.id);
+      }
+    }
+  }
+
+  function switchActiveGame(gameId) {
+    const games = state.publicSettings.gamesConfig || [];
+    const cfg = games.find((g) => g.id === gameId);
+    if (cfg && cfg.enabled === false) {
+      showToast(`${cfg.name} is currently disabled by Admin.`, true);
+      return;
+    }
+    state.activeGameId = gameId;
+    el.crashArenaContainer?.classList.toggle('hidden', gameId !== 'skywing-crash');
+    el.plinkoArena?.classList.toggle('hidden', gameId !== 'cyber-plinko');
+    el.minesArena?.classList.toggle('hidden', gameId !== 'golden-mines');
+    syncGamesLobbyUI();
+    if (gameId === 'skywing-crash') {
+      setTimeout(resizeCanvas, 30);
+    } else if (gameId === 'cyber-plinko') {
+      renderPlinkoBoard();
+    } else if (gameId === 'golden-mines') {
+      renderMinesGrid();
+    }
+  }
+
+  el.gameLobbyBar?.querySelectorAll('.game-lobby-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      audio.playClick();
+      switchActiveGame(card.dataset.game);
+    });
+  });
+
   async function loadPublicSettings() {
     try {
       const res = await fetch('/api/public-settings');
       if (res.ok) {
         const data = await res.json();
-        state.publicSettings = {
-          whatsappSupportEnabled: data.whatsappSupportEnabled !== false,
-          whatsappSupportNumber: data.whatsappSupportNumber || '923001234567',
-          whatsappChannelEnabled: data.whatsappChannelEnabled !== false,
-          whatsappChannelUrl: data.whatsappChannelUrl || '#',
-          telegramChannelEnabled: data.telegramChannelEnabled !== false,
-          telegramChannelUrl: data.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
-          paymentAccounts: data.paymentAccounts || null,
-          audioConfig: data.audioConfig || state.publicSettings.audioConfig,
-        };
-        audio.setConfig(state.publicSettings.audioConfig, true);
-        syncChannelLinks();
-        renderPaymentAccounts();
+        applyPublicSettingsPayload(data);
       }
     } catch {
       // ignore
@@ -454,13 +901,6 @@
         : 'WhatsApp Support — Not Available';
       el.whatsappSupportDirectLink.classList.toggle('btn-social-unavailable', !waSuppOn);
       el.whatsappSupportDirectLink.dataset.available = waSuppOn ? '1' : '0';
-    }
-
-    if (el.forgotPasswordBtn) {
-      el.forgotPasswordBtn.textContent = waSuppOn
-        ? 'Forgot Password? (WhatsApp Helpline)'
-        : 'WhatsApp Support — Currently Not Available';
-      el.forgotPasswordBtn.classList.toggle('btn-social-unavailable', !waSuppOn);
     }
   }
 
@@ -814,7 +1254,20 @@
       el.profileRealBalance.textContent = fmtMoney(state.user.realBalance, 'real');
       el.profileDeposited.textContent = fmtMoney(state.user.totalDeposited, 'real');
       el.profileWithdrawn.textContent = fmtMoney(state.user.totalWithdrawn, 'real');
+      if (el.profileRefEarnings) {
+        el.profileRefEarnings.textContent = fmtMoney(state.user.referralEarnings || 0, 'real');
+      }
+      if (el.profileRefCode) {
+        el.profileRefCode.textContent = state.user.referralCode || '---';
+      }
+      if (el.profileVipBadge && state.user.vip) {
+        el.profileVipBadge.textContent = `${state.user.vip.tier} VIP`;
+      }
+      if (el.profileVipCashback && state.user.vip) {
+        el.profileVipCashback.textContent = `${state.user.vip.cashbackPct}% Weekly Cashback`;
+      }
       el.withdrawAvailBalance.textContent = fmtMoney(state.user.realBalance, 'real');
+      renderSavedPayouts();
     } else {
       el.authTriggerBtn.textContent = 'Log In / Join';
       el.authTriggerBtn.classList.remove('btn-secondary');
@@ -830,39 +1283,35 @@
   }
 
   async function fetchCurrentUser() {
-    if (!state.token) {
+    const activeToken = state.token || readStoredToken();
+    if (!activeToken) {
       state.user = null;
       state.transactions = [];
       updateUserUI();
       return;
     }
+    state.token = activeToken;
     try {
       const res = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${state.token}` },
+        headers: { Authorization: `Bearer ${activeToken}` },
       });
       if (!res.ok) {
-        state.token = '';
-        state.user = null;
-        localStorage.removeItem('skywing_token');
-        updateUserUI();
+        // Never wipe stored tokens on transient server restarts/redeploys; retain cached state
+        if (res.status === 401 || res.status === 403) {
+          state.user = null;
+          updateUserUI();
+        }
         return;
       }
       const data = await res.json();
       state.user = data.user;
+      saveSessionVault(state.token, state.user);
       if (data.publicSettings) {
-        state.publicSettings = {
-          ...state.publicSettings,
-          ...data.publicSettings,
-        };
-        if (data.publicSettings.audioConfig) {
-          audio.setConfig(data.publicSettings.audioConfig, true);
-        }
-        syncChannelLinks();
-        renderPaymentAccounts();
+        applyPublicSettingsPayload(data.publicSettings);
       }
       updateUserUI();
     } catch {
-      // silent on network hiccup
+      // Keep cached session & wallet intact during transient network drops or redeploys
     }
   }
 
@@ -891,7 +1340,14 @@
       openModal('profileModal');
     } else {
       el.authErrorBox.classList.add('hidden');
+      const savedRef = localStorage.getItem('skywing_ref') || '';
+      if (savedRef && el.regRefCode && !el.regRefCode.value) {
+        el.regRefCode.value = savedRef;
+      }
       openModal('authModal');
+      if (urlRefCode && !state.user) {
+        el.authTabRegister?.click();
+      }
     }
   });
 
@@ -909,6 +1365,15 @@
     el.registerForm.classList.remove('hidden');
     el.loginForm.classList.add('hidden');
     el.authErrorBox.classList.add('hidden');
+    const savedRef = localStorage.getItem('skywing_ref') || '';
+    if (savedRef && el.regRefCode && !el.regRefCode.value) {
+      el.regRefCode.value = savedRef;
+    }
+  });
+
+  el.openTermsLink?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openModal('termsModal');
   });
 
   function showAuthError(msg) {
@@ -927,10 +1392,14 @@
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-device-fingerprint': DEVICE_FINGERPRINT,
+        },
         body: JSON.stringify({
           phoneNumber: cleanPhone,
           password: el.loginPassword.value,
+          deviceFingerprint: DEVICE_FINGERPRINT,
         }),
       });
       const data = await res.json();
@@ -938,18 +1407,28 @@
         showAuthError(data.error || 'Login failed.');
         return;
       }
-      if (data.isAdmin && data.adminToken) {
-        localStorage.setItem('skywing_admin_token', data.adminToken);
-        closeModal('authModal');
-        showToast('Admin authenticated — opening Operations Console...');
-        setTimeout(() => {
-          window.location.href = data.redirectUrl || '/admin';
-        }, 350);
-        return;
+      if (data.isAdmin) {
+        if (data.requires2FA) {
+          closeModal('authModal');
+          showToast('2FA enabled on Admin — enter Authenticator code on /admin.');
+          setTimeout(() => {
+            window.location.href = data.redirectUrl || '/admin';
+          }, 400);
+          return;
+        }
+        if (data.adminToken) {
+          localStorage.setItem('skywing_admin_token', data.adminToken);
+          closeModal('authModal');
+          showToast('Admin authenticated — opening Operations Console...');
+          setTimeout(() => {
+            window.location.href = data.redirectUrl || '/admin';
+          }, 350);
+          return;
+        }
       }
       state.token = data.token;
       state.user = data.user;
-      localStorage.setItem('skywing_token', data.token);
+      saveSessionVault(state.token, state.user);
       if (data.whatsappChannelUrl) {
         state.publicSettings.whatsappChannelUrl = data.whatsappChannelUrl;
         syncChannelLinks();
@@ -967,6 +1446,12 @@
   el.registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     el.authErrorBox.classList.add('hidden');
+    if (!el.regAgeAgreement?.checked) {
+      const msg = 'You must confirm you are 18+ and accept the User Agreement to register.';
+      showAuthError(msg);
+      showToast(msg, true);
+      return;
+    }
     const cleanPhone = normalizePakPhone(el.regPhone.value);
     if (!PK_PHONE_REGEX.test(cleanPhone)) {
       showAuthError('Enter a valid 11-digit Pakistani mobile number starting with 03 (e.g. 03001234567).');
@@ -979,11 +1464,17 @@
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-device-fingerprint': DEVICE_FINGERPRINT,
+        },
         body: JSON.stringify({
           phoneNumber: cleanPhone,
           displayName: el.regName.value,
+          referralCode: String(el.regRefCode?.value || '').trim().toUpperCase(),
           password: el.regPassword.value,
+          acceptedTerms: true,
+          deviceFingerprint: DEVICE_FINGERPRINT,
         }),
       });
       const data = await res.json();
@@ -993,7 +1484,7 @@
       }
       state.token = data.token;
       state.user = data.user;
-      localStorage.setItem('skywing_token', data.token);
+      saveSessionVault(state.token, state.user);
       if (data.whatsappChannelUrl) {
         state.publicSettings.whatsappChannelUrl = data.whatsappChannelUrl;
         syncChannelLinks();
@@ -1003,32 +1494,79 @@
       fetchMyTransactions();
       closeModal('authModal');
       openModal('channelModal');
+      if (state.user.bonusRestricted) {
+        showToast('Account created (Bonus privileges restricted due to multi-device match).');
+      } else {
+        showToast(`Account created! Welcome to SkyWing, ${state.user.displayName}.`);
+      }
     } catch {
       showAuthError('Network error. Please try again.');
     }
   });
 
-  el.forgotPasswordBtn.addEventListener('click', () => {
-    if (state.publicSettings.whatsappSupportEnabled === false) {
-      showToast('WhatsApp Support is currently set to Not Available by Admin.', true);
+  el.openForgotResetBtn?.addEventListener('click', () => {
+    if (el.forgotResetIdentifier && el.loginPhone?.value) {
+      el.forgotResetIdentifier.value = el.loginPhone.value.trim();
+    }
+    el.forgotResetError?.classList.add('hidden');
+    el.forgotResetSuccess?.classList.add('hidden');
+    closeModal('authModal');
+    openModal('forgotPasswordModal');
+  });
+
+  el.backToLoginBtn?.addEventListener('click', () => {
+    closeModal('forgotPasswordModal');
+    openModal('authModal');
+  });
+
+  el.forgotResetForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    el.forgotResetError.classList.add('hidden');
+    el.forgotResetSuccess.classList.add('hidden');
+
+    const rawInput = String(el.forgotResetIdentifier?.value || '').trim();
+    const isCnic = CNIC_REGEX.test(rawInput);
+    const normalizedPhone = normalizePakPhone(rawInput);
+    const isPhone = PK_PHONE_REGEX.test(normalizedPhone);
+
+    if (!isCnic && !isPhone) {
+      el.forgotResetError.textContent =
+        'Enter a valid 11-digit 03XX mobile number or Pakistani CNIC (XXXXX-XXXXXXX-X).';
+      el.forgotResetError.classList.remove('hidden');
       return;
     }
-    const cleanPhone = normalizePakPhone(el.loginPhone.value);
-    const supportNum = String(state.publicSettings.whatsappSupportNumber || '923001234567').replace(
-      /\D/g,
-      ''
-    );
-    const phoneDisplay = cleanPhone || '[My 03XX Mobile Number]';
-    const text = `Assalam-o-Alaikum Admin, please reset my password for SkyWing Crash. Registered Mobile Number: ${phoneDisplay}`;
-    const url = `https://wa.me/${supportNum}?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+
+    const newPassword = el.forgotResetNewPass.value;
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: isCnic ? rawInput : normalizedPhone,
+          newPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        el.forgotResetError.textContent = data.error || 'Password reset failed.';
+        el.forgotResetError.classList.remove('hidden');
+        return;
+      }
+      el.forgotResetSuccess.textContent = data.message || 'Password reset successfully! You can now log in.';
+      el.forgotResetSuccess.classList.remove('hidden');
+      el.forgotResetForm.reset();
+      showToast('Password updated! Please log in.');
+    } catch {
+      el.forgotResetError.textContent = 'Network error. Please try again.';
+      el.forgotResetError.classList.remove('hidden');
+    }
   });
 
   el.logoutBtn.addEventListener('click', () => {
     state.token = '';
     state.user = null;
     state.transactions = [];
-    localStorage.removeItem('skywing_token');
+    clearSessionVault();
     socket.emit('auth:identify', { token: '' });
     closeModal('profileModal');
     updateUserUI();
@@ -1036,7 +1574,7 @@
   });
 
   // ==========================================================================
-  // Real Money PKR Deposit & Withdrawal Flows + 1x Wagering Rollover Check
+  // Automated QR Deposit + Saved Pakistani Payout Accounts + Rollover & Fee
   // ==========================================================================
   function updateWithdrawRolloverUI() {
     if (!state.user || !el.withdrawRolloverBox) return;
@@ -1064,6 +1602,84 @@
     }
   }
 
+  function updateWithdrawFeePreview() {
+    const gross = Math.max(0, Number(el.wdAmount?.value || 0));
+    const feePct = Math.min(25, Math.max(0, Number(state.publicSettings.financialLimits?.withdrawalFeePct || 0)));
+    const feeAmt = Math.round(gross * (feePct / 100) * 100) / 100;
+    const netAmt = Math.max(0, Math.round((gross - feeAmt) * 100) / 100);
+    if (el.wdFeeGross) el.wdFeeGross.textContent = `${gross.toLocaleString()} PKR`;
+    if (el.wdFeePctLabel) el.wdFeePctLabel.textContent = String(feePct);
+    if (el.wdFeeAmt) el.wdFeeAmt.textContent = `${feeAmt.toLocaleString()} PKR`;
+    if (el.wdFeeNet) el.wdFeeNet.textContent = `${netAmt.toLocaleString()} PKR`;
+  }
+
+  el.wdAmount?.addEventListener('input', updateWithdrawFeePreview);
+
+  function renderSavedPayouts() {
+    if (!el.savedPayoutsList) return;
+    const accounts = state.user?.savedPayoutAccounts || [];
+    if (!accounts.length) {
+      el.savedPayoutsList.innerHTML =
+        '<span class="form-hint">No saved payout accounts yet. Tick "Save Account" below when withdrawing.</span>';
+      return;
+    }
+    el.savedPayoutsList.innerHTML = accounts
+      .map(
+        (acc) => `
+      <div class="saved-payout-card">
+        <div>
+          <strong>${escapeHtml(acc.method)}${acc.bankName ? ` (${escapeHtml(acc.bankName)})` : ''} · ${escapeHtml(acc.accountTitle)}</strong>
+          <div class="tabular-nums" style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(acc.accountNumber)} · CNIC: ${escapeHtml(acc.cnic)}</div>
+        </div>
+        <div style="display:flex; gap:6px; flex-shrink:0;">
+          <button type="button" class="btn btn-emerald btn-xs" data-use-payout="${escapeHtml(acc.id)}">Use</button>
+          <button type="button" class="btn btn-danger btn-xs" data-del-payout="${escapeHtml(acc.id)}">×</button>
+        </div>
+      </div>
+    `
+      )
+      .join('');
+
+    el.savedPayoutsList.querySelectorAll('[data-use-payout]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const acc = accounts.find((a) => String(a.id) === btn.dataset.usePayout);
+        if (!acc) return;
+        el.wdMethod.value = acc.method;
+        el.wdMethod.dispatchEvent(new Event('change'));
+        el.wdBankName.value = acc.bankName || '';
+        el.wdAccountTitle.value = acc.accountTitle || '';
+        el.wdAccountNumber.value = acc.accountNumber || '';
+        el.wdCnic.value = acc.cnic || '';
+        showToast(`Loaded saved ${acc.method} account!`);
+      });
+    });
+
+    el.savedPayoutsList.querySelectorAll('[data-del-payout]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          const res = await fetch(`/api/payout-accounts/${btn.dataset.delPayout}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${state.token}` },
+          });
+          const data = await res.json();
+          if (res.ok && data.user) {
+            state.user = data.user;
+            renderSavedPayouts();
+            showToast('Saved payout account removed.');
+          }
+        } catch {
+          showToast('Could not remove saved account.', true);
+        }
+      });
+    });
+  }
+
+  function resetDepositModalToStep1() {
+    state.qrDepositRef = '';
+    el.depositStep1?.classList.remove('hidden');
+    el.depositQrStep2?.classList.add('hidden');
+  }
+
   function openDepositFlow() {
     if (!state.user) {
       openModal('authModal');
@@ -1071,7 +1687,15 @@
     }
     el.depositErrorBox.classList.add('hidden');
     el.depositSuccessBox.classList.add('hidden');
+    resetDepositModalToStep1();
+    if (el.depSenderName && !el.depSenderName.value && state.user.displayName) {
+      el.depSenderName.value = state.user.displayName;
+    }
+    if (el.depSenderNumber && !el.depSenderNumber.value && state.user.phoneNumber) {
+      el.depSenderNumber.value = state.user.phoneNumber;
+    }
     renderPaymentAccounts();
+    syncWithdrawalHoursUI();
     openModal('depositModal');
   }
 
@@ -1084,8 +1708,14 @@
     el.withdrawErrorBox.classList.add('hidden');
     el.withdrawSuccessBox.classList.add('hidden');
     el.withdrawAvailBalance.textContent = fmtMoney(state.user.realBalance, 'real');
+    if (el.wdCnic && !el.wdCnic.value && state.user.cnic) {
+      el.wdCnic.value = state.user.cnic;
+    }
     renderGatewaySelector(el.wdGatewayCards, el.wdMethod);
+    renderSavedPayouts();
     updateWithdrawRolloverUI();
+    updateWithdrawFeePreview();
+    syncWithdrawalHoursUI();
     openModal('withdrawModal');
   }
 
@@ -1099,6 +1729,55 @@
     closeModal('profileModal');
     openWithdrawFlow();
   });
+
+  el.depGenQrBtn?.addEventListener('click', async () => {
+    el.depositErrorBox.classList.add('hidden');
+    el.depositSuccessBox.classList.add('hidden');
+    const method = el.depMethod.value;
+    const amount = Number(el.depAmount.value);
+    const senderName = String(el.depSenderName?.value || '').trim();
+    const senderNumber = String(el.depSenderNumber?.value || '').trim();
+
+    el.depGenQrBtn.disabled = true;
+    try {
+      const res = await fetch('/api/transactions/deposit/qr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({ method, amount, senderName, senderNumber }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        el.depositErrorBox.textContent = data.error || 'Could not generate QR code.';
+        el.depositErrorBox.classList.remove('hidden');
+        return;
+      }
+
+      state.qrDepositRef = data.qrReference;
+      if (el.depQrImg) el.depQrImg.src = data.qrDataUrl;
+      if (el.depQrRefBadge) el.depQrRefBadge.textContent = `REF: ${data.qrReference}`;
+      if (el.depMaskedDest) {
+        el.depMaskedDest.textContent = `${data.method}: ${data.maskedAccountNumber} (${data.accountTitle})`;
+      }
+      if (el.depMicroHint) {
+        const isMicro = data.microAutoApproveLimit > 0 && amount <= data.microAutoApproveLimit;
+        el.depMicroHint.textContent = isMicro
+          ? `Micro-Deposit Eligible! Enter your valid TID (6+ chars) for instant auto-approval.`
+          : `Standard Review: Admin will approve shortly after verifying your TID / screenshot.`;
+      }
+      el.depositStep1?.classList.add('hidden');
+      el.depositQrStep2?.classList.remove('hidden');
+    } catch {
+      el.depositErrorBox.textContent = 'Network error generating QR code.';
+      el.depositErrorBox.classList.remove('hidden');
+    } finally {
+      el.depGenQrBtn.disabled = false;
+    }
+  });
+
+  el.depBackStepBtn?.addEventListener('click', resetDepositModalToStep1);
 
   // Compress uploaded payment screenshot cleanly into JPEG base64
   el.depScreenshot.addEventListener('change', () => {
@@ -1150,6 +1829,8 @@
 
     const amount = Number(el.depAmount.value);
     const method = el.depMethod.value;
+    const senderName = String(el.depSenderName?.value || '').trim();
+    const senderNumber = String(el.depSenderNumber?.value || '').trim();
     const transactionId = el.depTid.value.trim();
     const screenshotData = state.depositScreenshotData;
 
@@ -1168,7 +1849,15 @@
           'Content-Type': 'application/json',
           Authorization: `Bearer ${state.token}`,
         },
-        body: JSON.stringify({ amount, method, transactionId, screenshotData }),
+        body: JSON.stringify({
+          amount,
+          method,
+          senderName,
+          senderNumber,
+          qrReference: state.qrDepositRef,
+          transactionId,
+          screenshotData,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1177,14 +1866,27 @@
         return;
       }
 
-      el.depositSuccessBox.textContent =
-        'Deposit proof submitted! Admin has been notified for instant verification.';
+      if (data.autoApproved) {
+        if (data.user) {
+          state.user = data.user;
+          updateUserUI();
+        } else {
+          fetchCurrentUser();
+        }
+        el.depositSuccessBox.textContent =
+          `Instant Micro-Deposit Auto-Approved! ${Number(amount).toLocaleString()} PKR credited to your Real Balance.`;
+        showToast(`Micro-deposit auto-approved (+${amount.toLocaleString()} PKR)!`);
+      } else {
+        el.depositSuccessBox.textContent =
+          'Deposit proof submitted! Admin has been notified for verification.';
+        showToast('Deposit request sent to Admin!');
+      }
       el.depositSuccessBox.classList.remove('hidden');
       el.depositForm.reset();
       state.depositScreenshotData = '';
       el.depPreviewWrap.classList.add('hidden');
+      resetDepositModalToStep1();
       fetchMyTransactions();
-      showToast('Deposit request sent to Admin!');
     } catch {
       el.depositErrorBox.textContent = 'Network error. Please try again.';
       el.depositErrorBox.classList.remove('hidden');
@@ -1214,6 +1916,15 @@
     el.withdrawErrorBox.classList.add('hidden');
     el.withdrawSuccessBox.classList.add('hidden');
 
+    const cnicVal = String(el.wdCnic?.value || '').trim();
+    if (!CNIC_REGEX.test(cnicVal)) {
+      const msg = 'Valid Pakistani CNIC is required (format: XXXXX-XXXXXXX-X).';
+      el.withdrawErrorBox.textContent = msg;
+      el.withdrawErrorBox.classList.remove('hidden');
+      showToast(msg, true);
+      return;
+    }
+
     if (state.user) {
       const totalDep = Number(state.user.totalDeposited || 0);
       const totalWagered = Number(state.user.totalWageredReal || 0);
@@ -1228,6 +1939,15 @@
       }
     }
 
+    const wdPayload = {
+      method: el.wdMethod.value,
+      amount: Number(el.wdAmount.value),
+      bankName: el.wdBankName.value.trim(),
+      accountTitle: el.wdAccountTitle.value.trim(),
+      accountNumber: el.wdAccountNumber.value.trim(),
+      cnic: cnicVal,
+    };
+
     el.wdSubmitBtn.disabled = true;
     try {
       const res = await fetch('/api/transactions/withdraw', {
@@ -1236,13 +1956,7 @@
           'Content-Type': 'application/json',
           Authorization: `Bearer ${state.token}`,
         },
-        body: JSON.stringify({
-          method: el.wdMethod.value,
-          amount: Number(el.wdAmount.value),
-          bankName: el.wdBankName.value.trim(),
-          accountTitle: el.wdAccountTitle.value.trim(),
-          accountNumber: el.wdAccountNumber.value.trim(),
-        }),
+        body: JSON.stringify(wdPayload),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1250,6 +1964,30 @@
         el.withdrawErrorBox.classList.remove('hidden');
         showToast(data.error || 'Withdrawal failed.', true);
         return;
+      }
+
+      if (el.wdSaveAccountChk?.checked && state.user) {
+        const alreadySaved = (state.user.savedPayoutAccounts || []).some(
+          (a) => a.method === wdPayload.method && a.accountNumber === wdPayload.accountNumber
+        );
+        if (!alreadySaved) {
+          fetch('/api/payout-accounts', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${state.token}`,
+            },
+            body: JSON.stringify(wdPayload),
+          })
+            .then((r) => r.json())
+            .then((savedRes) => {
+              if (savedRes.user) {
+                state.user = savedRes.user;
+                renderSavedPayouts();
+              }
+            })
+            .catch(() => {});
+        }
       }
 
       if (data.user) {
@@ -1263,6 +2001,7 @@
       el.withdrawForm.reset();
       el.wdBankNameGroup.classList.add('hidden');
       renderGatewaySelector(el.wdGatewayCards, el.wdMethod);
+      updateWithdrawFeePreview();
       fetchMyTransactions();
       showToast('Withdrawal request submitted!');
     } catch {
@@ -1985,22 +2724,18 @@
     const plotH = Math.max(120, canvasHeight - padTop - padBottom);
 
     let elapsedSec = 0;
-    if (state.game.phase === 'FLYING' && state.game.flightStartedAt > 0) {
-      elapsedSec = Math.max(0, (Date.now() - state.game.flightStartedAt) / 1000);
-      const smoothMult = Math.max(1.0, Math.exp(MULTIPLIER_GROWTH_RATE * elapsedSec));
-      state.game.currentMultiplier = Math.max(
-        state.game.currentMultiplier,
-        Math.floor(smoothMult * 100) / 100
-      );
-      el.liveMultiplierText.textContent = `${state.game.currentMultiplier.toFixed(2)}x`;
+    if (state.game.phase === 'FLYING') {
+      const syncDeltaMs = Math.min(50, Math.max(0, performance.now() - state.game.lastSyncPerfMs));
+      elapsedSec = Math.max(0, (Number(state.game.elapsedMs || 0) + syncDeltaMs) / 1000);
+      el.liveMultiplierText.textContent = `${Number(state.game.currentMultiplier || 1).toFixed(2)}x`;
       audio.updateTension(state.game.currentMultiplier);
       audio.playWingFlap();
-      updatePanelButtons();
     } else if (state.game.phase === 'BETTING') {
-      const remMs = Math.max(0, state.game.bettingEndsAt - Date.now());
+      const remMs = Math.max(0, Number(state.game.countdownRemainingMs ?? 0));
+      const totalMs = Math.max(1000, Number(state.game.bettingDurationMs || 5000));
       const remSec = (remMs / 1000).toFixed(1);
       el.countdownTimerText.textContent = `${remSec}s`;
-      const pct = Math.max(0, Math.min(100, (remMs / 5000) * 100));
+      const pct = Math.max(0, Math.min(100, (remMs / totalMs) * 100));
       el.countdownBarFill.style.width = `${pct}%`;
     }
 
@@ -2237,15 +2972,21 @@
 
   function syncPhaseOverlays() {
     const phase = state.game.phase;
-    el.hudRoundNumber.textContent = `Round #${state.game.roundNumber}`;
+    const roundId = state.game.currentRoundId || state.game.roundNumber || 0;
+    el.hudRoundNumber.textContent = `Round #${roundId}`;
     el.hudSeedShort.textContent = `SHA-256: ${(state.game.serverSeedHash || '').slice(0, 10)}...`;
 
     if (phase === 'BETTING') {
+      const remMs = Math.max(0, Number(state.game.countdownRemainingMs ?? 0));
+      const totalMs = Math.max(1000, Number(state.game.bettingDurationMs || 5000));
+      el.countdownTimerText.textContent = `${(remMs / 1000).toFixed(1)}s`;
+      el.countdownBarFill.style.width = `${Math.max(0, Math.min(100, (remMs / totalMs) * 100))}%`;
       el.bettingOverlay.classList.remove('hidden');
       el.flyingOverlay.classList.add('hidden');
       el.crashBannerText.classList.add('hidden');
       el.liveMultiplierText.classList.remove('crashed');
     } else if (phase === 'FLYING') {
+      el.liveMultiplierText.textContent = `${Number(state.game.currentMultiplier || 1).toFixed(2)}x`;
       el.bettingOverlay.classList.add('hidden');
       el.flyingOverlay.classList.remove('hidden');
       el.crashBannerText.classList.add('hidden');
@@ -2255,23 +2996,96 @@
       el.flyingOverlay.classList.remove('hidden');
       el.crashBannerText.classList.remove('hidden');
       el.liveMultiplierText.classList.add('crashed');
-      el.liveMultiplierText.textContent = `${Number(state.game.crashPoint || 1).toFixed(2)}x`;
+      el.liveMultiplierText.textContent = `${Number(state.game.crashPoint || state.game.currentMultiplier || 1).toFixed(2)}x`;
     }
   }
 
+  function applyServerRoundSnapshot(data, isFullInit = false) {
+    if (!data) return false;
+    const incomingRoundId = Number(data.currentRoundId ?? data.roundNumber ?? 0);
+    const incomingTs = Number(data.serverTickTimestamp ?? data.serverTimestamp ?? 0);
+
+    // Ignore stale/out-of-order packets from previous rounds or earlier ticks
+    if (!isFullInit && incomingRoundId > 0 && state.game.currentRoundId > 0) {
+      if (incomingRoundId < state.game.currentRoundId) return false;
+      if (
+        incomingRoundId === state.game.currentRoundId &&
+        incomingTs > 0 &&
+        state.game.serverTickTimestamp > 0 &&
+        incomingTs < state.game.serverTickTimestamp
+      ) {
+        return false;
+      }
+    }
+
+    const nextFlightState = String(
+      data.flightState || data.phase || state.game.flightState || 'betting'
+    ).toLowerCase();
+    const nextPhase = String(data.phase || nextFlightState.toUpperCase()).toUpperCase();
+
+    state.game.phase = nextPhase;
+    state.game.flightState = nextFlightState;
+    if (incomingRoundId > 0) {
+      state.game.currentRoundId = incomingRoundId;
+      state.game.roundNumber = incomingRoundId;
+    }
+    if (incomingTs > 0) {
+      state.game.serverTimestamp = incomingTs;
+      state.game.serverTickTimestamp = incomingTs;
+    }
+    state.game.lastSyncPerfMs = performance.now();
+
+    if (data.bettingDurationMs !== undefined) state.game.bettingDurationMs = Number(data.bettingDurationMs);
+    if (data.countdownRemainingMs !== undefined) state.game.countdownRemainingMs = Number(data.countdownRemainingMs);
+    if (data.elapsedMs !== undefined) state.game.elapsedMs = Number(data.elapsedMs);
+    if (data.bettingEndsAt !== undefined) state.game.bettingEndsAt = Number(data.bettingEndsAt);
+    if (data.flightStartedAt !== undefined) state.game.flightStartedAt = Number(data.flightStartedAt);
+    if (data.serverSeedHash) state.game.serverSeedHash = data.serverSeedHash;
+    if (data.clientSeed !== undefined) state.game.clientSeed = data.clientSeed;
+    if (data.nonce !== undefined) state.game.nonce = data.nonce;
+
+    if (nextPhase === 'BETTING') {
+      state.game.serverSeed = '';
+      state.game.currentMultiplier = 1.0;
+      state.game.crashPoint = 1.0;
+    } else if (nextPhase === 'FLYING') {
+      const m = Number(data.multiplier ?? data.currentMultiplier ?? 1.0);
+      state.game.currentMultiplier = m;
+    } else if (nextPhase === 'CRASHED') {
+      const cp = Number(data.crashPoint ?? data.multiplier ?? data.currentMultiplier ?? 1.0);
+      state.game.crashPoint = cp;
+      state.game.currentMultiplier = cp;
+      if (data.serverSeed) state.game.serverSeed = data.serverSeed;
+    }
+
+    if (Array.isArray(data.bets)) state.game.bets = data.bets;
+    if (Array.isArray(data.history)) state.game.history = data.history;
+    if (data.onlineCount !== undefined && el.onlineCount) {
+      el.onlineCount.textContent = `${data.onlineCount} Online`;
+    }
+    return true;
+  }
+
+  let hasConnectedOnce = false;
+  socket.on('connect', () => {
+    if (state.token) {
+      socket.emit('auth:identify', { token: state.token });
+    }
+    if (hasConnectedOnce) {
+      socket.emit('game:sync');
+      if (state.token) fetchCurrentUser();
+    }
+    hasConnectedOnce = true;
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && socket.connected) {
+      socket.emit('game:sync');
+    }
+  });
+
   socket.on('game:init', (data) => {
-    state.game.phase = data.phase;
-    state.game.roundNumber = data.roundNumber;
-    state.game.bettingEndsAt = data.bettingEndsAt;
-    state.game.flightStartedAt = data.flightStartedAt;
-    state.game.currentMultiplier = data.currentMultiplier || 1.0;
-    state.game.crashPoint = data.currentMultiplier || 1.0;
-    state.game.serverSeedHash = data.serverSeedHash;
-    state.game.clientSeed = data.clientSeed;
-    state.game.nonce = data.nonce;
-    state.game.bets = data.bets || [];
-    state.game.history = data.history || [];
-    el.onlineCount.textContent = `${data.onlineCount || 1} Online`;
+    applyServerRoundSnapshot(data, true);
 
     if (state.user) {
       [1, 2].forEach((slot) => {
@@ -2293,30 +3107,31 @@
   });
 
   socket.on('settings:updated', (data) => {
-    state.publicSettings = {
-      whatsappSupportEnabled:
-        data.whatsappSupportEnabled !== undefined
-          ? Boolean(data.whatsappSupportEnabled)
-          : state.publicSettings.whatsappSupportEnabled,
-      whatsappSupportNumber: data.whatsappSupportNumber || state.publicSettings.whatsappSupportNumber,
-      whatsappChannelEnabled:
-        data.whatsappChannelEnabled !== undefined
-          ? Boolean(data.whatsappChannelEnabled)
-          : state.publicSettings.whatsappChannelEnabled,
-      whatsappChannelUrl: data.whatsappChannelUrl || state.publicSettings.whatsappChannelUrl,
-      telegramChannelEnabled:
-        data.telegramChannelEnabled !== undefined
-          ? Boolean(data.telegramChannelEnabled)
-          : state.publicSettings.telegramChannelEnabled,
-      telegramChannelUrl: data.telegramChannelUrl || state.publicSettings.telegramChannelUrl,
-      paymentAccounts: data.paymentAccounts || state.publicSettings.paymentAccounts,
-      audioConfig: data.audioConfig || state.publicSettings.audioConfig,
-    };
-    if (data.audioConfig) {
-      audio.setConfig(data.audioConfig, true);
+    applyPublicSettingsPayload(data);
+  });
+
+  socket.on('platform:status', (ps) => {
+    state.publicSettings.platformStatus = ps;
+    syncPlatformStatusUI();
+  });
+
+  socket.on('referral:bonus', ({ amount, fromUser }) => {
+    showToast(`Referral Bonus +${Number(amount).toLocaleString()} PKR from ${fromUser}!`);
+    fetchCurrentUser();
+  });
+
+  socket.on('support:ticket_updated', (ticket) => {
+    const idx = state.supportTickets.findIndex((t) => String(t._id || t.id) === String(ticket._id || ticket.id));
+    if (idx >= 0) {
+      state.supportTickets[idx] = ticket;
+    } else {
+      state.supportTickets.unshift(ticket);
     }
-    syncChannelLinks();
-    renderPaymentAccounts();
+    if (document.getElementById('supportModal')?.classList.contains('open')) {
+      renderUserSupportTickets();
+    } else {
+      showToast(`Support Ticket Reply: ${ticket.subject}`);
+    }
   });
 
   socket.on('balance:update', ({ funBalance, realBalance, funCredits }) => {
@@ -2324,6 +3139,7 @@
       if (funBalance !== undefined) state.user.funBalance = funBalance;
       else if (funCredits !== undefined) state.user.funBalance = funCredits;
       if (realBalance !== undefined) state.user.realBalance = realBalance;
+      saveSessionVault(state.token, state.user);
       updateUserUI();
     }
   });
@@ -2348,24 +3164,14 @@
 
   socket.on('account:banned', ({ reason }) => {
     showToast(reason || 'Account suspended.', true);
-    state.token = '';
     state.user = null;
-    localStorage.removeItem('skywing_token');
     updateUserUI();
   });
 
   socket.on('round:betting', (data) => {
     audio.stopTension();
-    state.game.phase = 'BETTING';
-    state.game.roundNumber = data.roundNumber;
-    state.game.bettingEndsAt = data.bettingEndsAt;
-    state.game.currentMultiplier = 1.0;
-    state.game.serverSeedHash = data.serverSeedHash;
-    state.game.serverSeed = '';
-    state.game.clientSeed = data.clientSeed;
-    state.game.nonce = data.nonce;
     state.game.bets = [];
-    if (data.history) state.game.history = data.history;
+    applyServerRoundSnapshot({ ...data, phase: 'BETTING', flightState: 'betting' }, true);
 
     [1, 2].forEach((slot) => {
       state.panels[slot].placedBet = null;
@@ -2387,30 +3193,54 @@
   });
 
   socket.on('round:flying', (data) => {
-    state.game.phase = 'FLYING';
-    state.game.flightStartedAt = data.flightStartedAt || Date.now();
-    state.game.currentMultiplier = 1.0;
-    state.game.bets = data.bets || state.game.bets;
+    applyServerRoundSnapshot({ ...data, phase: 'FLYING', flightState: 'flying' }, false);
     syncPhaseOverlays();
     audio.startTension();
     updatePanelButtons();
   });
 
   socket.on('round:tick', (data) => {
+    if (!applyServerRoundSnapshot(data, false)) return;
     if (state.game.phase === 'FLYING') {
-      state.game.currentMultiplier = Math.max(state.game.currentMultiplier, data.multiplier);
+      el.liveMultiplierText.textContent = `${Number(state.game.currentMultiplier || 1).toFixed(2)}x`;
+      updatePanelButtons();
+    } else if (state.game.phase === 'BETTING') {
+      const remMs = Math.max(0, Number(state.game.countdownRemainingMs ?? 0));
+      const totalMs = Math.max(1000, Number(state.game.bettingDurationMs || 5000));
+      el.countdownTimerText.textContent = `${(remMs / 1000).toFixed(1)}s`;
+      el.countdownBarFill.style.width = `${Math.max(0, Math.min(100, (remMs / totalMs) * 100))}%`;
+    }
+  });
+
+  socket.on('game:state', (data) => {
+    const prevPhase = state.game.phase;
+    const prevRound = state.game.currentRoundId;
+    if (!applyServerRoundSnapshot(data, false)) return;
+
+    if (prevPhase !== state.game.phase || prevRound !== state.game.currentRoundId) {
+      syncPhaseOverlays();
+      updatePanelButtons();
+    } else if (state.game.phase === 'FLYING') {
+      el.liveMultiplierText.textContent = `${Number(state.game.currentMultiplier || 1).toFixed(2)}x`;
+      updatePanelButtons();
+    } else if (state.game.phase === 'BETTING') {
+      const remMs = Math.max(0, Number(state.game.countdownRemainingMs ?? 0));
+      const totalMs = Math.max(1000, Number(state.game.bettingDurationMs || 5000));
+      el.countdownTimerText.textContent = `${(remMs / 1000).toFixed(1)}s`;
+      el.countdownBarFill.style.width = `${Math.max(0, Math.min(100, (remMs / totalMs) * 100))}%`;
     }
   });
 
   socket.on('round:crashed', (data) => {
-    state.game.phase = 'CRASHED';
-    state.game.crashPoint = data.crashPoint;
-    state.game.currentMultiplier = data.crashPoint;
-    state.game.serverSeed = data.serverSeed;
-    if (data.history) state.game.history = data.history;
+    const alreadyCrashedThisRound =
+      state.game.phase === 'CRASHED' &&
+      Number(data.currentRoundId ?? data.roundNumber) === Number(state.game.currentRoundId);
+    applyServerRoundSnapshot({ ...data, phase: 'CRASHED', flightState: 'crashed' }, false);
 
-    audio.playCrash();
-    spawnCrashBurst(lastKnownBirdPos.x, lastKnownBirdPos.y);
+    if (!alreadyCrashedThisRound) {
+      audio.playCrash();
+      spawnCrashBurst(lastKnownBirdPos.x, lastKnownBirdPos.y);
+    }
 
     syncPhaseOverlays();
     renderHistory();
@@ -2454,10 +3284,605 @@
   });
 
   // ==========================================================================
-  // Initial Load
+  // Cyber Plinko Arcade Renderer & Controller
   // ==========================================================================
-  updateModeAndWalletUI();
+  function renderPlinkoBuckets(highlightSlot = -1) {
+    if (!el.plinkoBucketsRow) return;
+    const tbl = PLINKO_TABLES[state.plinkoRisk] || PLINKO_TABLES.medium;
+    el.plinkoBucketsRow.innerHTML = tbl
+      .map(
+        (m, idx) =>
+          `<div class="plinko-bucket ${idx === highlightSlot ? 'hit' : ''}">${m}x</div>`
+      )
+      .join('');
+  }
+
+  function renderPlinkoBoard(ballPos = null) {
+    if (!el.plinkoCanvas) return;
+    const pCtx = el.plinkoCanvas.getContext('2d');
+    const w = el.plinkoCanvas.width;
+    const h = el.plinkoCanvas.height;
+    pCtx.clearRect(0, 0, w, h);
+
+    const rows = 8;
+    const topY = 26;
+    const rowGap = (h - 56) / rows;
+    const pegSpacing = 36;
+
+    for (let r = 0; r < rows; r++) {
+      const count = r + 3;
+      const startX = w / 2 - ((count - 1) * pegSpacing) / 2;
+      const y = topY + r * rowGap;
+      for (let c = 0; c < count; c++) {
+        const x = startX + c * pegSpacing;
+        pCtx.fillStyle = '#7dd3fc';
+        pCtx.beginPath();
+        pCtx.arc(x, y, 4, 0, Math.PI * 2);
+        pCtx.fill();
+      }
+    }
+
+    if (ballPos) {
+      pCtx.fillStyle = '#fbbf24';
+      pCtx.shadowColor = '#fbbf24';
+      pCtx.shadowBlur = 14;
+      pCtx.beginPath();
+      pCtx.arc(ballPos.x, ballPos.y, 7.5, 0, Math.PI * 2);
+      pCtx.fill();
+      pCtx.shadowBlur = 0;
+    }
+    renderPlinkoBuckets(ballPos?.hitSlot ?? -1);
+  }
+
+  document.querySelectorAll('.plinko-risk-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.plinkoRisk = btn.dataset.risk || 'medium';
+      document.querySelectorAll('.plinko-risk-btn').forEach((b) => b.classList.toggle('active', b === btn));
+      renderPlinkoBoard();
+    });
+  });
+
+  document.querySelectorAll('.plinko-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.plinkoAmount) el.plinkoAmount.value = btn.dataset.amt;
+    });
+  });
+
+  el.plinkoDropBtn?.addEventListener('click', async () => {
+    if (!state.user) {
+      openModal('authModal');
+      return;
+    }
+    if (state.plinkoBusy) return;
+    const amount = Number(el.plinkoAmount?.value || 0);
+    state.plinkoBusy = true;
+    el.plinkoDropBtn.disabled = true;
+
+    try {
+      const res = await fetch('/api/games/plinko/play', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({
+          currencyMode: state.currencyMode,
+          risk: state.plinkoRisk,
+          amount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Plinko drop failed.', true);
+        state.plinkoBusy = false;
+        el.plinkoDropBtn.disabled = false;
+        return;
+      }
+
+      audio.ensureContext();
+      audio.playClick();
+
+      // Animate ball path smoothly across 8 peg rows
+      const rows = 8;
+      const w = el.plinkoCanvas.width;
+      const h = el.plinkoCanvas.height;
+      const topY = 26;
+      const rowGap = (h - 56) / rows;
+      const pegSpacing = 36;
+      let stepIdx = 0;
+      let colOffset = 0;
+
+      const animStep = () => {
+        if (stepIdx >= data.path.length) {
+          const finalX = w / 2 + (data.slot - 4) * pegSpacing * 0.95;
+          renderPlinkoBoard({ x: finalX, y: h - 14, hitSlot: data.slot });
+          if (data.user) {
+            state.user = data.user;
+            updateUserUI();
+          }
+          el.plinkoLastResultPill.textContent = `${data.multiplier}x (${data.profit >= 0 ? '+' : ''}${data.profit} ${unitLabel(data.currencyMode)})`;
+          if (data.multiplier >= 1.5) audio.playCashout();
+          showToast(`Plinko landed ${data.multiplier}x → Payout ${fmtMoney(data.payout, data.currencyMode)}`);
+          state.plinkoBusy = false;
+          el.plinkoDropBtn.disabled = false;
+          return;
+        }
+        colOffset += data.path[stepIdx] === 1 ? 0.5 : -0.5;
+        const bx = w / 2 + colOffset * pegSpacing;
+        const by = topY + stepIdx * rowGap + 12;
+        renderPlinkoBoard({ x: bx, y: by });
+        stepIdx += 1;
+        setTimeout(animStep, 85);
+      };
+      animStep();
+    } catch {
+      showToast('Network error in Plinko.', true);
+      state.plinkoBusy = false;
+      el.plinkoDropBtn.disabled = false;
+    }
+  });
+
+  // ==========================================================================
+  // Golden Mines 5x5 Grid Controller
+  // ==========================================================================
+  function renderMinesGrid() {
+    if (!el.minesGrid) return;
+    let html = '';
+    for (let i = 0; i < 25; i++) {
+      const isGem = state.mines.revealed.includes(i);
+      const isMine = state.mines.minesShown.includes(i);
+      const cls = isGem ? 'revealed-gem' : isMine ? 'revealed-mine' : '';
+      const icon = isGem ? '💎' : isMine ? '💣' : state.mines.active ? '?' : '·';
+      const disabled = !state.mines.active || isGem || isMine ? 'disabled' : '';
+      html += `<button type="button" class="mine-tile ${cls}" data-tile="${i}" ${disabled}>${icon}</button>`;
+    }
+    el.minesGrid.innerHTML = html;
+
+    el.minesGrid.querySelectorAll('.mine-tile[data-tile]').forEach((btn) => {
+      btn.addEventListener('click', () => revealMineTile(Number(btn.dataset.tile)));
+    });
+
+    if (el.minesMultPill) el.minesMultPill.textContent = `${Number(state.mines.multiplier || 1).toFixed(2)}x`;
+    if (el.minesNextMult) el.minesNextMult.textContent = `${Number(state.mines.nextMultiplier || 1).toFixed(2)}x`;
+    if (el.minesCurrentPayout) {
+      el.minesCurrentPayout.textContent = fmtMoney(state.mines.potentialPayout || 0, state.currencyMode);
+    }
+    if (el.minesStartBtn) el.minesStartBtn.classList.toggle('hidden', state.mines.active);
+    if (el.minesCashoutBtn) {
+      el.minesCashoutBtn.classList.toggle('hidden', !state.mines.active || state.mines.revealed.length === 0);
+      el.minesCashoutBtn.textContent = `CASH OUT (${fmtMoney(state.mines.potentialPayout || 0, state.currencyMode)})`;
+    }
+  }
+
+  el.minesStartBtn?.addEventListener('click', async () => {
+    if (!state.user) {
+      openModal('authModal');
+      return;
+    }
+    const amount = Number(el.minesAmount?.value || 0);
+    const minesCount = Number(el.minesCountSelect?.value || 3);
+    try {
+      const res = await fetch('/api/games/mines/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({ currencyMode: state.currencyMode, amount, minesCount }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Could not start Mines.', true);
+        return;
+      }
+      audio.ensureContext();
+      audio.playCasinoChime();
+      state.mines = {
+        active: true,
+        revealed: [],
+        minesCount,
+        betAmount: amount,
+        multiplier: 1.0,
+        nextMultiplier: data.nextMultiplier,
+        potentialPayout: amount,
+        minesShown: [],
+      };
+      if (data.user) {
+        state.user = data.user;
+        updateUserUI();
+      }
+      el.minesHintText.textContent = 'Click tiles to reveal diamonds. Cash out anytime!';
+      renderMinesGrid();
+    } catch {
+      showToast('Failed to start Golden Mines.', true);
+    }
+  });
+
+  async function revealMineTile(index) {
+    if (!state.mines.active) return;
+    try {
+      const res = await fetch('/api/games/mines/reveal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({ index }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Tile reveal error.', true);
+        return;
+      }
+      if (data.boom) {
+        audio.playCrash();
+        state.mines.active = false;
+        state.mines.minesShown = data.mines || [];
+        state.mines.multiplier = 0;
+        state.mines.potentialPayout = 0;
+        if (data.user) {
+          state.user = data.user;
+          updateUserUI();
+        }
+        el.minesHintText.textContent = 'BOOM! You hit a hidden mine.';
+        showToast('Hit a mine! Better luck next round.', true);
+      } else if (data.clearedAll) {
+        audio.playCashout();
+        state.mines.active = false;
+        state.mines.revealed = data.revealed || [];
+        state.mines.minesShown = data.mines || [];
+        state.mines.multiplier = data.multiplier;
+        state.mines.potentialPayout = data.payout;
+        if (data.user) {
+          state.user = data.user;
+          updateUserUI();
+        }
+        el.minesHintText.textContent = `Board cleared! Won ${fmtMoney(data.payout, state.currencyMode)}`;
+        showToast(`Board Cleared! +${fmtMoney(data.payout, state.currencyMode)}`);
+      } else {
+        audio.playCasinoChime();
+        state.mines.revealed = data.revealed || [];
+        state.mines.multiplier = data.multiplier;
+        state.mines.nextMultiplier = data.nextMultiplier;
+        state.mines.potentialPayout = data.potentialPayout;
+        el.minesHintText.textContent = `${state.mines.revealed.length} diamond(s) found! Cash out or keep going.`;
+      }
+      renderMinesGrid();
+    } catch {
+      showToast('Network error revealing tile.', true);
+    }
+  }
+
+  el.minesCashoutBtn?.addEventListener('click', async () => {
+    if (!state.mines.active) return;
+    try {
+      const res = await fetch('/api/games/mines/cashout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Cashout failed.', true);
+        return;
+      }
+      audio.playCashout();
+      state.mines.active = false;
+      state.mines.minesShown = data.mines || [];
+      state.mines.multiplier = data.multiplier;
+      state.mines.potentialPayout = data.payout;
+      if (data.user) {
+        state.user = data.user;
+        updateUserUI();
+      }
+      el.minesHintText.textContent = `Cashed out at ${data.multiplier}x (+${fmtMoney(data.payout, data.currencyMode)})`;
+      showToast(`Mines Cashout ${data.multiplier}x (+${fmtMoney(data.payout, data.currencyMode)})`);
+      renderMinesGrid();
+    } catch {
+      showToast('Cashout error.', true);
+    }
+  });
+
+  // ==========================================================================
+  // VIP Loyalty Tiers, Rewards & Referral Copy
+  // ==========================================================================
+  function getReferralShareUrl() {
+    const code = state.user?.referralCode || '';
+    return `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
+  }
+
+  el.profileCopyRefBtn?.addEventListener('click', () => {
+    if (!state.user?.referralCode) return;
+    copyValueWithButton(el.profileCopyRefBtn, getReferralShareUrl(), 'Copied!');
+  });
+
+  el.copyReferralLinkBtn?.addEventListener('click', () => {
+    if (!state.user?.referralCode) return;
+    copyValueWithButton(el.copyReferralLinkBtn, getReferralShareUrl(), 'Copied!');
+  });
+
+  async function openRewardsFlow() {
+    if (!state.user) {
+      openModal('authModal');
+      return;
+    }
+    openModal('rewardsModal');
+    try {
+      const res = await fetch('/api/rewards/status', {
+        headers: { Authorization: `Bearer ${state.token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const vip = data.vip || {};
+      el.rewardsVipTierName.textContent = `${vip.tier || 'Bronze'} VIP`;
+      el.rewardsNextTierLabel.textContent = vip.nextTier
+        ? `Next: ${vip.nextTier} (${Number(vip.nextTarget || 0).toLocaleString()} PKR wagered)`
+        : 'Maximum Platinum VIP Achieved!';
+      el.rewardsVipProgress.style.width = `${vip.progressPct || 0}%`;
+      el.rewardsDailyDesc.textContent = `+${vip.dailyFun || 200} FC & +${vip.dailyReal || 10} PKR daily`;
+      el.rewardsWeeklyDesc.textContent = `Estimated Cashback (${vip.cashbackPct || 5}%): ${Number(data.estimatedCashback || 0).toLocaleString()} PKR`;
+      el.rewardsRefCodeText.textContent = data.referralCode || '---';
+      el.rewardsRefEarnedText.textContent = `${Number(data.referralEarnings || 0).toLocaleString()} PKR`;
+
+      if (data.bonusRestricted) {
+        el.rewardsEligibilityHint.textContent = 'Bonus rewards disabled due to multi-account/device restriction.';
+        el.rewardsEligibilityHint.style.color = '#f87171';
+      } else if (!data.hasDeposited) {
+        el.rewardsEligibilityHint.textContent = 'Make an approved Real PKR deposit to unlock Daily Login & Weekly Cashback rewards.';
+        el.rewardsEligibilityHint.style.color = '#fbbf24';
+      } else {
+        el.rewardsEligibilityHint.textContent = 'Eligible for VIP Daily Login & Weekly Cashback rewards!';
+        el.rewardsEligibilityHint.style.color = '#34d399';
+      }
+
+      el.claimDailyRewardBtn.disabled = !data.dailyReady;
+      el.claimWeeklyRewardBtn.disabled = !data.weeklyReady;
+    } catch {
+      // ignore
+    }
+  }
+
+  document.getElementById('openRewardsNavBtn')?.addEventListener('click', openRewardsFlow);
+  document.getElementById('openRewardsTopBtn')?.addEventListener('click', openRewardsFlow);
+  el.profileRewardsBtn?.addEventListener('click', () => {
+    closeModal('profileModal');
+    openRewardsFlow();
+  });
+
+  el.claimDailyRewardBtn?.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/rewards/daily', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${state.token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Could not claim daily bonus.', true);
+        return;
+      }
+      if (data.user) {
+        state.user = data.user;
+        updateUserUI();
+      }
+      audio.playCashout();
+      showToast(`Daily Reward Claimed! +${data.awardedFun} FC & +${data.awardedReal} PKR`);
+      openRewardsFlow();
+    } catch {
+      showToast('Failed to claim daily reward.', true);
+    }
+  });
+
+  el.claimWeeklyRewardBtn?.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/rewards/weekly', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${state.token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Could not claim weekly cashback.', true);
+        return;
+      }
+      if (data.user) {
+        state.user = data.user;
+        updateUserUI();
+      }
+      audio.playCashout();
+      showToast(`Weekly VIP Cashback Claimed! +${data.cashback} PKR`);
+      openRewardsFlow();
+    } catch {
+      showToast('Failed to claim weekly cashback.', true);
+    }
+  });
+
+  // ==========================================================================
+  // Player Local Audio Settings Drawer
+  // ==========================================================================
+  function saveAndApplyLocalAudio() {
+    const cfg = {
+      bgmEnabled: Boolean(el.playerAudioBgm?.checked),
+      soundPreset: el.playerAudioPreset?.value || 'aviator-jet',
+      masterVolume: Number(el.playerAudioVolume?.value ?? 75),
+    };
+    localStorage.setItem('skywing_player_audio', JSON.stringify(cfg));
+    if (el.playerAudioBgmLabel) el.playerAudioBgmLabel.textContent = cfg.bgmEnabled ? 'ON' : 'OFF';
+    if (el.playerAudioVolVal) el.playerAudioVolVal.textContent = `${cfg.masterVolume}%`;
+    audio.setConfig(cfg, state.soundEnabled);
+    if (!cfg.bgmEnabled) audio.stopBGM();
+  }
+
+  document.getElementById('openAudioDrawerBtn')?.addEventListener('click', () => {
+    syncPlayerAudioDrawerUI();
+    openModal('audioModal');
+  });
+  el.playerAudioBgm?.addEventListener('change', saveAndApplyLocalAudio);
+  el.playerAudioPreset?.addEventListener('change', saveAndApplyLocalAudio);
+  el.playerAudioVolume?.addEventListener('input', saveAndApplyLocalAudio);
+  el.playerAudioResetBtn?.addEventListener('click', () => {
+    localStorage.removeItem('skywing_player_audio');
+    const serverCfg = state.publicSettings.audioConfig;
+    audio.setConfig(serverCfg, state.soundEnabled);
+    syncPlayerAudioDrawerUI();
+    showToast('Synced audio back to server defaults.');
+  });
+
+  // ==========================================================================
+  // In-App Live Support Ticket Chat
+  // ==========================================================================
+  function renderUserSupportTickets() {
+    if (!el.userTicketList) return;
+    if (!state.supportTickets.length) {
+      el.userTicketList.innerHTML = '<span class="form-hint">No support tickets yet. Click "+ New Ticket".</span>';
+      el.activeTicketSubject.textContent = 'Select or create a ticket';
+      el.activeTicketStatus.textContent = '-';
+      el.userChatThread.innerHTML = '<span class="form-hint">Start a conversation with Admin Support anytime.</span>';
+      el.userChatReplyForm?.classList.add('hidden');
+      return;
+    }
+
+    if (!state.activeTicketId || !state.supportTickets.some((t) => String(t._id || t.id) === state.activeTicketId)) {
+      state.activeTicketId = String(state.supportTickets[0]._id || state.supportTickets[0].id);
+    }
+
+    el.userTicketList.innerHTML = state.supportTickets
+      .map((t) => {
+        const tid = String(t._id || t.id);
+        return `
+          <button type="button" class="ticket-item ${tid === state.activeTicketId ? 'active' : ''}" data-ticket-id="${escapeHtml(tid)}">
+            <strong style="font-size:0.8rem;">${escapeHtml(t.subject)}</strong>
+            <span style="font-size:0.7rem; color:${t.status === 'closed' ? '#94a3b8' : '#34d399'};">${String(t.status || 'open').toUpperCase()} · ${(t.messages || []).length} msgs</span>
+          </button>
+        `;
+      })
+      .join('');
+
+    el.userTicketList.querySelectorAll('[data-ticket-id]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.activeTicketId = btn.dataset.ticketId;
+        el.newTicketForm?.classList.add('hidden');
+        renderUserSupportTickets();
+      });
+    });
+
+    const active = state.supportTickets.find((t) => String(t._id || t.id) === state.activeTicketId);
+    if (active) {
+      el.activeTicketSubject.textContent = active.subject;
+      el.activeTicketStatus.textContent = String(active.status || 'open').toUpperCase();
+      el.userChatThread.innerHTML = (active.messages || [])
+        .map(
+          (m) => `
+          <div class="chat-msg ${m.sender === 'admin' ? 'admin' : 'user'}">
+            <div>${escapeHtml(m.text)}</div>
+            <span class="chat-msg-time">${m.sender === 'admin' ? 'Admin' : 'You'} · ${new Date(m.createdAt).toLocaleTimeString()}</span>
+          </div>
+        `
+        )
+        .join('');
+      el.userChatThread.scrollTop = el.userChatThread.scrollHeight;
+      el.userChatReplyForm?.classList.toggle('hidden', active.status === 'closed');
+    }
+  }
+
+  async function openSupportFlow() {
+    if (!state.user) {
+      openModal('authModal');
+      return;
+    }
+    openModal('supportModal');
+    try {
+      const res = await fetch('/api/support/tickets/my', {
+        headers: { Authorization: `Bearer ${state.token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        state.supportTickets = data.tickets || [];
+        renderUserSupportTickets();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  document.getElementById('openSupportNavBtn')?.addEventListener('click', openSupportFlow);
+  document.getElementById('openSupportTopBtn')?.addEventListener('click', openSupportFlow);
+  el.profileSupportBtn?.addEventListener('click', () => {
+    closeModal('profileModal');
+    openSupportFlow();
+  });
+
+  el.newTicketToggleBtn?.addEventListener('click', () => {
+    el.newTicketForm?.classList.toggle('hidden');
+  });
+
+  el.newTicketForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const subject = el.newTicketSubject.value.trim();
+    const text = el.newTicketText.value.trim();
+    if (!subject || !text) return;
+    try {
+      const res = await fetch('/api/support/tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({ subject, text }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Could not create ticket.', true);
+        return;
+      }
+      el.newTicketForm.reset();
+      el.newTicketForm.classList.add('hidden');
+      state.supportTickets.unshift(data.ticket);
+      state.activeTicketId = String(data.ticket._id || data.ticket.id);
+      renderUserSupportTickets();
+      showToast('Support ticket sent!');
+    } catch {
+      showToast('Failed to send ticket.', true);
+    }
+  });
+
+  el.userChatReplyForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = el.userChatReplyInput.value.trim();
+    if (!text || !state.activeTicketId) return;
+    try {
+      const res = await fetch(`/api/support/tickets/${state.activeTicketId}/message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Failed to send reply.', true);
+        return;
+      }
+      el.userChatReplyInput.value = '';
+      const idx = state.supportTickets.findIndex((t) => String(t._id || t.id) === state.activeTicketId);
+      if (idx >= 0) state.supportTickets[idx] = data.ticket;
+      renderUserSupportTickets();
+    } catch {
+      showToast('Network error sending message.', true);
+    }
+  });
+
+  // ==========================================================================
+  // Initial Load (Pre-render Cached Vault Restoration -> Async Authoritative Sync)
+  // ==========================================================================
+  if (urlRefCode && el.regRefCode) {
+    el.regRefCode.value = urlRefCode;
+  }
+  updateUserUI();
   loadPublicSettings();
   fetchCurrentUser();
   if (state.token) fetchMyTransactions();
+  renderPlinkoBoard();
+  renderMinesGrid();
 })();

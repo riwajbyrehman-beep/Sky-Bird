@@ -24,6 +24,11 @@
             <label class="form-label" for="adminPass">Admin Password</label>
             <input type="password" class="form-input" id="adminPass" placeholder="Enter admin password" required />
           </div>
+          <div class="form-group hidden" id="adminTotpGroup">
+            <label class="form-label" for="adminTotpCode" style="color: #fde047;">Google Authenticator 2FA Code</label>
+            <input type="text" class="form-input" id="adminTotpCode" placeholder="6-digit code" maxlength="6" autocomplete="one-time-code" />
+            <span class="form-hint">Enter the 6-digit code from your Authenticator app.</span>
+          </div>
           <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">
             Unlock Admin Dashboard
           </button>
@@ -54,78 +59,110 @@
           </div>
 
           <div>
-            <div class="admin-nav-group-label">Console Sections</div>
+            <div class="admin-nav-subgroup">Core Operations</div>
             <nav class="admin-nav-list">
               <button type="button" class="admin-nav-link active" data-target="secOverview" data-title="Overview & KPIs">
                 <span class="admin-nav-link-inner">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <rect x="3" y="3" width="7" height="7" rx="1" />
-                    <rect x="14" y="3" width="7" height="7" rx="1" />
-                    <rect x="14" y="14" width="7" height="7" rx="1" />
-                    <rect x="3" y="14" width="7" height="7" rx="1" />
-                  </svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>
                   <span>Overview &amp; KPIs</span>
                 </span>
               </button>
 
               <button type="button" class="admin-nav-link" data-target="secTransactions" data-title="Deposits & Withdrawals">
                 <span class="admin-nav-link-inner">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                  </svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                   <span>Deposits &amp; Withdrawals</span>
                 </span>
                 <span class="admin-nav-badge hidden" id="navPendingBadge">0</span>
               </button>
 
-              <button type="button" class="admin-nav-link" data-target="secProfitControl" data-title="Profit & Multiplier Control">
+              <div class="admin-nav-subgroup">Platform &amp; Financial Rules</div>
+
+              <button type="button" class="admin-nav-link" data-target="secFinancialLimits" data-title="Financial Limits & Fees">
                 <span class="admin-nav-link-inner">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M3 3v18h18" />
-                    <path d="m19 9-5 5-4-4-3 3" />
-                  </svg>
-                  <span>Profit &amp; Multiplier</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
+                  <span>Limits, Fees &amp; Pool</span>
+                </span>
+              </button>
+
+              <button type="button" class="admin-nav-link" data-target="secOperationHours" data-title="Withdrawal Operating Hours">
+                <span class="admin-nav-link-inner">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <span>Withdrawal Hours</span>
+                </span>
+              </button>
+
+              <button type="button" class="admin-nav-link" data-target="secMaintenance" data-title="Maintenance & Status">
+                <span class="admin-nav-link-inner">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                  <span>Maintenance Switch</span>
+                </span>
+              </button>
+
+              <button type="button" class="admin-nav-link" data-target="secSettings" data-title="Accounts & Social Links">
+                <span class="admin-nav-link-inner">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.02 1.4 1.13H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+                  <span>Payment Accounts</span>
+                </span>
+              </button>
+
+              <div class="admin-nav-subgroup">Games, RTP &amp; Audio</div>
+
+              <button type="button" class="admin-nav-link" data-target="secProfitControl" data-title="Profit & RTP Risk Engine">
+                <span class="admin-nav-link-inner">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>
+                  <span>Profit &amp; RTP Risk</span>
+                </span>
+              </button>
+
+              <button type="button" class="admin-nav-link" data-target="secGamesHub" data-title="Multi-Game Management Hub">
+                <span class="admin-nav-link-inner">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4M15 13h.01M18 11h.01"/></svg>
+                  <span>Multi-Game Hub</span>
                 </span>
               </button>
 
               <button type="button" class="admin-nav-link" data-target="audioControlSection" data-title="Game Audio & Sound">
                 <span class="admin-nav-link-inner">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                  </svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /></svg>
                   <span>Game Audio &amp; Sound</span>
                 </span>
               </button>
 
-              <button type="button" class="admin-nav-link" data-target="secSettings" data-title="Accounts & Pool Engine">
+              <div class="admin-nav-subgroup">Members, Support &amp; Audit</div>
+
+              <button type="button" class="admin-nav-link" data-target="secSupport" data-title="Live Support Tickets">
                 <span class="admin-nav-link-inner">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.02 1.4 1.13H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                  </svg>
-                  <span>Accounts &amp; Pool Engine</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  <span>Live Support Desk</span>
                 </span>
+                <span class="admin-nav-badge hidden" id="navSupportBadge">0</span>
               </button>
 
               <button type="button" class="admin-nav-link" data-target="secMembers" data-title="Member Management">
                 <span class="admin-nav-link-inner">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
                   <span>Member Management</span>
+                </span>
+              </button>
+
+              <button type="button" class="admin-nav-link" data-target="secSecurity" data-title="Security & 2FA Console">
+                <span class="admin-nav-link-inner">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <span>Security &amp; 2FA Wall</span>
+                </span>
+              </button>
+
+              <button type="button" class="admin-nav-link" data-target="secReports" data-title="Telegram & CSV Reports">
+                <span class="admin-nav-link-inner">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <span>Telegram &amp; CSV Reports</span>
                 </span>
               </button>
 
               <button type="button" class="admin-nav-link" data-target="secRounds" data-title="Rounds Audit Log">
                 <span class="admin-nav-link-inner">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                  </svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
                   <span>Rounds Audit Log</span>
                 </span>
               </button>
@@ -236,13 +273,148 @@
           </div>
         </section>
 
-        <!-- Customer Profit & Multiplier Control Panel -->
+        <!-- Financial Limits, Fee Controls, Micro-Auto-Approval & Profit Pool -->
+        <section class="panel-card admin-section" id="secFinancialLimits">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <div>
+              <h2 class="panel-title">Financial Limits, Fees &amp; Next Pool Balance</h2>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">
+                Configure min deposit/withdrawal limits, withdrawal fee %, instant micro-deposit auto-approve threshold, account masking &amp; pool balance.
+              </span>
+            </div>
+            <button type="button" class="btn btn-emerald" id="saveFinancialLimitsBtn">Save Financial Limits</button>
+          </div>
+
+          <div class="settings-grid">
+            <div class="form-group">
+              <label class="form-label" for="limMinDeposit">Minimum Deposit Limit (PKR)</label>
+              <input type="number" class="form-input" id="limMinDeposit" min="10" step="10" value="50" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="limMinWithdrawal">Minimum Withdrawal Limit (PKR)</label>
+              <input type="number" class="form-input" id="limMinWithdrawal" min="10" step="10" value="100" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="limWithdrawalFee">Withdrawal Fee (%)</label>
+              <input type="number" class="form-input" id="limWithdrawalFee" min="0" max="25" step="0.5" value="2" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="limMicroAutoApprove">Micro-Deposit Auto-Approve Limit (PKR)</label>
+              <input type="number" class="form-input" id="limMicroAutoApprove" min="0" step="50" value="1000" />
+              <span class="form-hint">Set to 0 to disable instant auto-approval.</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="limProfitDistPool">Next Pool / Profit Distribution Pool (PKR)</label>
+              <input type="number" class="form-input" id="limProfitDistPool" min="0" step="100" value="10000" />
+              <span class="form-hint">Fuels single-player dynamic Real PKR crash variance.</span>
+            </div>
+            <div class="pay-config-box">
+              <div class="modal-header">
+                <strong style="color: #7dd3fc;">Mask Official Merchant Numbers</strong>
+                <label class="toggle-label">
+                  <span class="switch">
+                    <input type="checkbox" id="limMaskAccounts" checked />
+                    <span class="slider"></span>
+                  </span>
+                  <span id="limMaskStateText">Masked</span>
+                </label>
+              </div>
+              <span class="form-hint">Hides middle digits of EasyPaisa / JazzCash / IBAN on player screens.</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Withdrawal Operating Hours Configuration -->
+        <section class="panel-card admin-section" id="secOperationHours">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <div>
+              <h2 class="panel-title">Withdrawal Operating Hours</h2>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">
+                Restrict Real PKR withdrawals outside configured operating hours (e.g. 09:00 to 17:00) or toggle OFF for 24/7 payouts.
+              </span>
+            </div>
+            <button type="button" class="btn btn-primary" id="saveWithdrawalHoursBtn">Save Operating Hours</button>
+          </div>
+
+          <div class="settings-grid">
+            <div class="pay-config-box">
+              <div class="modal-header">
+                <strong style="color: var(--accent-gold-bright);">Enforce Time Window Restriction</strong>
+                <label class="toggle-label">
+                  <span class="switch">
+                    <input type="checkbox" id="whEnabled" checked />
+                    <span class="slider"></span>
+                  </span>
+                  <span id="whStateText">Enabled</span>
+                </label>
+              </div>
+              <span class="form-hint" id="whLiveServerClock">Server Time: --:--</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="whOpenTime">Opening Time (24h)</label>
+              <input type="time" class="form-input" id="whOpenTime" value="09:00" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="whCloseTime">Closing Time (24h)</label>
+              <input type="time" class="form-input" id="whCloseTime" value="17:00" />
+            </div>
+            <div class="form-group settings-span-wide">
+              <label class="form-label" for="whNoticeText">Player Banner Notice Text</label>
+              <input type="text" class="form-input" id="whNoticeText" value="Withdrawals are only open from 9:00 AM to 5:00 PM." maxlength="200" />
+            </div>
+          </div>
+        </section>
+
+        <!-- Server Maintenance & Platform Disable Master Switch -->
+        <section class="panel-card admin-section" id="secMaintenance">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <div>
+              <h2 class="panel-title">Server Maintenance &amp; Platform Status Switch</h2>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">
+                Immediately lock or restore all player screens via WebSocket. Switching to Maintenance or Disabled requires your Master Password.
+              </span>
+            </div>
+            <span class="isolated-badge" id="maintCurrentBadge">ACTIVE</span>
+          </div>
+
+          <div class="platform-status-cards" id="maintModeCards">
+            <button type="button" class="status-mode-card active" data-maint-mode="active">
+              <strong style="color: #34d399;">● Active (Live)</strong>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Normal 24/7 multiplayer gameplay &amp; wallet operations.</span>
+            </button>
+            <button type="button" class="status-mode-card" data-maint-mode="maintenance">
+              <strong style="color: #fbbf24;">◐ Maintenance Mode</strong>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Shows non-dismissible maintenance screen to all players.</span>
+            </button>
+            <button type="button" class="status-mode-card" data-maint-mode="disabled">
+              <strong style="color: #f87171;">✕ Platform Disabled</strong>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Full emergency shutdown lock across all player devices.</span>
+            </button>
+          </div>
+
+          <div class="settings-grid">
+            <div class="form-group settings-span-wide">
+              <label class="form-label" for="maintMessageInput">Maintenance / Shutdown Message</label>
+              <input type="text" class="form-input" id="maintMessageInput" value="Platform is undergoing scheduled maintenance. Please check back shortly." maxlength="300" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="maintMasterPw">Master Password (Required to Lock)</label>
+              <input type="password" class="form-input" id="maintMasterPw" placeholder="Enter Master Password" />
+            </div>
+          </div>
+
+          <div>
+            <button type="button" class="btn btn-primary" id="applyMaintStatusBtn">Apply Platform Status Immediately</button>
+          </div>
+        </section>
+
+        <!-- Customer Profit, Multiplier Control & Live RTP Risk Engine -->
         <section class="panel-card admin-section" id="secProfitControl">
           <div class="modal-header" style="flex-wrap: wrap;">
             <div>
-              <h2 class="panel-title">Customer Profit &amp; Multiplier Control</h2>
+              <h2 class="panel-title">Customer Profit, Multiplier Control &amp; RTP Risk Engine</h2>
               <span style="font-size: 0.78rem; color: var(--text-muted);">
-                Control house edge, max multiplier cap, next-round forced crash point, or force immediate crash on active flights.
+                Control house edge, max multiplier cap, next-round forced crash point, and monitor automated live RTP risk management.
               </span>
             </div>
             <span class="isolated-badge" id="armedOverrideBadge" style="background: rgba(16, 185, 129, 0.14); border-color: rgba(16, 185, 129, 0.35); color: #34d399;">
@@ -310,6 +482,64 @@
               <button type="button" class="btn btn-secondary btn-xs quick-crash-preset" data-mult="10.00">10.00x</button>
             </div>
           </div>
+
+          <!-- Live RTP Risk Telemetry & Auto Adjuster -->
+          <div class="pay-config-box">
+            <div class="modal-header" style="flex-wrap: wrap;">
+              <strong style="color: #38bdf8;">Automated RTP Risk Telemetry (15s + Post-Round Daemon)</strong>
+              <span class="risk-badge risk-low" id="telRiskBadge">Risk Index: 15/100</span>
+            </div>
+
+            <div class="rtp-telemetry-grid">
+              <div class="kpi-card"><span class="kpi-label">Actual Daily RTP</span><span class="kpi-value tabular-nums" id="telActualRtp">96.0%</span></div>
+              <div class="kpi-card"><span class="kpi-label">Target RTP</span><span class="kpi-value tabular-nums" id="telTargetRtp">96.0%</span></div>
+              <div class="kpi-card"><span class="kpi-label">Dynamic Edge Offset</span><span class="kpi-value tabular-nums" id="telEdgeOffset">0.0%</span></div>
+            </div>
+
+            <div class="rtp-chart-wrap">
+              <canvas id="rtpChartCanvas" width="760" height="165"></canvas>
+            </div>
+
+            <div class="settings-grid">
+              <div class="pay-config-box">
+                <div class="modal-header">
+                  <strong>Auto RTP Risk Adjuster</strong>
+                  <label class="toggle-label">
+                    <span class="switch">
+                      <input type="checkbox" id="rtpAutoAdjustEnabled" checked />
+                      <span class="slider"></span>
+                    </span>
+                    <span id="rtpAutoStateText">ON</span>
+                  </label>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="rtpTargetInput">Target RTP (%)</label>
+                <input type="number" class="form-input" id="rtpTargetInput" min="75" max="99" step="0.5" value="96" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="rtpEdgeOffsetInput">Manual Edge Offset (-3% to +8%)</label>
+                <input type="number" class="form-input" id="rtpEdgeOffsetInput" min="-3" max="8" step="0.25" value="0" />
+              </div>
+              <div class="form-group" style="justify-content: flex-end;">
+                <button type="button" class="btn btn-emerald" id="saveRtpRiskBtn">Save RTP Risk Policy</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Multi-Game Management Hub -->
+        <section class="panel-card admin-section" id="secGamesHub">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <div>
+              <h2 class="panel-title">Multi-Game Management Hub</h2>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">
+                Enable or disable games live in the Player Lobby Carousel and tune per-game house edge &amp; bet limits.
+              </span>
+            </div>
+            <button type="button" class="btn btn-emerald" id="saveGamesHubBtn">Save &amp; Sync Games Hub</button>
+          </div>
+          <div id="gamesHubGrid" class="settings-grid"></div>
         </section>
 
         <!-- Game Audio & Sound Controls (Global Sync + Live Test Bench) -->
@@ -528,6 +758,37 @@
           </form>
         </section>
 
+        <!-- In-App Live Support Ticket Queue -->
+        <section class="panel-card admin-section" id="secSupport">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <div>
+              <h2 class="panel-title">Live In-App Support Ticket Desk</h2>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">Reply to customer inquiries in real time via Socket.io.</span>
+            </div>
+            <button type="button" class="btn btn-secondary btn-xs" id="adminRefreshTicketsBtn">Refresh Tickets</button>
+          </div>
+
+          <div class="support-layout">
+            <div class="ticket-list" id="adminTicketList">
+              <span class="form-hint">Loading customer tickets...</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <strong id="adminTicketTitle" style="font-size: 0.9rem;">Select a ticket</strong>
+                <button type="button" class="btn btn-danger btn-xs hidden" id="adminCloseTicketBtn">Close Ticket</button>
+              </div>
+              <div class="chat-thread" id="adminChatThread">
+                <span class="form-hint">Select a ticket from the left list to view messages and reply.</span>
+              </div>
+              <form id="adminChatReplyForm" class="chat-compose-row hidden">
+                <input type="text" class="form-input" id="adminChatReplyInput" placeholder="Write reply to player..." maxlength="1000" required />
+                <button type="submit" class="btn btn-emerald">Send Reply</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
         <!-- Comprehensive Member Management Table -->
         <section class="panel-card admin-section" id="secMembers">
           <div class="modal-header" style="flex-wrap: wrap;">
@@ -564,6 +825,135 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <!-- Security Console: Master Password, Google Authenticator 2FA & Fraud Detection -->
+        <section class="panel-card admin-section" id="secSecurity">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <div>
+              <h2 class="panel-title">Anti-Tamper Security Wall, Master Password &amp; 2FA</h2>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">
+                Manage Master Password (default set at first boot), Google Authenticator TOTP 2FA, and review multi-account IP/device alerts.
+              </span>
+            </div>
+            <span class="isolated-badge" id="sec2faStatusBadge">2FA: OFF</span>
+          </div>
+
+          <div class="settings-grid">
+            <!-- Change Master Password -->
+            <div class="pay-config-box">
+              <strong style="color: var(--accent-gold-bright);">Change Master Password</strong>
+              <form id="changeMasterPwForm" class="form-group" style="gap: 8px;">
+                <input type="password" class="form-input" id="secOldMasterPw" placeholder="Current Master Password" required />
+                <input type="password" class="form-input" id="secNewMasterPw" placeholder="New Master Password (min 6 chars)" minlength="6" required />
+                <button type="submit" class="btn btn-primary btn-xs">Update Master Password</button>
+              </form>
+            </div>
+
+            <!-- Google Authenticator 2FA Setup -->
+            <div class="pay-config-box settings-span-wide">
+              <div class="modal-header" style="flex-wrap: wrap;">
+                <strong style="color: #34d399;">Google Authenticator (TOTP 2FA)</strong>
+                <button type="button" class="btn btn-emerald btn-xs" id="setup2faBtn">Generate 2FA QR Secret</button>
+              </div>
+              <div id="twoFaSetupBox" class="twofa-qr-card hidden">
+                <img id="twoFaQrImg" alt="2FA QR Code" style="width: 140px; height: 140px; background: #fff; padding: 6px; border-radius: 8px;" />
+                <div style="display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 200px;">
+                  <div style="font-size: 0.78rem;">Manual Secret: <strong id="twoFaSecretText" style="color: #fde047;">---</strong></div>
+                  <div style="display: flex; gap: 8px;">
+                    <input type="text" class="form-input" id="twoFaVerifyCode" placeholder="Enter 6-digit code to enable" maxlength="6" />
+                    <button type="button" class="btn btn-emerald" id="verify2faBtn">Verify &amp; Enable</button>
+                  </div>
+                </div>
+              </div>
+              <div id="twoFaDisableBox" class="hidden" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <input type="password" class="form-input" id="disable2faMasterPw" placeholder="Enter Master Password to disable 2FA" style="flex: 1; min-width: 200px;" />
+                <button type="button" class="btn btn-danger btn-xs" id="disable2faBtn">Disable 2FA</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-grid">
+            <div class="pay-config-box settings-span-wide">
+              <strong style="color: #f87171;">Flagged Multi-Account IP / Device Matches</strong>
+              <div class="audit-log-list" id="flaggedUsersList">
+                <span class="form-hint">No flagged multi-account users detected.</span>
+              </div>
+            </div>
+            <div class="pay-config-box">
+              <strong style="color: #7dd3fc;">Security Audit Log</strong>
+              <div class="audit-log-list" id="securityAuditList">
+                <span class="form-hint">No security events logged yet.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Telegram Bot Automation & Financial Reports CSV Export -->
+        <section class="panel-card admin-section" id="secReports">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <div>
+              <h2 class="panel-title">Telegram Bot Alerts &amp; Financial Audit Reports</h2>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">
+                Send live deposit/withdrawal Approve &amp; Reject alerts to Telegram and export filtered CSV/Excel financial audits.
+              </span>
+            </div>
+          </div>
+
+          <div class="pay-config-box">
+            <div class="modal-header" style="flex-wrap: wrap;">
+              <strong style="color: #38bdf8;">Automated Telegram Admin Bot</strong>
+              <label class="toggle-label">
+                <span class="switch">
+                  <input type="checkbox" id="tgBotEnabled" />
+                  <span class="slider"></span>
+                </span>
+                <span id="tgBotStateText">Disabled</span>
+              </label>
+            </div>
+            <div class="settings-grid">
+              <div class="form-group">
+                <label class="form-label" for="tgBotToken">Bot Token</label>
+                <input type="text" class="form-input" id="tgBotToken" placeholder="123456:ABC-DEF..." />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="tgAdminChatId">Admin Chat ID</label>
+                <input type="text" class="form-input" id="tgAdminChatId" placeholder="e.g. 987654321" />
+              </div>
+              <div class="form-group" style="justify-content: flex-end; display: flex; flex-direction: row; gap: 8px; align-items: flex-end;">
+                <button type="button" class="btn btn-primary" id="saveTelegramBotBtn">Save Bot</button>
+                <button type="button" class="btn btn-secondary" id="testTelegramBotBtn">Send Test Alert</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="pay-config-box">
+            <strong style="color: var(--accent-gold-bright);">Financial Audit Filter &amp; CSV / Excel Export</strong>
+            <div class="report-filter-bar">
+              <div class="form-group"><label class="form-label" for="repStartDate">From</label><input type="date" class="form-input" id="repStartDate" /></div>
+              <div class="form-group"><label class="form-label" for="repEndDate">To</label><input type="date" class="form-input" id="repEndDate" /></div>
+              <div class="form-group">
+                <label class="form-label" for="repType">Type</label>
+                <select class="form-input" id="repType"><option value="all">All</option><option value="deposit">Deposits</option><option value="withdrawal">Withdrawals</option></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="repStatus">Status</label>
+                <select class="form-input" id="repStatus"><option value="all">All</option><option value="approved">Approved</option><option value="pending">Pending</option><option value="rejected">Rejected</option></select>
+              </div>
+              <button type="button" class="btn btn-secondary" id="loadReportBtn">Filter Report</button>
+              <button type="button" class="btn btn-emerald" id="exportCsvBtn">Download Excel CSV</button>
+            </div>
+            <div class="table-wrap" style="margin-top: 8px;">
+              <table>
+                <thead>
+                  <tr><th>Date</th><th>Type</th><th>User</th><th>Method</th><th>Gross</th><th>Fee / Net</th><th>Status</th></tr>
+                </thead>
+                <tbody id="reportsTableBody">
+                  <tr><td colspan="7" style="color: var(--text-muted); text-align: center;">Click "Filter Report" to preview audit rows.</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -827,6 +1217,88 @@
           adminSocket.on('admin:profit_override', ({ nextRoundForcedCrash }) => {
             updateArmedOverrideUI(nextRoundForcedCrash);
           });
+
+          adminSocket.on('admin:telemetry', ({ telemetry, recentRounds }) => {
+            if (telemetry) renderRtpTelemetryUI(telemetry);
+            if (recentRounds) drawRtpChart(recentRounds);
+          });
+
+          adminSocket.on('support:ticket_updated', (ticket) => {
+            const idx = adminTickets.findIndex((t) => String(t._id || t.id) === String(ticket._id || ticket.id));
+            if (idx >= 0) adminTickets[idx] = ticket;
+            else adminTickets.unshift(ticket);
+            renderAdminSupportTickets();
+          });
+        }
+
+        let adminTickets = [];
+        let activeAdminTicketId = '';
+        let selectedMaintMode = 'active';
+        let cachedGamesConfig = [];
+
+        function renderRtpTelemetryUI(t) {
+          if (!t) return;
+          const actualEl = document.getElementById('telActualRtp');
+          const targetEl = document.getElementById('telTargetRtp');
+          const edgeEl = document.getElementById('telEdgeOffset');
+          const badgeEl = document.getElementById('telRiskBadge');
+          if (actualEl) actualEl.textContent = `${Number(t.actualRtp ?? 96).toFixed(2)}%`;
+          if (targetEl) targetEl.textContent = `${Number(t.targetRtpPct ?? 96).toFixed(1)}%`;
+          if (edgeEl) edgeEl.textContent = `${Number(t.dynamicEdgeOffset ?? 0) >= 0 ? '+' : ''}${Number(t.dynamicEdgeOffset ?? 0).toFixed(2)}%`;
+          const ri = Number(t.currentRiskIndex ?? 15);
+          if (badgeEl) {
+            badgeEl.textContent = `Risk Index: ${ri}/100`;
+            badgeEl.className = `risk-badge ${ri >= 65 ? 'risk-high' : ri >= 35 ? 'risk-med' : 'risk-low'}`;
+          }
+        }
+
+        function drawRtpChart(recentRounds) {
+          const canvas = document.getElementById('rtpChartCanvas');
+          if (!canvas) return;
+          const ctx = canvas.getContext('2d');
+          const w = canvas.width;
+          const h = canvas.height;
+          ctx.clearRect(0, 0, w, h);
+
+          const list = (recentRounds || []).slice(0, 20).reverse();
+          ctx.strokeStyle = 'rgba(148,163,184,0.16)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(12, h / 2);
+          ctx.lineTo(w - 12, h / 2);
+          ctx.stroke();
+
+          if (!list.length) {
+            ctx.fillStyle = 'rgba(148,163,184,0.6)';
+            ctx.font = '12px sans-serif';
+            ctx.fillText('Waiting for completed rounds to plot House Net Delta & Crash curve...', 20, h / 2 - 8);
+            return;
+          }
+
+          const maxAbs = Math.max(100, ...list.map((r) => Math.abs(Number(r.netDelta || 0))));
+          const stepX = list.length > 1 ? (w - 36) / (list.length - 1) : 0;
+
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          list.forEach((r, idx) => {
+            const x = 18 + idx * stepX;
+            const norm = Number(r.netDelta || 0) / maxAbs;
+            const y = h / 2 - norm * (h * 0.36);
+            if (idx === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+
+          list.forEach((r, idx) => {
+            const x = 18 + idx * stepX;
+            const norm = Number(r.netDelta || 0) / maxAbs;
+            const y = h / 2 - norm * (h * 0.36);
+            ctx.fillStyle = Number(r.netDelta || 0) >= 0 ? '#34d399' : '#f87171';
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+          });
         }
 
         function openDepositAlertPopup(tx) {
@@ -834,6 +1306,7 @@
           document.getElementById('alertTxDetails').innerHTML = `
             <div><strong>User:</strong> ${escapeHtml(tx.phoneNumber)} (${escapeHtml(tx.displayName)})</div>
             <div style="margin-top:4px;"><strong>Method:</strong> ${escapeHtml(tx.method)}</div>
+            <div style="margin-top:4px;"><strong>Sender Info:</strong> ${escapeHtml(tx.senderName || '-')} (${escapeHtml(tx.senderNumber || '-')})</div>
             <div style="margin-top:4px;"><strong>Amount:</strong> <span style="color:#34d399; font-weight:700;">${Number(tx.amount).toLocaleString()} PKR</span></div>
             <div style="margin-top:4px;"><strong>Transaction ID (TID):</strong> ${escapeHtml(tx.transactionId || 'Not provided (see screenshot)')}</div>
           `;
@@ -935,6 +1408,8 @@
           loadDashboard();
           loadTransactions();
           loadUsers('');
+          loadAdminSecurityOverview();
+          loadAdminSupportTickets();
         }
 
         document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
@@ -947,11 +1422,22 @@
               body: JSON.stringify({
                 username: document.getElementById('adminUser').value.trim(),
                 password: document.getElementById('adminPass').value,
+                totpCode: document.getElementById('adminTotpCode')?.value.trim() || '',
               }),
             });
             const data = await res.json();
             if (!res.ok) {
+              if (data.requires2FA) {
+                document.getElementById('adminTotpGroup')?.classList.remove('hidden');
+              }
               loginErr.textContent = data.error || 'Invalid credentials.';
+              loginErr.classList.remove('hidden');
+              return;
+            }
+            if (data.requires2FA) {
+              document.getElementById('adminTotpGroup')?.classList.remove('hidden');
+              document.getElementById('adminTotpCode')?.focus();
+              loginErr.textContent = 'Enter your 6-digit Google Authenticator 2FA code to continue.';
               loginErr.classList.remove('hidden');
               return;
             }
@@ -974,6 +1460,8 @@
           loadDashboard();
           loadTransactions();
           loadUsers(document.getElementById('userSearchInput').value);
+          loadAdminSecurityOverview();
+          loadAdminSupportTickets();
         }
 
         document.getElementById('adminLogoutBtn').addEventListener('click', performAdminLogout);
@@ -982,6 +1470,51 @@
         document.getElementById('sidebarRefreshBtn')?.addEventListener('click', () => {
           performAdminRefresh();
           setSidebarOpen(false);
+        });
+
+        function renderGamesHubCards(games) {
+          cachedGamesConfig = games || [];
+          const grid = document.getElementById('gamesHubGrid');
+          if (!grid) return;
+          grid.innerHTML = cachedGamesConfig
+            .map(
+              (g) => `
+            <div class="pay-config-box" data-game-cfg="${escapeHtml(g.id)}">
+              <div class="modal-header">
+                <strong style="color: var(--accent-gold-bright);">${escapeHtml(g.name)}</strong>
+                <label class="toggle-label">
+                  <input type="checkbox" class="game-cfg-enabled" ${g.enabled !== false ? 'checked' : ''} /> Enabled
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="form-label">House Edge (%)</label>
+                <input type="number" class="form-input game-cfg-edge" min="0" max="25" step="0.5" value="${Number(g.houseEdgePct ?? 4)}" />
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <div class="form-group">
+                  <label class="form-label">Min Bet</label>
+                  <input type="number" class="form-input game-cfg-min" min="1" value="${Number(g.minBet ?? 10)}" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Max Bet</label>
+                  <input type="number" class="form-input game-cfg-max" min="10" value="${Number(g.maxBet ?? 50000)}" />
+                </div>
+              </div>
+            </div>
+          `
+            )
+            .join('');
+        }
+
+        function syncMaintCardsUI(mode) {
+          selectedMaintMode = mode || 'active';
+          document.querySelectorAll('.status-mode-card[data-maint-mode]').forEach((card) => {
+            card.classList.toggle('active', card.dataset.maintMode === selectedMaintMode);
+          });
+        }
+
+        document.querySelectorAll('.status-mode-card[data-maint-mode]').forEach((card) => {
+          card.addEventListener('click', () => syncMaintCardsUI(card.dataset.maintMode));
         });
 
         async function loadDashboard() {
@@ -1017,6 +1550,52 @@
             } else {
               mongoBanner.classList.add('hidden');
             }
+
+            // Financial Limits & Pool
+            const fl = s.financialLimits || {};
+            document.getElementById('limMinDeposit').value = Number(fl.minDeposit ?? 50);
+            document.getElementById('limMinWithdrawal').value = Number(fl.minWithdrawal ?? 100);
+            document.getElementById('limWithdrawalFee').value = Number(fl.withdrawalFeePct ?? 2);
+            document.getElementById('limMicroAutoApprove').value = Number(fl.microDepositAutoApproveLimit ?? 1000);
+            document.getElementById('limProfitDistPool').value = Number(s.profitDistributionPool ?? 10000);
+            const maskOn = s.maskMasterAccounts !== false;
+            document.getElementById('limMaskAccounts').checked = maskOn;
+            document.getElementById('limMaskStateText').textContent = maskOn ? 'Masked' : 'Unmasked';
+
+            // Withdrawal Hours
+            const wh = s.withdrawalHours || {};
+            document.getElementById('whEnabled').checked = wh.enabled !== false;
+            document.getElementById('whStateText').textContent = wh.enabled !== false ? 'Enabled' : 'Disabled (24/7)';
+            document.getElementById('whOpenTime').value = wh.openTime || '09:00';
+            document.getElementById('whCloseTime').value = wh.closeTime || '17:00';
+            document.getElementById('whNoticeText').value = wh.noticeText || 'Withdrawals are only open from 9:00 AM to 5:00 PM.';
+            const nowClock = new Date().toTimeString().slice(0, 5);
+            document.getElementById('whLiveServerClock').textContent = `Server Time: ${nowClock}`;
+
+            // Maintenance Switch
+            const ps = s.platformStatus || { mode: 'active', message: '' };
+            syncMaintCardsUI(ps.mode || 'active');
+            document.getElementById('maintMessageInput').value = ps.message || '';
+            document.getElementById('maintCurrentBadge').textContent = String(ps.mode || 'active').toUpperCase();
+
+            // RTP Risk Telemetry
+            const rtp = s.rtpRiskConfig || {};
+            document.getElementById('rtpAutoAdjustEnabled').checked = rtp.autoAdjustEnabled !== false;
+            document.getElementById('rtpAutoStateText').textContent = rtp.autoAdjustEnabled !== false ? 'ON' : 'OFF';
+            document.getElementById('rtpTargetInput').value = Number(rtp.targetRtpPct ?? 96);
+            document.getElementById('rtpEdgeOffsetInput').value = Number(rtp.dynamicEdgeOffset ?? 0);
+            renderRtpTelemetryUI(data.telemetry);
+            drawRtpChart(s.recentRounds);
+
+            // Multi-Game Hub
+            renderGamesHubCards(s.gamesConfig || []);
+
+            // Telegram Bot
+            const tgBot = s.telegramBot || {};
+            document.getElementById('tgBotEnabled').checked = Boolean(tgBot.enabled);
+            document.getElementById('tgBotStateText').textContent = tgBot.enabled ? 'Enabled' : 'Disabled';
+            document.getElementById('tgBotToken').value = tgBot.botToken || '';
+            document.getElementById('tgAdminChatId').value = tgBot.adminChatId || '';
 
             document.getElementById('setDailyTarget').value = s.dailyProfitTarget;
             document.getElementById('setVariancePct').value = s.varianceTolerancePct;
@@ -1124,10 +1703,8 @@
               .map((tx) => {
                 const isDep = tx.type === 'deposit';
                 const detailsText = isDep
-                  ? tx.transactionId
-                    ? `TID: ${escapeHtml(tx.transactionId)}`
-                    : 'Screenshot Attached'
-                  : `${escapeHtml(tx.accountDetails?.bankName ? tx.accountDetails.bankName + ' · ' : '')}${escapeHtml(tx.accountDetails?.accountTitle || '')} · ${escapeHtml(tx.accountDetails?.accountNumber || '')}`;
+                  ? `${tx.transactionId ? `TID: ${escapeHtml(tx.transactionId)}` : 'Screenshot'}${tx.senderName ? ` · ${escapeHtml(tx.senderName)} (${escapeHtml(tx.senderNumber || '')})` : ''}${tx.autoApproved ? ' ⚡AUTO' : ''}`
+                  : `${escapeHtml(tx.accountDetails?.bankName ? tx.accountDetails.bankName + ' · ' : '')}${escapeHtml(tx.accountDetails?.accountTitle || '')} · ${escapeHtml(tx.accountDetails?.accountNumber || '')}${tx.accountDetails?.cnic ? ` · CNIC: ${escapeHtml(tx.accountDetails.cnic)}` : ''}`;
 
                 const statusCls =
                   tx.status === 'approved'
@@ -1136,13 +1713,17 @@
                       ? 'status-banned'
                       : 'status-pending';
 
+                const feeSub = !isDep && Number(tx.feeAmount || 0) > 0
+                  ? `<div style="font-size:0.68rem; color:var(--text-muted);">Net: ${Number(tx.netAmount ?? tx.amount).toLocaleString()} PKR</div>`
+                  : '';
+
                 return `
                   <tr>
                     <td><strong style="color: ${isDep ? '#34d399' : '#fbbf24'};">${isDep ? 'DEPOSIT' : 'WITHDRAW'}</strong></td>
                     <td class="tabular-nums">${escapeHtml(tx.phoneNumber)}</td>
                     <td>${escapeHtml(tx.method)}</td>
-                    <td class="tabular-nums"><strong>${Number(tx.amount).toLocaleString()} PKR</strong></td>
-                    <td style="max-width: 240px; overflow: hidden; text-overflow: ellipsis;">${detailsText}</td>
+                    <td class="tabular-nums"><strong>${Number(tx.amount).toLocaleString()} PKR</strong>${feeSub}</td>
+                    <td style="max-width: 260px; overflow: hidden; text-overflow: ellipsis;">${detailsText}</td>
                     <td>
                       ${
                         tx.screenshotData
@@ -1678,6 +2259,507 @@
           } catch {
             actionErr.textContent = 'Request failed.';
             actionErr.classList.remove('hidden');
+          }
+        });
+
+        // ====================================================================
+        // Financial Limits, Operating Hours, Maintenance, Games Hub & RTP Risk
+        // ====================================================================
+        document.getElementById('limMaskAccounts')?.addEventListener('change', (e) => {
+          document.getElementById('limMaskStateText').textContent = e.target.checked ? 'Masked' : 'Unmasked';
+        });
+        document.getElementById('whEnabled')?.addEventListener('change', (e) => {
+          document.getElementById('whStateText').textContent = e.target.checked ? 'Enabled' : 'Disabled (24/7)';
+        });
+        document.getElementById('rtpAutoAdjustEnabled')?.addEventListener('change', (e) => {
+          document.getElementById('rtpAutoStateText').textContent = e.target.checked ? 'ON' : 'OFF';
+        });
+        document.getElementById('tgBotEnabled')?.addEventListener('change', (e) => {
+          document.getElementById('tgBotStateText').textContent = e.target.checked ? 'Enabled' : 'Disabled';
+        });
+
+        document.getElementById('saveFinancialLimitsBtn')?.addEventListener('click', async () => {
+          try {
+            const res = await apiFetch('/api/admin/financial-limits', {
+              method: 'PUT',
+              body: JSON.stringify({
+                minDeposit: Number(document.getElementById('limMinDeposit').value),
+                minWithdrawal: Number(document.getElementById('limMinWithdrawal').value),
+                withdrawalFeePct: Number(document.getElementById('limWithdrawalFee').value),
+                microDepositAutoApproveLimit: Number(document.getElementById('limMicroAutoApprove').value),
+                profitDistributionPool: Number(document.getElementById('limProfitDistPool').value),
+                maskMasterAccounts: document.getElementById('limMaskAccounts').checked,
+              }),
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              showToast(err.error || 'Failed to save financial limits.', true);
+              return;
+            }
+            showToast('Financial limits, fees & pool saved & synced!');
+            loadDashboard();
+          } catch {
+            showToast('Network error saving financial limits.', true);
+          }
+        });
+
+        document.getElementById('saveWithdrawalHoursBtn')?.addEventListener('click', async () => {
+          try {
+            const res = await apiFetch('/api/admin/withdrawal-hours', {
+              method: 'PUT',
+              body: JSON.stringify({
+                enabled: document.getElementById('whEnabled').checked,
+                openTime: document.getElementById('whOpenTime').value,
+                closeTime: document.getElementById('whCloseTime').value,
+                noticeText: document.getElementById('whNoticeText').value.trim(),
+              }),
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              showToast(err.error || 'Failed to save withdrawal hours.', true);
+              return;
+            }
+            showToast('Withdrawal operating hours updated!');
+            loadDashboard();
+          } catch {
+            showToast('Network error saving operating hours.', true);
+          }
+        });
+
+        document.getElementById('applyMaintStatusBtn')?.addEventListener('click', async () => {
+          try {
+            const res = await apiFetch('/api/admin/platform-status', {
+              method: 'PUT',
+              body: JSON.stringify({
+                mode: selectedMaintMode,
+                message: document.getElementById('maintMessageInput').value.trim(),
+                masterPassword: document.getElementById('maintMasterPw').value,
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Failed to change platform status.', true);
+              return;
+            }
+            document.getElementById('maintMasterPw').value = '';
+            showToast(`Platform status switched to: ${String(data.platformStatus.mode).toUpperCase()}`);
+            loadDashboard();
+            loadAdminSecurityOverview();
+          } catch {
+            showToast('Error updating platform status.', true);
+          }
+        });
+
+        document.getElementById('saveRtpRiskBtn')?.addEventListener('click', async () => {
+          try {
+            const res = await apiFetch('/api/admin/rtp-risk', {
+              method: 'PUT',
+              body: JSON.stringify({
+                autoAdjustEnabled: document.getElementById('rtpAutoAdjustEnabled').checked,
+                targetRtpPct: Number(document.getElementById('rtpTargetInput').value),
+                dynamicEdgeOffset: Number(document.getElementById('rtpEdgeOffsetInput').value),
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Failed to save RTP risk config.', true);
+              return;
+            }
+            renderRtpTelemetryUI(data.telemetry);
+            showToast('Automated RTP Risk policy updated!');
+          } catch {
+            showToast('Error updating RTP risk.', true);
+          }
+        });
+
+        document.getElementById('saveGamesHubBtn')?.addEventListener('click', async () => {
+          const cards = Array.from(document.querySelectorAll('[data-game-cfg]'));
+          const payload = cards.map((card) => {
+            const id = card.dataset.gameCfg;
+            const prev = cachedGamesConfig.find((g) => g.id === id) || {};
+            return {
+              id,
+              name: prev.name || id,
+              tagline: prev.tagline || '',
+              enabled: card.querySelector('.game-cfg-enabled').checked,
+              houseEdgePct: Number(card.querySelector('.game-cfg-edge').value),
+              minBet: Number(card.querySelector('.game-cfg-min').value),
+              maxBet: Number(card.querySelector('.game-cfg-max').value),
+            };
+          });
+          try {
+            const res = await apiFetch('/api/admin/games-config', {
+              method: 'PUT',
+              body: JSON.stringify({ gamesConfig: payload }),
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              showToast(err.error || 'Failed to save games hub.', true);
+              return;
+            }
+            showToast('Multi-Game Hub updated & synced to all players!');
+            loadDashboard();
+          } catch {
+            showToast('Error updating games hub.', true);
+          }
+        });
+
+        // ====================================================================
+        // Admin In-App Live Support Ticket Queue
+        // ====================================================================
+        function renderAdminSupportTickets() {
+          const listEl = document.getElementById('adminTicketList');
+          const threadEl = document.getElementById('adminChatThread');
+          const replyForm = document.getElementById('adminChatReplyForm');
+          const closeBtn = document.getElementById('adminCloseTicketBtn');
+          const titleEl = document.getElementById('adminTicketTitle');
+          const badge = document.getElementById('navSupportBadge');
+          if (!listEl) return;
+
+          const openCount = adminTickets.filter((t) => t.status === 'open').length;
+          if (badge) {
+            badge.textContent = String(openCount);
+            badge.classList.toggle('hidden', openCount <= 0);
+          }
+
+          if (!adminTickets.length) {
+            listEl.innerHTML = '<span class="form-hint">No customer support tickets yet.</span>';
+            titleEl.textContent = 'No Tickets';
+            replyForm?.classList.add('hidden');
+            closeBtn?.classList.add('hidden');
+            return;
+          }
+
+          if (!activeAdminTicketId || !adminTickets.some((t) => String(t._id || t.id) === activeAdminTicketId)) {
+            activeAdminTicketId = String(adminTickets[0]._id || adminTickets[0].id);
+          }
+
+          listEl.innerHTML = adminTickets
+            .map((t) => {
+              const tid = String(t._id || t.id);
+              return `
+                <button type="button" class="ticket-item ${tid === activeAdminTicketId ? 'active' : ''}" data-admin-tid="${escapeHtml(tid)}">
+                  <strong style="font-size:0.8rem;">${escapeHtml(t.phoneNumber)} · ${escapeHtml(t.subject)}</strong>
+                  <span style="font-size:0.7rem; color:${t.status === 'closed' ? '#94a3b8' : '#34d399'};">${String(t.status || 'open').toUpperCase()} · ${(t.messages || []).length} msgs</span>
+                </button>
+              `;
+            })
+            .join('');
+
+          listEl.querySelectorAll('[data-admin-tid]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              activeAdminTicketId = btn.dataset.adminTid;
+              renderAdminSupportTickets();
+            });
+          });
+
+          const active = adminTickets.find((t) => String(t._id || t.id) === activeAdminTicketId);
+          if (active) {
+            titleEl.textContent = `${active.displayName || active.phoneNumber} (${active.phoneNumber}) — ${active.subject}`;
+            threadEl.innerHTML = (active.messages || [])
+              .map(
+                (m) => `
+                <div class="chat-msg ${m.sender === 'admin' ? 'user' : 'admin'}">
+                  <div>${escapeHtml(m.text)}</div>
+                  <span class="chat-msg-time">${m.sender === 'admin' ? 'Admin' : 'Player'} · ${new Date(m.createdAt).toLocaleTimeString()}</span>
+                </div>
+              `
+              )
+              .join('');
+            threadEl.scrollTop = threadEl.scrollHeight;
+            const isClosed = active.status === 'closed';
+            replyForm?.classList.toggle('hidden', isClosed);
+            closeBtn?.classList.toggle('hidden', isClosed);
+          }
+        }
+
+        async function loadAdminSupportTickets() {
+          try {
+            const res = await apiFetch('/api/admin/support/tickets');
+            const data = await res.json();
+            adminTickets = data.tickets || [];
+            renderAdminSupportTickets();
+          } catch {
+            // ignore
+          }
+        }
+
+        document.getElementById('adminRefreshTicketsBtn')?.addEventListener('click', loadAdminSupportTickets);
+
+        document.getElementById('adminChatReplyForm')?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const input = document.getElementById('adminChatReplyInput');
+          const text = input.value.trim();
+          if (!text || !activeAdminTicketId) return;
+          try {
+            const res = await apiFetch(`/api/admin/support/tickets/${activeAdminTicketId}/reply`, {
+              method: 'POST',
+              body: JSON.stringify({ text }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Reply failed.', true);
+              return;
+            }
+            input.value = '';
+            const idx = adminTickets.findIndex((t) => String(t._id || t.id) === activeAdminTicketId);
+            if (idx >= 0) adminTickets[idx] = data.ticket;
+            renderAdminSupportTickets();
+          } catch {
+            showToast('Failed to send reply.', true);
+          }
+        });
+
+        document.getElementById('adminCloseTicketBtn')?.addEventListener('click', async () => {
+          if (!activeAdminTicketId) return;
+          try {
+            const res = await apiFetch(`/api/admin/support/tickets/${activeAdminTicketId}/close`, {
+              method: 'POST',
+            });
+            if (res.ok) {
+              showToast('Support ticket closed.');
+              loadAdminSupportTickets();
+            }
+          } catch {
+            showToast('Failed to close ticket.', true);
+          }
+        });
+
+        // ====================================================================
+        // Admin Security Console: Master Password, 2FA QR, Audit Log & Fraud
+        // ====================================================================
+        async function loadAdminSecurityOverview() {
+          try {
+            const res = await apiFetch('/api/admin/security/overview');
+            const data = await res.json();
+            const badge = document.getElementById('sec2faStatusBadge');
+            const disableBox = document.getElementById('twoFaDisableBox');
+            if (badge) {
+              badge.textContent = data.totpEnabled ? '2FA: ENABLED' : '2FA: OFF';
+              badge.style.color = data.totpEnabled ? '#34d399' : '#fca5a5';
+            }
+            if (disableBox) {
+              disableBox.classList.toggle('hidden', !data.totpEnabled);
+            }
+
+            const logsEl = document.getElementById('securityAuditList');
+            if (logsEl) {
+              const logs = data.securityLogs || [];
+              logsEl.innerHTML = logs.length
+                ? logs
+                    .map(
+                      (l) => `
+                  <div class="audit-log-item">
+                    <div>
+                      <strong style="color:${l.severity === 'critical' ? '#f87171' : l.severity === 'warning' ? '#fbbf24' : '#34d399'};">${escapeHtml(l.event)}</strong>
+                      <div style="color:var(--text-secondary);">${escapeHtml(l.details)}</div>
+                    </div>
+                    <span class="tabular-nums" style="color:var(--text-muted); font-size:0.7rem;">${escapeHtml(l.ip || '')} · ${new Date(l.createdAt).toLocaleString()}</span>
+                  </div>
+                `
+                    )
+                    .join('')
+                : '<span class="form-hint">No security events logged yet.</span>';
+            }
+
+            const flaggedEl = document.getElementById('flaggedUsersList');
+            if (flaggedEl) {
+              const flagged = data.flaggedUsers || [];
+              flaggedEl.innerHTML = flagged.length
+                ? flagged
+                    .map(
+                      (u) => `
+                  <div class="audit-log-item">
+                    <div>
+                      <strong style="color:#fbbf24;">${escapeHtml(u.phoneNumber)} (${escapeHtml(u.displayName)})</strong>
+                      <div style="color:var(--text-secondary);">${escapeHtml(u.restrictionReason || 'Bonus Restricted')}</div>
+                    </div>
+                    <span class="tabular-nums" style="font-size:0.7rem; color:var(--text-muted);">IP: ${escapeHtml(u.registrationIp || u.lastLoginIp || '-')} · FP: ${escapeHtml((u.deviceFingerprint || '-').slice(0, 14))}</span>
+                  </div>
+                `
+                    )
+                    .join('')
+                : '<span class="form-hint">No flagged multi-account IP/device users detected.</span>';
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        document.getElementById('changeMasterPwForm')?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          try {
+            const res = await apiFetch('/api/admin/security/master-password', {
+              method: 'POST',
+              body: JSON.stringify({
+                oldPassword: document.getElementById('secOldMasterPw').value,
+                newPassword: document.getElementById('secNewMasterPw').value,
+              }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Failed to update Master Password.', true);
+              return;
+            }
+            document.getElementById('changeMasterPwForm').reset();
+            showToast('Master Password updated securely!');
+            loadAdminSecurityOverview();
+          } catch {
+            showToast('Master Password update error.', true);
+          }
+        });
+
+        document.getElementById('setup2faBtn')?.addEventListener('click', async () => {
+          try {
+            const res = await apiFetch('/api/admin/security/2fa/setup', { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Failed to generate 2FA QR.', true);
+              return;
+            }
+            document.getElementById('twoFaQrImg').src = data.qrDataUrl;
+            document.getElementById('twoFaSecretText').textContent = data.secret;
+            document.getElementById('twoFaSetupBox')?.classList.remove('hidden');
+            showToast('Scan QR in Google Authenticator, then enter the 6-digit code.');
+          } catch {
+            showToast('2FA setup failed.', true);
+          }
+        });
+
+        document.getElementById('verify2faBtn')?.addEventListener('click', async () => {
+          try {
+            const code = document.getElementById('twoFaVerifyCode').value.trim();
+            const res = await apiFetch('/api/admin/security/2fa/verify', {
+              method: 'POST',
+              body: JSON.stringify({ code }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Invalid 2FA code.', true);
+              return;
+            }
+            document.getElementById('twoFaSetupBox')?.classList.add('hidden');
+            document.getElementById('twoFaVerifyCode').value = '';
+            showToast('Google Authenticator 2FA Enabled!');
+            loadAdminSecurityOverview();
+          } catch {
+            showToast('2FA verify error.', true);
+          }
+        });
+
+        document.getElementById('disable2faBtn')?.addEventListener('click', async () => {
+          try {
+            const masterPassword = document.getElementById('disable2faMasterPw').value;
+            const res = await apiFetch('/api/admin/security/2fa/disable', {
+              method: 'POST',
+              body: JSON.stringify({ masterPassword }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Failed to disable 2FA.', true);
+              return;
+            }
+            document.getElementById('disable2faMasterPw').value = '';
+            showToast('2FA disabled.');
+            loadAdminSecurityOverview();
+          } catch {
+            showToast('2FA disable error.', true);
+          }
+        });
+
+        // ====================================================================
+        // Telegram Bot Alerts & CSV Financial Audit Export
+        // ====================================================================
+        document.getElementById('saveTelegramBotBtn')?.addEventListener('click', async () => {
+          try {
+            const res = await apiFetch('/api/admin/telegram', {
+              method: 'PUT',
+              body: JSON.stringify({
+                enabled: document.getElementById('tgBotEnabled').checked,
+                botToken: document.getElementById('tgBotToken').value.trim(),
+                adminChatId: document.getElementById('tgAdminChatId').value.trim(),
+              }),
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              showToast(err.error || 'Failed to save Telegram bot.', true);
+              return;
+            }
+            showToast('Telegram Bot settings saved!');
+          } catch {
+            showToast('Error saving Telegram bot.', true);
+          }
+        });
+
+        document.getElementById('testTelegramBotBtn')?.addEventListener('click', async () => {
+          try {
+            const res = await apiFetch('/api/admin/telegram/test', { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Telegram test failed.', true);
+              return;
+            }
+            showToast('Telegram test alert delivered!');
+          } catch {
+            showToast('Telegram test error.', true);
+          }
+        });
+
+        function buildReportQueryString() {
+          const params = new URLSearchParams({
+            startDate: document.getElementById('repStartDate')?.value || '',
+            endDate: document.getElementById('repEndDate')?.value || '',
+            type: document.getElementById('repType')?.value || 'all',
+            status: document.getElementById('repStatus')?.value || 'all',
+          });
+          return params.toString();
+        }
+
+        document.getElementById('loadReportBtn')?.addEventListener('click', async () => {
+          try {
+            const res = await apiFetch(`/api/admin/reports/transactions?${buildReportQueryString()}`);
+            const data = await res.json();
+            const tbody = document.getElementById('reportsTableBody');
+            const rows = data.transactions || [];
+            if (!rows.length) {
+              tbody.innerHTML = '<tr><td colspan="7" style="color: var(--text-muted); text-align: center;">No matching transactions in range.</td></tr>';
+              return;
+            }
+            tbody.innerHTML = rows
+              .map(
+                (t) => `
+              <tr>
+                <td class="tabular-nums" style="font-size:0.74rem;">${new Date(t.createdAt).toLocaleString()}</td>
+                <td>${String(t.type).toUpperCase()}</td>
+                <td class="tabular-nums">${escapeHtml(t.phoneNumber)}</td>
+                <td>${escapeHtml(t.method)}</td>
+                <td class="tabular-nums">${Number(t.amount).toLocaleString()} PKR</td>
+                <td class="tabular-nums">${Number(t.feeAmount || 0).toLocaleString()} / ${Number(t.netAmount ?? t.amount).toLocaleString()} PKR</td>
+                <td>${String(t.status).toUpperCase()}</td>
+              </tr>
+            `
+              )
+              .join('');
+          } catch {
+            showToast('Failed to load report.', true);
+          }
+        });
+
+        document.getElementById('exportCsvBtn')?.addEventListener('click', async () => {
+          try {
+            const res = await apiFetch(`/api/admin/reports/export.csv?${buildReportQueryString()}`);
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `skywing-financial-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            showToast('Excel CSV audit exported!');
+          } catch {
+            showToast('Failed to export CSV.', true);
           }
         });
 

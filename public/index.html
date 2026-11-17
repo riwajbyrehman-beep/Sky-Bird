@@ -47,6 +47,8 @@
       <nav class="nav-links" aria-label="Primary Navigation">
         <button type="button" class="nav-link" id="openHowToBtn">How to Play</button>
         <button type="button" class="nav-link" id="openFairBtn">Provably Fair</button>
+        <button type="button" class="nav-link" id="openRewardsNavBtn">VIP &amp; Rewards</button>
+        <button type="button" class="nav-link" id="openSupportNavBtn">Live Support</button>
         <button type="button" class="nav-link" id="openChannelBtn">Official Channel</button>
       </nav>
 
@@ -127,9 +129,68 @@
           <span class="sound-label" id="soundStatusLabel">SFX On</span>
         </button>
 
+        <button
+          type="button"
+          class="btn btn-secondary"
+          id="openAudioDrawerBtn"
+          title="Audio & Soundtrack Preferences"
+          aria-label="Audio Preferences"
+          style="padding: 7px 10px; font-size: 0.78rem;"
+        >
+          Audio
+        </button>
+
+        <button
+          type="button"
+          class="btn btn-secondary"
+          id="openRewardsTopBtn"
+          title="VIP Tiers, Daily Login & Referral Rewards"
+          style="padding: 7px 10px; font-size: 0.78rem; color: #fde047;"
+        >
+          VIP
+        </button>
+
+        <button
+          type="button"
+          class="btn btn-secondary"
+          id="openSupportTopBtn"
+          title="In-App Live Support Chat"
+          style="padding: 7px 10px; font-size: 0.78rem; color: #7dd3fc;"
+        >
+          Support
+        </button>
+
         <button type="button" class="btn btn-primary" id="authTriggerBtn">Log In / Join</button>
       </div>
     </header>
+
+    <!-- Full-Screen Non-Dismissible Maintenance / Disabled Overlay -->
+    <div id="maintenanceOverlay" class="maintenance-overlay hidden" role="alertdialog" aria-modal="true">
+      <div class="maintenance-card">
+        <div class="maintenance-icon-ring" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+          </svg>
+        </div>
+        <span class="maintenance-pill" id="maintenanceStatusPill">PLATFORM MAINTENANCE</span>
+        <h2 style="margin: 0; font-size: 1.35rem; color: var(--text-primary);" id="maintenanceTitle">
+          SkyWing Servers Under Maintenance
+        </h2>
+        <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;" id="maintenanceMessage">
+          Platform is undergoing scheduled maintenance. Please check back shortly.
+        </p>
+        <a
+          id="maintenanceSupportLink"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-whatsapp"
+          style="width: 100%; padding: 11px 16px;"
+        >
+          Contact Official Support
+        </a>
+      </div>
+    </div>
 
     <main class="app-shell">
       <!-- Currency Mode Notice & Real Wallet Deposit/Withdraw Bar -->
@@ -188,6 +249,51 @@
         </a>
       </div>
 
+      <!-- Withdrawal Operating Hours Banner (Shown when restricted & outside 9AM-5PM) -->
+      <div id="withdrawalHoursBanner" class="hours-warning-banner hidden" role="status">
+        <div>
+          <strong style="color: #fbbf24;">Withdrawal Window Notice:</strong>
+          <span id="withdrawalHoursBannerText">Withdrawals are only open from 9:00 AM to 5:00 PM.</span>
+        </div>
+        <span class="tabular-nums" id="withdrawalHoursWindowTag" style="font-weight: 700; font-size: 0.78rem;">09:00 – 17:00</span>
+      </div>
+
+      <!-- Multi-Game Lobby Switcher Carousel -->
+      <section class="game-lobby-bar" id="gameLobbyBar" aria-label="Game Lobby">
+        <button type="button" class="game-lobby-card active" data-game="skywing-crash">
+          <div class="game-lobby-meta">
+            <span class="game-lobby-icon" aria-hidden="true">✈</span>
+            <div>
+              <div class="game-lobby-title">SkyWing Crash</div>
+              <div class="game-lobby-sub">Multiplayer Aviator</div>
+            </div>
+          </div>
+          <span class="game-lobby-badge" data-game-badge="skywing-crash">LIVE</span>
+        </button>
+
+        <button type="button" class="game-lobby-card" data-game="cyber-plinko">
+          <div class="game-lobby-meta">
+            <span class="game-lobby-icon" aria-hidden="true">◎</span>
+            <div>
+              <div class="game-lobby-title">Cyber Plinko</div>
+              <div class="game-lobby-sub">Up to 29x Drop</div>
+            </div>
+          </div>
+          <span class="game-lobby-badge" data-game-badge="cyber-plinko">LIVE</span>
+        </button>
+
+        <button type="button" class="game-lobby-card" data-game="golden-mines">
+          <div class="game-lobby-meta">
+            <span class="game-lobby-icon" aria-hidden="true">◆</span>
+            <div>
+              <div class="game-lobby-title">Golden Mines</div>
+              <div class="game-lobby-sub">5x5 Diamond Grid</div>
+            </div>
+          </div>
+          <span class="game-lobby-badge" data-game-badge="golden-mines">LIVE</span>
+        </button>
+      </section>
+
       <!-- Last 15 Round Multiplier History -->
       <section class="history-strip" aria-label="Recent Multipliers">
         <span class="history-label">Last 15 Flights</span>
@@ -199,6 +305,7 @@
       <!-- Main Game Workspace -->
       <section class="game-grid">
         <div class="arena-column">
+          <div id="crashArenaContainer" style="display: flex; flex-direction: column; gap: 12px;">
           <!-- Flight Canvas -->
           <div class="canvas-card">
             <canvas id="flightCanvas"></canvas>
@@ -385,6 +492,91 @@
               </div>
             </div>
           </div>
+          </div>
+
+          <!-- Cyber Plinko Arena (Toggled from Lobby) -->
+          <div id="plinkoArena" class="arcade-panel-card hidden">
+            <div class="modal-header">
+              <div>
+                <h2 class="panel-title" style="margin: 0;">Cyber Plinko</h2>
+                <span style="font-size: 0.76rem; color: var(--text-muted);">Drop cryptographic balls through 8 peg rows in Fun FC or Real PKR Mode.</span>
+              </div>
+              <span class="vip-tier-pill" id="plinkoLastResultPill">Ready to Drop</span>
+            </div>
+            <div class="arcade-grid-split">
+              <div class="arcade-side-controls">
+                <div class="form-group">
+                  <label class="form-label" for="plinkoAmount">Bet Amount</label>
+                  <input type="number" class="form-input" id="plinkoAmount" value="50" min="1" max="50000" step="1" />
+                  <div class="preset-chips" style="margin-top: 4px;">
+                    <button type="button" class="preset-btn plinko-chip" data-amt="10">10</button>
+                    <button type="button" class="preset-btn plinko-chip" data-amt="50">50</button>
+                    <button type="button" class="preset-btn plinko-chip" data-amt="100">100</button>
+                    <button type="button" class="preset-btn plinko-chip" data-amt="500">500</button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <span class="form-label">Risk Level</span>
+                  <div class="segmented-control" style="display: grid; grid-template-columns: 1fr 1fr 1fr;">
+                    <button type="button" class="seg-btn plinko-risk-btn" data-risk="low">Low</button>
+                    <button type="button" class="seg-btn plinko-risk-btn active" data-risk="medium">Med</button>
+                    <button type="button" class="seg-btn plinko-risk-btn" data-risk="high">High</button>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-emerald" id="plinkoDropBtn" style="width: 100%; padding: 12px;">
+                  DROP BALL
+                </button>
+                <span class="form-hint" id="plinkoStatsText">Uses active wallet switcher (FC or PKR).</span>
+              </div>
+              <div class="plinko-stage">
+                <canvas id="plinkoCanvas" width="440" height="280"></canvas>
+                <div class="plinko-bucket-row" id="plinkoBucketsRow"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Golden Mines 5x5 Arena (Toggled from Lobby) -->
+          <div id="minesArena" class="arcade-panel-card hidden">
+            <div class="modal-header">
+              <div>
+                <h2 class="panel-title" style="margin: 0;">Golden Mines</h2>
+                <span style="font-size: 0.76rem; color: var(--text-muted);">Uncover cyber-diamonds &amp; avoid hidden mines. Cash out anytime!</span>
+              </div>
+              <span class="vip-tier-pill" id="minesMultPill">1.00x</span>
+            </div>
+            <div class="arcade-grid-split">
+              <div class="arcade-side-controls">
+                <div class="form-group">
+                  <label class="form-label" for="minesAmount">Bet Amount</label>
+                  <input type="number" class="form-input" id="minesAmount" value="50" min="1" max="50000" step="1" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="minesCountSelect">Mines Count (3 – 20)</label>
+                  <select class="form-input" id="minesCountSelect">
+                    <option value="3" selected>3 Mines (Balanced)</option>
+                    <option value="5">5 Mines (Medium)</option>
+                    <option value="8">8 Mines (High)</option>
+                    <option value="12">12 Mines (Extreme)</option>
+                    <option value="18">18 Mines (Turbo)</option>
+                  </select>
+                </div>
+                <button type="button" class="btn btn-emerald" id="minesStartBtn" style="width: 100%; padding: 12px;">
+                  START MINES GAME
+                </button>
+                <button type="button" class="btn btn-primary hidden" id="minesCashoutBtn" style="width: 100%; padding: 12px;">
+                  CASH OUT (+0.00)
+                </button>
+                <span class="form-hint" id="minesHintText">Select stake &amp; click Start to reveal diamonds.</span>
+              </div>
+              <div class="mines-stage">
+                <div class="mines-stats-bar tabular-nums">
+                  <span>Next Tile: <strong id="minesNextMult" style="color: #fbbf24;">1.10x</strong></span>
+                  <span>Current Win: <strong id="minesCurrentPayout" style="color: #34d399;">0.00</strong></span>
+                </div>
+                <div class="mines-grid" id="minesGrid"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Live Players & Wallet History Sidebar -->
@@ -486,16 +678,19 @@
             Log In & Play
           </button>
 
-          <button type="button" class="btn btn-whatsapp" id="forgotPasswordBtn" style="width: 100%; padding: 11px;">
-            Forgot Password? (WhatsApp Helpline)
-          </button>
-          <span class="form-hint" style="text-align: center;">
-            Redirects to Admin WhatsApp Support with your registered 03XX number for instant password recovery.
-          </span>
+          <div style="display: flex; justify-content: center; margin-top: 2px;">
+            <button
+              type="button"
+              id="openForgotResetBtn"
+              style="background: none; border: none; color: var(--accent-cyan); font-size: 0.86rem; font-weight: 600; cursor: pointer; padding: 6px 12px; text-decoration: underline;"
+            >
+              Forgot Password
+            </button>
+          </div>
         </form>
 
         <!-- Register Form -->
-        <form id="registerForm" class="form-group hidden" style="gap: 14px;">
+        <form id="registerForm" class="form-group hidden" style="gap: 12px;">
           <div class="form-group">
             <label class="form-label" for="regPhone">Pakistani Mobile Number (11 digits, Unique)</label>
             <input
@@ -508,15 +703,27 @@
             />
             <span class="form-hint">11 digits starting with 03 (e.g. 03001234567). One account per number.</span>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="regName">Nickname (Optional)</label>
-            <input
-              type="text"
-              class="form-input"
-              id="regName"
-              placeholder="e.g. LahorePilot"
-              maxlength="24"
-            />
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="form-group">
+              <label class="form-label" for="regName">Nickname (Optional)</label>
+              <input
+                type="text"
+                class="form-input"
+                id="regName"
+                placeholder="e.g. LahorePilot"
+                maxlength="24"
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="regRefCode">Referral Code (Optional)</label>
+              <input
+                type="text"
+                class="form-input"
+                id="regRefCode"
+                placeholder="e.g. SKY786A"
+                maxlength="16"
+              />
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="regPassword">Password (Min 6 characters)</label>
@@ -529,21 +736,46 @@
               required
             />
           </div>
+
+          <label class="terms-check-row" for="regAgeAgreement">
+            <input type="checkbox" id="regAgeAgreement" />
+            <span>
+              I confirm that I am over 18 years old and agree to the
+              <button type="button" class="terms-link-btn" id="openTermsLink">
+                User Agreement &amp; Terms of Service
+              </button>.
+            </span>
+          </label>
+
           <button type="submit" class="btn btn-emerald" style="width: 100%; padding: 12px;">
-            Create Account & Claim Bonus
+            Create Account &amp; Claim Bonus
           </button>
         </form>
       </div>
     </div>
 
     <!-- ======================================================================
-         Account Profile Modal
+         Account Profile Modal (VIP Tier, Referral Link & Dual Wallet)
          ====================================================================== -->
     <div class="modal-backdrop" id="profileModal" role="dialog" aria-modal="true">
       <div class="modal-card">
         <div class="modal-header">
-          <h2 class="modal-title">Player Wallet & Profile</h2>
+          <h2 class="modal-title">Player Wallet &amp; Profile</h2>
           <button type="button" class="modal-close" data-close="profileModal" aria-label="Close">×</button>
+        </div>
+
+        <div class="vip-banner-card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="vip-tier-pill" id="profileVipBadge">Bronze VIP</span>
+            <span class="tabular-nums" style="font-size: 0.78rem; color: var(--text-secondary);" id="profileVipCashback">5% Weekly Cashback</span>
+          </div>
+          <div class="referral-code-box">
+            <div>
+              <div style="font-size: 0.7rem; color: var(--text-muted);">Invite Friends (15% 1st Deposit Bonus)</div>
+              <strong class="tabular-nums" style="font-size: 0.9rem; color: #34d399;" id="profileRefCode">---</strong>
+            </div>
+            <button type="button" class="btn btn-emerald btn-xs" id="profileCopyRefBtn">Copy Invite Link</button>
+          </div>
         </div>
 
         <div
@@ -578,11 +810,20 @@
             <span style="color: var(--text-muted);">Total Withdrawn</span>
             <span class="tabular-nums" id="profileWithdrawn">0.00 PKR</span>
           </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Referral Earnings</span>
+            <strong class="tabular-nums" style="color: #fbbf24;" id="profileRefEarnings">0.00 PKR</strong>
+          </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
           <button type="button" class="btn btn-emerald" id="profileDepositBtn">+ Deposit PKR</button>
           <button type="button" class="btn btn-secondary" id="profileWithdrawBtn">Withdraw PKR</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button type="button" class="btn btn-secondary" id="profileRewardsBtn">VIP &amp; Rewards</button>
+          <button type="button" class="btn btn-secondary" id="profileSupportBtn">Live Support</button>
         </div>
 
         <button type="button" class="btn btn-secondary" id="profileChannelBtn" style="width: 100%;">
@@ -595,12 +836,12 @@
     </div>
 
     <!-- ======================================================================
-         Deposit PKR Modal (EasyPaisa / JazzCash / Bank + Screenshot OR TID)
+         Automated QR Deposit Modal (2-Step Masked Payment Gateway + Micro-Auto-Approve)
          ====================================================================== -->
     <div class="modal-backdrop" id="depositModal" role="dialog" aria-modal="true">
       <div class="modal-card wide">
         <div class="modal-header">
-          <h2 class="modal-title">Deposit Real Money (PKR)</h2>
+          <h2 class="modal-title">Deposit Real Money (PKR) — Live QR Gateway</h2>
           <button type="button" class="modal-close" data-close="depositModal" aria-label="Close">×</button>
         </div>
 
@@ -612,74 +853,133 @@
         <div id="depositSuccessBox" class="alert-success hidden"></div>
 
         <form id="depositForm" class="form-group" style="gap: 12px;">
-          <div class="form-group">
-            <span class="form-label">Select Official Payment Gateway</span>
-            <div class="gateway-selector-grid" id="depGatewayCards"></div>
+          <!-- Step 1: Select Gateway + Sender Info + Amount -> Generate QR -->
+          <div id="depositStep1" class="form-group" style="gap: 12px;">
+            <div class="form-group">
+              <span class="form-label">Select Payment Gateway</span>
+              <div class="gateway-selector-grid" id="depGatewayCards"></div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group">
+                <label class="form-label" for="depMethod">Payment Method</label>
+                <select class="form-input" id="depMethod" required>
+                  <option value="EasyPaisa">EasyPaisa</option>
+                  <option value="JazzCash">JazzCash</option>
+                  <option value="Bank Account">Bank Transfer</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="depAmount">Amount to Deposit (PKR)</label>
+                <input
+                  type="number"
+                  class="form-input"
+                  id="depAmount"
+                  placeholder="Min 50 PKR"
+                  min="10"
+                  max="1000000"
+                  step="1"
+                  required
+                />
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group">
+                <label class="form-label" for="depSenderName">Your Sender Account Name</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  id="depSenderName"
+                  placeholder="e.g. Muhammad Ali"
+                  maxlength="60"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="depSenderNumber">Your Sender Account / Mobile</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  id="depSenderNumber"
+                  placeholder="03XX-XXXXXXX"
+                  maxlength="32"
+                  required
+                />
+              </div>
+            </div>
+
+            <span class="form-hint" id="depLimitInfoText">
+              Micro-deposits with valid TID are auto-approved instantly!
+            </span>
+
+            <button type="button" class="btn btn-emerald" id="depGenQrBtn" style="width: 100%; padding: 12px;">
+              Generate Masked QR &amp; Payment Reference
+            </button>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div class="form-group">
-              <label class="form-label" for="depMethod">Payment Method Used</label>
-              <select class="form-input" id="depMethod" required>
-                <option value="EasyPaisa">EasyPaisa</option>
-                <option value="JazzCash">JazzCash</option>
-                <option value="Bank Account">Bank Transfer</option>
-              </select>
+          <!-- Step 2: Scannable QR Preview + TID / Screenshot Proof Submit -->
+          <div id="depositQrStep2" class="form-group hidden" style="gap: 12px;">
+            <div class="qr-preview-card">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;">
+                <span class="masked-pill" id="depQrRefBadge">REF: ---</span>
+                <span class="masked-pill" id="depMaskedDest" style="color: #34d399; border-color: rgba(52,211,153,0.4);">03XX••••XXX</span>
+              </div>
+              <div class="qr-img-box">
+                <img id="depQrImg" alt="Deposit Payment QR Code" />
+              </div>
+              <div style="font-size: 0.82rem; color: var(--text-secondary);" id="depQrSummaryText">
+                Scan this QR code in your banking/wallet app or pay to the masked merchant account above, then enter your TID below.
+              </div>
+              <span class="form-hint" id="depMicroHint" style="color: #34d399;"></span>
             </div>
+
             <div class="form-group">
-              <label class="form-label" for="depAmount">Amount Sent (PKR)</label>
+              <label class="form-label" for="depTid">Transaction ID / TID (Instant Auto-Check on Micro-Deposits)</label>
               <input
-                type="number"
+                type="text"
                 class="form-input"
-                id="depAmount"
-                placeholder="Min 50 PKR"
-                min="50"
-                max="1000000"
-                step="1"
-                required
+                id="depTid"
+                placeholder="e.g. 12345678901"
+                maxlength="80"
               />
             </div>
-          </div>
 
-          <div class="form-group">
-            <label class="form-label" for="depTid">Transaction ID / TID (Optional if Screenshot attached)</label>
-            <input
-              type="text"
-              class="form-input"
-              id="depTid"
-              placeholder="e.g. 12345678901"
-              maxlength="80"
-            />
-          </div>
+            <div class="form-group">
+              <label class="form-label" for="depScreenshot">Payment Screenshot (Optional if TID entered)</label>
+              <input type="file" class="form-input" id="depScreenshot" accept="image/*" />
+              <div id="depPreviewWrap" class="hidden" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                <img id="depPreviewImg" class="screenshot-preview" alt="Payment screenshot preview" />
+                <button type="button" class="btn btn-secondary" id="depClearImgBtn" style="padding: 5px 10px; font-size: 0.74rem;">
+                  Remove
+                </button>
+              </div>
+            </div>
 
-          <div class="form-group">
-            <label class="form-label" for="depScreenshot">Payment Screenshot (Optional if TID entered)</label>
-            <input type="file" class="form-input" id="depScreenshot" accept="image/*" />
-            <div id="depPreviewWrap" class="hidden" style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
-              <img id="depPreviewImg" class="screenshot-preview" alt="Payment screenshot preview" />
-              <button type="button" class="btn btn-secondary" id="depClearImgBtn" style="padding: 5px 10px; font-size: 0.74rem;">
-                Remove
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 8px;">
+              <button type="button" class="btn btn-secondary" id="depBackStepBtn" style="padding: 12px;">
+                ← Back
+              </button>
+              <button type="submit" class="btn btn-emerald" id="depSubmitBtn" style="padding: 12px;">
+                I Have Paid / Submit Deposit
               </button>
             </div>
-            <span class="form-hint">Provide EITHER a Payment Screenshot OR a Transaction ID (TID).</span>
           </div>
-
-          <button type="submit" class="btn btn-emerald" id="depSubmitBtn" style="width: 100%; padding: 12px;">
-            Submit Deposit Proof for Approval
-          </button>
         </form>
       </div>
     </div>
 
     <!-- ======================================================================
-         Withdraw PKR Modal
+         Withdraw PKR Modal (Saved Accounts, CNIC, Fee Calculation & Hours Check)
          ====================================================================== -->
     <div class="modal-backdrop" id="withdrawModal" role="dialog" aria-modal="true">
-      <div class="modal-card">
+      <div class="modal-card wide">
         <div class="modal-header">
           <h2 class="modal-title">Withdraw Real Money (PKR)</h2>
           <button type="button" class="modal-close" data-close="withdrawModal" aria-label="Close">×</button>
         </div>
+
+        <div id="withdrawHoursAlert" class="alert-error hidden"></div>
 
         <div class="seed-box" style="display: flex; justify-content: space-between; font-family: var(--font-body); font-size: 0.9rem;">
           <span style="color: var(--text-muted);">Available Real Balance</span>
@@ -699,10 +999,18 @@
           </span>
         </div>
 
+        <!-- Saved Pakistani Payout Accounts -->
+        <div class="form-group">
+          <span class="form-label">Saved Payout Accounts (Quick Select)</span>
+          <div class="saved-payouts-list" id="savedPayoutsList">
+            <span class="form-hint">No saved payout accounts yet. Tick "Save Account" below when withdrawing.</span>
+          </div>
+        </div>
+
         <div id="withdrawErrorBox" class="alert-error hidden"></div>
         <div id="withdrawSuccessBox" class="alert-success hidden"></div>
 
-        <form id="withdrawForm" class="form-group" style="gap: 12px;">
+        <form id="withdrawForm" class="form-group" style="gap: 11px;">
           <div class="form-group">
             <span class="form-label">Select Payout Gateway</span>
             <div class="gateway-selector-grid" id="wdGatewayCards"></div>
@@ -724,7 +1032,7 @@
                 class="form-input"
                 id="wdAmount"
                 placeholder="Min 100 PKR"
-                min="100"
+                min="10"
                 max="1000000"
                 step="1"
                 required
@@ -732,14 +1040,26 @@
             </div>
           </div>
 
+          <div class="fee-summary-box tabular-nums" id="wdFeePreview">
+            <div><span style="color:var(--text-muted);display:block;font-size:0.68rem;">Gross</span><strong id="wdFeeGross">0 PKR</strong></div>
+            <div><span style="color:var(--text-muted);display:block;font-size:0.68rem;">Fee (<span id="wdFeePctLabel">0</span>%)</span><strong id="wdFeeAmt" style="color:#fbbf24;">0 PKR</strong></div>
+            <div><span style="color:var(--text-muted);display:block;font-size:0.68rem;">Net Payout</span><strong id="wdFeeNet" style="color:#34d399;">0 PKR</strong></div>
+          </div>
+
           <div class="form-group hidden" id="wdBankNameGroup">
             <label class="form-label" for="wdBankName">Bank Name</label>
             <input type="text" class="form-input" id="wdBankName" placeholder="e.g. Meezan Bank, HBL, UBL" maxlength="60" />
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="wdAccountTitle">Account Title (Receiver Name)</label>
-            <input type="text" class="form-input" id="wdAccountTitle" placeholder="Full Account Holder Name" maxlength="60" required />
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label" for="wdAccountTitle">Account Title</label>
+              <input type="text" class="form-input" id="wdAccountTitle" placeholder="Account Holder Name" maxlength="60" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="wdCnic">Pakistani CNIC (Mandatory)</label>
+              <input type="text" class="form-input" id="wdCnic" placeholder="35202-1234567-1" maxlength="15" required />
+            </div>
           </div>
 
           <div class="form-group">
@@ -750,7 +1070,10 @@
             </div>
           </div>
 
-          <span class="form-hint">Amount is deducted from your Real Balance immediately and refunded automatically if rejected.</span>
+          <label class="toggle-label" style="font-size: 0.8rem;">
+            <input type="checkbox" id="wdSaveAccountChk" checked />
+            <span>Save this payout account for faster future withdrawals</span>
+          </label>
 
           <button type="submit" class="btn btn-primary" id="wdSubmitBtn" style="width: 100%; padding: 12px;">
             Submit Withdrawal Request
@@ -931,6 +1254,198 @@
             <p style="margin: 4px 0 0;">Watch the multiplier climb from 1.00x. Tap Cash Out before the bird bursts to lock in your winnings.</p>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         VIP Loyalty Tiers, Daily Login, Cashback & Referral Modal
+         ====================================================================== -->
+    <div class="modal-backdrop" id="rewardsModal" role="dialog" aria-modal="true">
+      <div class="modal-card wide">
+        <div class="modal-header">
+          <h2 class="modal-title">VIP Loyalty Tiers, Rewards &amp; Referrals</h2>
+          <button type="button" class="modal-close" data-close="rewardsModal" aria-label="Close">×</button>
+        </div>
+
+        <div class="vip-banner-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <span class="vip-tier-pill" id="rewardsVipTierName">Bronze VIP</span>
+            <span class="tabular-nums" style="font-size: 0.8rem; color: var(--text-secondary);" id="rewardsNextTierLabel">Next Tier: Silver</span>
+          </div>
+          <div class="vip-progress-track">
+            <div class="vip-progress-fill" id="rewardsVipProgress" style="width: 0%;"></div>
+          </div>
+          <span class="form-hint" id="rewardsEligibilityHint">Make an approved Real PKR deposit to unlock Daily Login &amp; Weekly Cashback rewards.</span>
+        </div>
+
+        <div class="rewards-grid">
+          <div class="reward-card">
+            <strong style="color: var(--accent-gold-bright);">Daily Login Bonus</strong>
+            <span style="font-size: 0.8rem; color: var(--text-secondary);" id="rewardsDailyDesc">+200 FC &amp; +10 PKR daily</span>
+            <button type="button" class="btn btn-emerald" id="claimDailyRewardBtn">Claim Daily Bonus</button>
+          </div>
+          <div class="reward-card">
+            <strong style="color: #38bdf8;">Weekly VIP Cashback</strong>
+            <span style="font-size: 0.8rem; color: var(--text-secondary);" id="rewardsWeeklyDesc">Estimated: 0 PKR</span>
+            <button type="button" class="btn btn-primary" id="claimWeeklyRewardBtn">Claim Cashback</button>
+          </div>
+        </div>
+
+        <div class="referral-code-box">
+          <div>
+            <div style="font-size: 0.74rem; color: var(--text-muted);">Share Your Referral Link — Earn 15% of Friend's 1st Deposit!</div>
+            <strong class="tabular-nums" id="rewardsRefCodeText" style="color: #34d399; font-size: 0.96rem;">---</strong>
+            <span style="font-size: 0.76rem; color: var(--text-secondary); margin-left: 10px;">Total Earned: <strong id="rewardsRefEarnedText">0 PKR</strong></span>
+          </div>
+          <button type="button" class="btn btn-emerald btn-xs" id="copyReferralLinkBtn">Copy Link</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         Player Local Audio & Soundtrack Drawer Modal
+         ====================================================================== -->
+    <div class="modal-backdrop" id="audioModal" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title">Audio &amp; Soundtrack Settings</h2>
+          <button type="button" class="modal-close" data-close="audioModal" aria-label="Close">×</button>
+        </div>
+
+        <div class="pay-config-box">
+          <div class="modal-header">
+            <strong style="color: var(--accent-gold-bright);">Background Music (BGM)</strong>
+            <label class="toggle-label">
+              <span class="switch">
+                <input type="checkbox" id="playerAudioBgm" checked />
+                <span class="slider"></span>
+              </span>
+              <span id="playerAudioBgmLabel">ON</span>
+            </label>
+          </div>
+          <span class="form-hint">Saved locally on your device. Master mute button in top bar still overrides immediately.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="playerAudioPreset">Sound Engine Preset</label>
+          <select class="form-input" id="playerAudioPreset">
+            <option value="aviator-jet">Aviator Jet &amp; Propeller</option>
+            <option value="cyber-flight">Cyber Flight Synth</option>
+            <option value="casino-chime">High-Energy Casino Chime</option>
+            <option value="turbo-arcade">Turbo Arcade Pulse</option>
+            <option value="stealth-minimal">Minimal Pro</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between;">
+            <label class="form-label" for="playerAudioVolume">Local Volume</label>
+            <strong class="tabular-nums" id="playerAudioVolVal" style="color: #38bdf8;">75%</strong>
+          </div>
+          <input type="range" id="playerAudioVolume" min="0" max="100" step="1" value="75" style="width: 100%; accent-color: #f59e0b;" />
+        </div>
+
+        <button type="button" class="btn btn-secondary" id="playerAudioResetBtn">Sync with Global Server Defaults</button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         In-App Live Support Ticket Chat Modal
+         ====================================================================== -->
+    <div class="modal-backdrop" id="supportModal" role="dialog" aria-modal="true">
+      <div class="modal-card wide">
+        <div class="modal-header">
+          <h2 class="modal-title">Live In-App Support Desk</h2>
+          <button type="button" class="modal-close" data-close="supportModal" aria-label="Close">×</button>
+        </div>
+
+        <div class="support-layout">
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button type="button" class="btn btn-emerald btn-xs" id="newTicketToggleBtn">+ New Ticket</button>
+            <div class="ticket-list" id="userTicketList">
+              <span class="form-hint">No support tickets yet.</span>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <form id="newTicketForm" class="form-group hidden" style="gap: 8px;">
+              <input type="text" class="form-input" id="newTicketSubject" placeholder="Subject (e.g. Deposit Delay / Withdrawal Help)" maxlength="120" required />
+              <textarea class="form-input" id="newTicketText" rows="3" placeholder="Describe your issue..." maxlength="1000" required></textarea>
+              <button type="submit" class="btn btn-primary">Send Support Ticket</button>
+            </form>
+
+            <div id="activeTicketPane" style="display: flex; flex-direction: column;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <strong id="activeTicketSubject" style="font-size: 0.88rem;">Select or create a ticket</strong>
+                <span class="vip-tier-pill" id="activeTicketStatus">-</span>
+              </div>
+              <div class="chat-thread" id="userChatThread">
+                <span class="form-hint">Real-time chat messages with Admin Support appear here.</span>
+              </div>
+              <form id="userChatReplyForm" class="chat-compose-row hidden">
+                <input type="text" class="form-input" id="userChatReplyInput" placeholder="Write a message..." maxlength="1000" required />
+                <button type="submit" class="btn btn-emerald">Send</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         Streamlined Self-Service Forgot Password Modal (Number or CNIC)
+         ====================================================================== -->
+    <div class="modal-backdrop" id="forgotPasswordModal" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title">Reset Password</h2>
+          <button type="button" class="modal-close" data-close="forgotPasswordModal" aria-label="Close">×</button>
+        </div>
+        <div id="forgotResetError" class="alert-error hidden"></div>
+        <div id="forgotResetSuccess" class="alert-success hidden"></div>
+        <form id="forgotResetForm" class="form-group" style="gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="forgotResetIdentifier">Registered Mobile Number or CNIC</label>
+            <input
+              type="text"
+              class="form-input"
+              id="forgotResetIdentifier"
+              placeholder="03001234567 or 35202-1234567-1"
+              maxlength="24"
+              required
+            />
+            <span class="form-hint">Enter either your 03XX mobile number or CNIC (XXXXX-XXXXXXX-X).</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="forgotResetNewPass">New Password (Min 6 characters)</label>
+            <input type="password" class="form-input" id="forgotResetNewPass" placeholder="Enter new password" minlength="6" required />
+          </div>
+          <button type="submit" class="btn btn-emerald" style="width: 100%; padding: 11px;">
+            Reset Password
+          </button>
+          <button type="button" class="btn btn-secondary" id="backToLoginBtn" style="width: 100%; padding: 9px; font-size: 0.82rem;">
+            Back to Log In
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         18+ User Agreement & Terms of Service Modal
+         ====================================================================== -->
+    <div class="modal-backdrop" id="termsModal" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title">User Agreement &amp; Responsible Gaming</h2>
+          <button type="button" class="modal-close" data-close="termsModal" aria-label="Close">×</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; max-height: 360px; overflow-y: auto;">
+          <p style="margin: 0;"><strong style="color: var(--text-primary);">1. Eligibility (18+ Only):</strong> You must be at least 18 years old and legally permitted in your jurisdiction to participate.</p>
+          <p style="margin: 0;"><strong style="color: var(--text-primary);">2. Fair Play &amp; One Account Rule:</strong> Only one account per mobile number, CNIC, IP, and device is permitted. Multi-accounting or duplicate TID abuse forfeits bonus eligibility.</p>
+          <p style="margin: 0;"><strong style="color: var(--text-primary);">3. Deposits &amp; 1x Rollover:</strong> Approved Real PKR deposits are subject to a 1x wagering rollover before withdrawal submission, plus configured payout operating hours and fee policies.</p>
+          <p style="margin: 0;"><strong style="color: var(--text-primary);">4. Responsible Gaming:</strong> Play within your financial limits. Fun Mode (FC) provides risk-free entertainment without monetary value.</p>
+        </div>
+        <button type="button" class="btn btn-primary" data-close="termsModal" style="width: 100%;">Close &amp; Continue</button>
       </div>
     </div>
 
