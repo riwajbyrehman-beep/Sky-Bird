@@ -182,14 +182,8 @@
     token: initialRestoredToken,
     user: initialRestoredUser,
     currencyMode: localStorage.getItem('skywing_mode') === 'real' ? 'real' : 'fun',
-    activeGameId: 'skywing-crash',
+    activeGameId: null,
     publicSettings: {
-      whatsappSupportEnabled: true,
-      whatsappSupportNumber: '923001234567',
-      whatsappChannelEnabled: true,
-      whatsappChannelUrl: 'https://whatsapp.com/channel/0029VaSkyWingOfficial',
-      telegramChannelEnabled: true,
-      telegramChannelUrl: 'https://t.me/SkyWingOfficial',
       maskMasterAccounts: true,
       paymentAccounts: null,
       financialLimits: {
@@ -228,6 +222,8 @@
     deferredInstallPrompt: null,
     supportTickets: [],
     activeTicketId: '',
+    pendingNewTicketImg: '',
+    pendingReplyTicketImg: '',
     plinkoRisk: 'medium',
     plinkoBusy: false,
     qrRequestSeq: 0,
@@ -279,8 +275,9 @@
   // ==========================================================================
   // Web Audio API Synthesizer (Shared Engine with Global Presets & BGM)
   // ==========================================================================
-  const audio = new window.SkyWingAudioEngine();
+  const audio = new window.SkyWingAudioEngine({ startLocked: true });
   audio.setMuted(!state.soundEnabled);
+  audio.setLocked(true);
 
   // ==========================================================================
   // DOM References
@@ -296,19 +293,18 @@
     soundOffIcon: document.getElementById('soundOffIcon'),
     soundStatusLabel: document.getElementById('soundStatusLabel'),
     authTriggerBtn: document.getElementById('authTriggerBtn'),
-    funModeNotice: document.getElementById('funModeNotice'),
-    realModeNotice: document.getElementById('realModeNotice'),
+    headerDepositBtn: document.getElementById('headerDepositBtn'),
+    shareHeaderBtn: document.getElementById('shareHeaderBtn'),
+    headerHelpBtn: document.getElementById('headerHelpBtn'),
+    headerLogoutBtn: document.getElementById('headerLogoutBtn'),
     realWalletActions: document.getElementById('realWalletActions'),
-    openDepositBtn: document.getElementById('openDepositBtn'),
     openWithdrawBtn: document.getElementById('openWithdrawBtn'),
-    officialAppBanner: document.getElementById('officialAppBanner'),
-    shareEarnBannerBtn: document.getElementById('shareEarnBannerBtn'),
     onlineCount: document.getElementById('onlinePlayersCount'),
     userAccountLabel: document.getElementById('userAccountLabel'),
     historyLabel: document.getElementById('historyLabel'),
     historyList: document.getElementById('historyList'),
 
-    // Auth-First Gate & Main Shell Wrappers
+    // Auth-First Gate, Visual Game Lobby & Active Arena Wrappers
     headerGameControls: document.getElementById('headerGameControls'),
     authEntryGate: document.getElementById('authEntryGate'),
     mainGameShell: document.getElementById('mainGameShell'),
@@ -321,11 +317,12 @@
     maintenanceStatusPill: document.getElementById('maintenanceStatusPill'),
     maintenanceTitle: document.getElementById('maintenanceTitle'),
     maintenanceMessage: document.getElementById('maintenanceMessage'),
-    maintenanceSupportLink: document.getElementById('maintenanceSupportLink'),
-    withdrawalHoursBanner: document.getElementById('withdrawalHoursBanner'),
-    withdrawalHoursBannerText: document.getElementById('withdrawalHoursBannerText'),
-    withdrawalHoursWindowTag: document.getElementById('withdrawalHoursWindowTag'),
+    helpWithdrawHoursText: document.getElementById('helpWithdrawHoursText'),
+    gameLobbySection: document.getElementById('gameLobbySection'),
     gameLobbyBar: document.getElementById('gameLobbyBar'),
+    activeGameWorkspace: document.getElementById('activeGameWorkspace'),
+    backToLobbyBtn: document.getElementById('backToLobbyBtn'),
+    activeArenaTitle: document.getElementById('activeArenaTitle'),
     crashArenaContainer: document.getElementById('crashArenaContainer'),
     plinkoArena: document.getElementById('plinkoArena'),
     minesArena: document.getElementById('minesArena'),
@@ -393,8 +390,11 @@
     forgotResetSuccess: document.getElementById('forgotResetSuccess'),
     backToLoginBtn: document.getElementById('backToLoginBtn'),
 
-    // Profile Modal
+    // Profile & Settings Slide-Over Drawer
     profileModal: document.getElementById('profileModal'),
+    profileAvatarInitial: document.getElementById('profileAvatarInitial'),
+    profileRolloverStatus: document.getElementById('profileRolloverStatus'),
+    profileSavedPayoutCount: document.getElementById('profileSavedPayoutCount'),
     profilePhone: document.getElementById('profilePhone'),
     profileName: document.getElementById('profileName'),
     profileFunBalance: document.getElementById('profileFunBalance'),
@@ -403,14 +403,18 @@
     profileWithdrawn: document.getElementById('profileWithdrawn'),
     profileRefEarnings: document.getElementById('profileRefEarnings'),
     profileVipBadge: document.getElementById('profileVipBadge'),
+    profileVipProgress: document.getElementById('profileVipProgress'),
     profileVipCashback: document.getElementById('profileVipCashback'),
+    profileVipNextText: document.getElementById('profileVipNextText'),
     profileRefCode: document.getElementById('profileRefCode'),
     profileCopyRefBtn: document.getElementById('profileCopyRefBtn'),
+    drawerShareBtn: document.getElementById('drawerShareBtn'),
     profileDepositBtn: document.getElementById('profileDepositBtn'),
     profileWithdrawBtn: document.getElementById('profileWithdrawBtn'),
     profileRewardsBtn: document.getElementById('profileRewardsBtn'),
     profileSupportBtn: document.getElementById('profileSupportBtn'),
-    profileChannelBtn: document.getElementById('profileChannelBtn'),
+    drawerFairBtn: document.getElementById('drawerFairBtn'),
+    drawerHowToBtn: document.getElementById('drawerHowToBtn'),
     logoutBtn: document.getElementById('logoutBtn'),
 
     // Deposit Modal (Privacy-Masked Dynamic QR)
@@ -493,17 +497,24 @@
     newTicketForm: document.getElementById('newTicketForm'),
     newTicketSubject: document.getElementById('newTicketSubject'),
     newTicketText: document.getElementById('newTicketText'),
+    newTicketImage: document.getElementById('newTicketImage'),
+    newTicketAttachBtn: document.getElementById('newTicketAttachBtn'),
+    newTicketImgPreviewWrap: document.getElementById('newTicketImgPreviewWrap'),
+    newTicketImgPreview: document.getElementById('newTicketImgPreview'),
+    newTicketClearImgBtn: document.getElementById('newTicketClearImgBtn'),
     userTicketList: document.getElementById('userTicketList'),
     activeTicketSubject: document.getElementById('activeTicketSubject'),
     activeTicketStatus: document.getElementById('activeTicketStatus'),
     userChatThread: document.getElementById('userChatThread'),
     userChatReplyForm: document.getElementById('userChatReplyForm'),
     userChatReplyInput: document.getElementById('userChatReplyInput'),
-
-    channelModal: document.getElementById('channelModal'),
-    whatsappChannelDirectLink: document.getElementById('whatsappChannelDirectLink'),
-    telegramChannelDirectLink: document.getElementById('telegramChannelDirectLink'),
-    whatsappSupportDirectLink: document.getElementById('whatsappSupportDirectLink'),
+    userChatImage: document.getElementById('userChatImage'),
+    userChatAttachBtn: document.getElementById('userChatAttachBtn'),
+    userChatImgPreviewWrap: document.getElementById('userChatImgPreviewWrap'),
+    userChatImgPreview: document.getElementById('userChatImgPreview'),
+    userChatClearImgBtn: document.getElementById('userChatClearImgBtn'),
+    chatLightboxTitle: document.getElementById('chatLightboxTitle'),
+    chatLightboxImg: document.getElementById('chatLightboxImg'),
 
     fairModal: document.getElementById('fairModal'),
     fairRoundHeading: document.getElementById('fairRoundHeading'),
@@ -649,31 +660,35 @@
     }
   }
 
-  el.soundToggleBtn.addEventListener('click', () => {
+  el.soundToggleBtn?.addEventListener('click', () => {
     state.soundEnabled = !state.soundEnabled;
     localStorage.setItem('skywing_sound', state.soundEnabled ? 'on' : 'off');
     audio.setMuted(!state.soundEnabled);
-    if (state.soundEnabled) {
+    if (state.soundEnabled && state.user && state.activeGameId) {
+      audio.setLocked(false);
       audio.ensureContext();
       audio.playClick();
       if (state.publicSettings.audioConfig?.bgmEnabled !== false) {
         audio.startBGM();
       }
-      if (state.game.phase === 'FLYING') audio.startTension();
+      if (state.activeGameId === 'skywing-crash' && state.game.phase === 'FLYING') {
+        audio.startTension();
+      }
     }
     updateSoundUI();
   });
   updateSoundUI();
 
   function unlockAudioOnGesture() {
-    if (!state.soundEnabled) return;
+    if (!state.user || !state.activeGameId || !state.soundEnabled) return;
+    audio.setLocked(false);
     audio.ensureContext();
     if (state.publicSettings.audioConfig?.bgmEnabled !== false && !audio.bgmRunning) {
       audio.startBGM();
     }
   }
-  window.addEventListener('pointerdown', unlockAudioOnGesture, { once: true });
-  window.addEventListener('keydown', unlockAudioOnGesture, { once: true });
+  window.addEventListener('pointerdown', unlockAudioOnGesture);
+  window.addEventListener('keydown', unlockAudioOnGesture);
 
   // ==========================================================================
   // Currency Mode Switcher (Fun Mode FC <-> Real Money Mode PKR)
@@ -691,9 +706,7 @@
     el.modeFunBtn.className = `mode-btn ${!isReal ? 'active-fun' : ''}`;
     el.modeRealBtn.className = `mode-btn ${isReal ? 'active-real' : ''}`;
 
-    el.funModeNotice.classList.toggle('hidden', isReal);
-    el.realModeNotice.classList.toggle('hidden', !isReal);
-    el.realWalletActions.classList.toggle('hidden', !isReal);
+    el.realWalletActions?.classList.toggle('hidden', !isReal);
 
     el.walletBalance.classList.toggle('real-active', isReal);
     el.walletModeLabel.textContent = isReal ? 'Real PKR' : 'Fun Credits';
@@ -757,7 +770,6 @@
     const effectiveAudio = getEffectiveAudioConfig(state.publicSettings.audioConfig);
     audio.setConfig(effectiveAudio, state.soundEnabled);
     syncPlayerAudioDrawerUI();
-    syncChannelLinks();
     renderPaymentAccounts();
     syncPlatformStatusUI();
     syncWithdrawalHoursUI();
@@ -780,22 +792,14 @@
       if (el.maintenanceMessage) {
         el.maintenanceMessage.textContent = ps.message || 'Platform is undergoing maintenance. Please check back shortly.';
       }
-      const supportNum = String(state.publicSettings.whatsappSupportNumber || '923001234567').replace(/\D/g, '');
-      if (el.maintenanceSupportLink) {
-        el.maintenanceSupportLink.href = `https://wa.me/${supportNum}`;
-      }
     }
   }
 
   function syncWithdrawalHoursUI() {
     const wh = state.publicSettings.withdrawalHours || {};
     const closed = Boolean(wh.enabled) && wh.currentlyOpen === false;
-    if (el.withdrawalHoursBanner) {
-      el.withdrawalHoursBanner.classList.toggle('hidden', !closed);
-      if (closed) {
-        el.withdrawalHoursBannerText.textContent = wh.noticeText || 'Withdrawals are only open from 9:00 AM to 5:00 PM.';
-        el.withdrawalHoursWindowTag.textContent = `${wh.openTime || '09:00'} – ${wh.closeTime || '17:00'}`;
-      }
+    if (el.helpWithdrawHoursText) {
+      el.helpWithdrawHoursText.textContent = `${wh.openTime || '09:00'} – ${wh.closeTime || '17:00'}`;
     }
     if (el.withdrawHoursAlert) {
       el.withdrawHoursAlert.classList.toggle('hidden', !closed);
@@ -810,6 +814,35 @@
     if (el.depLimitInfoText) {
       el.depLimitInfoText.textContent = `Min Deposit: ${Number(limits.minDeposit || 50)} PKR · Micro-deposits up to ${Number(limits.microDepositAutoApproveLimit || 1000).toLocaleString()} PKR with valid TID are auto-approved instantly!`;
     }
+  }
+
+  const GAME_LABELS = {
+    'skywing-crash': 'SkyWing Crash',
+    'cyber-plinko': 'Cyber Plinko',
+    'golden-mines': 'Golden Mines',
+  };
+
+  function syncGameWorkspaceView() {
+    const isAuthed = Boolean(state.user);
+    const hasActiveGame = Boolean(isAuthed && state.activeGameId);
+
+    el.gameLobbySection?.classList.toggle('hidden', !isAuthed || hasActiveGame);
+    el.activeGameWorkspace?.classList.toggle('hidden', !hasActiveGame);
+
+    if (!hasActiveGame) {
+      stopCrashRenderLoop();
+      audio.setLocked(true);
+    } else if (el.activeArenaTitle) {
+      el.activeArenaTitle.textContent = GAME_LABELS[state.activeGameId] || 'Game Arena';
+    }
+  }
+
+  function returnToGameLobby() {
+    state.activeGameId = null;
+    stopCrashRenderLoop();
+    audio.setLocked(true);
+    syncGamesLobbyUI();
+    syncGameWorkspaceView();
   }
 
   function syncGamesLobbyUI() {
@@ -827,11 +860,11 @@
       }
     });
 
-    const activeCfg = games.find((g) => g.id === state.activeGameId);
-    if (activeCfg && activeCfg.enabled === false) {
-      const fallback = games.find((g) => g.enabled !== false);
-      if (fallback && fallback.id !== state.activeGameId) {
-        switchActiveGame(fallback.id);
+    if (state.activeGameId) {
+      const activeCfg = games.find((g) => g.id === state.activeGameId);
+      if (activeCfg && activeCfg.enabled === false) {
+        showToast(`${activeCfg.name} is temporarily offline.`, true);
+        returnToGameLobby();
       }
     }
   }
@@ -847,27 +880,58 @@
       showToast(`${cfg.name} is currently disabled by Admin.`, true);
       return;
     }
+
     state.activeGameId = gameId;
     el.crashArenaContainer?.classList.toggle('hidden', gameId !== 'skywing-crash');
     el.plinkoArena?.classList.toggle('hidden', gameId !== 'cyber-plinko');
     el.minesArena?.classList.toggle('hidden', gameId !== 'golden-mines');
+
+    // Unlock audio engine only once user enters an active game arena
+    audio.setLocked(false);
+    audio.setMuted(!state.soundEnabled);
+    if (state.soundEnabled) {
+      audio.ensureContext();
+      audio.playClick();
+      if (state.publicSettings.audioConfig?.bgmEnabled !== false && !audio.bgmRunning) {
+        audio.startBGM();
+      }
+      if (gameId === 'skywing-crash' && state.game.phase === 'FLYING') {
+        audio.startTension();
+      } else {
+        audio.stopTension();
+      }
+    }
+
     syncGamesLobbyUI();
+    syncGameWorkspaceView();
+    syncPhaseOverlays();
     renderHistory();
     renderSidebar();
+    updatePanelButtons();
+
     if (gameId === 'skywing-crash') {
-      setTimeout(resizeCanvas, 30);
-    } else if (gameId === 'cyber-plinko') {
-      renderPlinkoBoard();
-    } else if (gameId === 'golden-mines') {
-      renderMinesGrid();
+      setTimeout(() => {
+        resizeCanvas();
+        startCrashRenderLoop();
+      }, 25);
+    } else {
+      stopCrashRenderLoop();
+      if (gameId === 'cyber-plinko') {
+        renderPlinkoBoard();
+      } else if (gameId === 'golden-mines') {
+        renderMinesGrid();
+      }
     }
   }
 
   el.gameLobbyBar?.querySelectorAll('.game-lobby-card').forEach((card) => {
     card.addEventListener('click', () => {
-      audio.playClick();
       switchActiveGame(card.dataset.game);
     });
+  });
+
+  el.backToLobbyBtn?.addEventListener('click', () => {
+    returnToGameLobby();
   });
 
   async function loadPublicSettings() {
@@ -882,59 +946,7 @@
     }
   }
 
-  function syncChannelLinks() {
-    const waChanOn = state.publicSettings.whatsappChannelEnabled !== false;
-    const tgChanOn = state.publicSettings.telegramChannelEnabled !== false;
-    const waSuppOn = state.publicSettings.whatsappSupportEnabled !== false;
-
-    if (el.whatsappChannelDirectLink) {
-      el.whatsappChannelDirectLink.href = waChanOn
-        ? state.publicSettings.whatsappChannelUrl || '#'
-        : '#';
-      el.whatsappChannelDirectLink.textContent = waChanOn
-        ? 'Open Official WhatsApp Channel'
-        : 'WhatsApp Channel — Not Available';
-      el.whatsappChannelDirectLink.classList.toggle('btn-social-unavailable', !waChanOn);
-      el.whatsappChannelDirectLink.dataset.available = waChanOn ? '1' : '0';
-    }
-
-    if (el.telegramChannelDirectLink) {
-      el.telegramChannelDirectLink.href = tgChanOn
-        ? state.publicSettings.telegramChannelUrl || '#'
-        : '#';
-      el.telegramChannelDirectLink.textContent = tgChanOn
-        ? 'Join Official Telegram Channel'
-        : 'Telegram Channel — Not Available';
-      el.telegramChannelDirectLink.classList.toggle('btn-social-unavailable', !tgChanOn);
-      el.telegramChannelDirectLink.dataset.available = tgChanOn ? '1' : '0';
-    }
-
-    const supportNum = String(state.publicSettings.whatsappSupportNumber || '923001234567').replace(
-      /\D/g,
-      ''
-    );
-    if (el.whatsappSupportDirectLink) {
-      el.whatsappSupportDirectLink.href = waSuppOn
-        ? `https://wa.me/${supportNum}?text=${encodeURIComponent('Hello SkyWing Support, I need assistance.')}`
-        : '#';
-      el.whatsappSupportDirectLink.textContent = waSuppOn
-        ? 'WhatsApp Support / Help Desk'
-        : 'WhatsApp Support — Not Available';
-      el.whatsappSupportDirectLink.classList.toggle('btn-social-unavailable', !waSuppOn);
-      el.whatsappSupportDirectLink.dataset.available = waSuppOn ? '1' : '0';
-    }
-  }
-
-  [el.whatsappChannelDirectLink, el.telegramChannelDirectLink, el.whatsappSupportDirectLink].forEach(
-    (linkEl) => {
-      linkEl?.addEventListener('click', (e) => {
-        if (linkEl.dataset.available === '0') {
-          e.preventDefault();
-          showToast('This channel is currently set to Not Available by Admin.', true);
-        }
-      });
-    }
-  );
+  // Customer WhatsApp/Telegram helpline & channel links removed in favor of In-App Live Support Desk.
 
   function getGatewayBrandMeta(method) {
     if (method === 'EasyPaisa') {
@@ -1072,20 +1084,24 @@
       .join('');
   }
 
-  document.getElementById('openHowToBtn').addEventListener('click', () => openModal('howToModal'));
-  document.getElementById('footerHowToBtn').addEventListener('click', () => openModal('howToModal'));
-  document.getElementById('openChannelBtn').addEventListener('click', () => {
-    syncChannelLinks();
-    openModal('channelModal');
-  });
-  document.getElementById('footerChannelBtn').addEventListener('click', () => {
-    syncChannelLinks();
-    openModal('channelModal');
-  });
-  el.profileChannelBtn.addEventListener('click', () => {
+  const openHelpCenterModal = () => openModal('howToModal');
+  el.headerHelpBtn?.addEventListener('click', openHelpCenterModal);
+  document.getElementById('footerHelpBtn')?.addEventListener('click', openHelpCenterModal);
+  el.drawerHowToBtn?.addEventListener('click', () => {
     closeModal('profileModal');
-    syncChannelLinks();
-    openModal('channelModal');
+    openHelpCenterModal();
+  });
+  document.getElementById('helpOpenSupportBtn')?.addEventListener('click', () => {
+    closeModal('howToModal');
+    openSupportFlow();
+  });
+  document.getElementById('helpOpenFairBtn')?.addEventListener('click', () => {
+    closeModal('howToModal');
+    inspectFairRound(null);
+  });
+  document.getElementById('helpOpenTermsBtn')?.addEventListener('click', () => {
+    closeModal('howToModal');
+    openModal('termsModal');
   });
 
   // ==========================================================================
@@ -1235,14 +1251,22 @@
     });
   });
 
-  document.getElementById('openFairBtn').addEventListener('click', () => inspectFairRound(null));
-  document.getElementById('footerFairBtn').addEventListener('click', () => inspectFairRound(null));
-  el.roundSeedHudBtn.addEventListener('click', () => inspectFairRound(null));
+  el.drawerFairBtn?.addEventListener('click', () => {
+    closeModal('profileModal');
+    inspectFairRound(null);
+  });
+  el.roundSeedHudBtn?.addEventListener('click', () => inspectFairRound(null));
 
   // ==========================================================================
-  // Authentication & User Profile
+  // Authentication & User Profile & Settings Drawer
   // ==========================================================================
   let wasAuthenticated = Boolean(state.user);
+
+  function getWhatsAppReferralHref() {
+    const code = state.user?.referralCode || '';
+    const refUrl = `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
+    return refUrl;
+  }
 
   function openAuthModal(defaultTab = 'login') {
     if (el.authErrorBox) el.authErrorBox.classList.add('hidden');
@@ -1261,11 +1285,17 @@
   function updateUserUI() {
     const isAuthed = Boolean(state.user);
     if (state.user) {
-      el.authTriggerBtn.textContent = state.user.displayName || state.user.phoneNumber;
+      const displayName = String(state.user.displayName || state.user.phoneNumber || 'Player').trim();
+      el.authTriggerBtn.textContent = displayName;
       el.authTriggerBtn.classList.remove('btn-primary');
       el.authTriggerBtn.classList.add('btn-secondary');
-      el.userAccountLabel.textContent = `Logged in · ${state.user.phoneNumber}`;
+      if (el.userAccountLabel) {
+        el.userAccountLabel.textContent = displayName;
+      }
 
+      if (el.profileAvatarInitial) {
+        el.profileAvatarInitial.textContent = String(displayName || 'S').trim().charAt(0).toUpperCase() || 'S';
+      }
       el.profilePhone.textContent = state.user.phoneNumber;
       el.profileName.textContent = state.user.displayName;
       el.profileFunBalance.textContent = fmtMoney(state.user.funBalance, 'fun');
@@ -1278,44 +1308,76 @@
       if (el.profileRefCode) {
         el.profileRefCode.textContent = state.user.referralCode || '---';
       }
+      const totalDep = Math.max(0, Number(state.user.totalDeposited || 0));
+      const totalWager = Math.max(0, Number(state.user.totalWageredReal || 0));
+      if (el.profileRolloverStatus) {
+        if (totalWager >= totalDep) {
+          el.profileRolloverStatus.textContent = '1x Rollover Ready';
+          el.profileRolloverStatus.style.color = '#34d399';
+        } else {
+          const rem = Math.max(0, Math.round((totalDep - totalWager) * 100) / 100);
+          el.profileRolloverStatus.textContent = `Wager ${rem.toLocaleString()} PKR more`;
+          el.profileRolloverStatus.style.color = '#fbbf24';
+        }
+      }
+      if (el.profileSavedPayoutCount) {
+        const cnt = (state.user.savedPayoutAccounts || []).length;
+        el.profileSavedPayoutCount.textContent = `${cnt} Saved`;
+      }
       if (el.profileVipBadge && state.user.vip) {
         el.profileVipBadge.textContent = `${state.user.vip.tier} VIP`;
       }
       if (el.profileVipCashback && state.user.vip) {
         el.profileVipCashback.textContent = `${state.user.vip.cashbackPct}% Weekly Cashback`;
       }
+      if (el.profileVipProgress && state.user.vip) {
+        el.profileVipProgress.style.width = `${state.user.vip.progressPct || 0}%`;
+      }
+      if (el.profileVipNextText && state.user.vip) {
+        el.profileVipNextText.textContent = state.user.vip.nextTier
+          ? `Next: ${state.user.vip.nextTier} (${Number(state.user.vip.nextTarget || 0).toLocaleString()} PKR)`
+          : 'Max Platinum VIP';
+      }
       el.withdrawAvailBalance.textContent = fmtMoney(state.user.realBalance, 'real');
       renderSavedPayouts();
     } else {
+      state.activeGameId = null;
       el.authTriggerBtn.textContent = 'Log In / Join';
       el.authTriggerBtn.classList.remove('btn-secondary');
       el.authTriggerBtn.classList.add('btn-primary');
-      el.userAccountLabel.textContent = 'Guest Mode';
+      if (el.userAccountLabel) {
+        el.userAccountLabel.textContent = 'Guest';
+      }
     }
 
-    // Auth-First Gate Enforcement
+    // Auth-First Gate Enforcement + Visual Game Lobby Isolation
     el.authEntryGate?.classList.toggle('hidden', isAuthed);
     el.mainGameShell?.classList.toggle('hidden', !isAuthed);
     el.siteFooter?.classList.toggle('hidden', !isAuthed);
     el.headerGameControls?.classList.toggle('hidden', !isAuthed);
+    el.headerLogoutBtn?.classList.toggle('hidden', !isAuthed);
 
-    if (el.officialAppBanner) {
-      el.officialAppBanner.classList.toggle('hidden', !isAuthed);
-    }
-
-    if (isAuthed && !wasAuthenticated) {
+    syncGameWorkspaceView();
+    if (isAuthed && !wasAuthenticated && state.activeGameId) {
       setTimeout(() => {
-        if (state.activeGameId === 'skywing-crash') resizeCanvas();
-        else if (state.activeGameId === 'cyber-plinko') renderPlinkoBoard();
-        else if (state.activeGameId === 'golden-mines') renderMinesGrid();
+        if (state.activeGameId === 'skywing-crash') {
+          resizeCanvas();
+          startCrashRenderLoop();
+        } else if (state.activeGameId === 'cyber-plinko') {
+          renderPlinkoBoard();
+        } else if (state.activeGameId === 'golden-mines') {
+          renderMinesGrid();
+        }
       }, 40);
     }
     wasAuthenticated = isAuthed;
 
     updateModeAndWalletUI();
-    renderHistory();
-    if (state.sidebarTab !== 'live') renderSidebar();
-    updatePanelButtons();
+    if (state.activeGameId) {
+      renderHistory();
+      if (state.sidebarTab !== 'live') renderSidebar();
+      updatePanelButtons();
+    }
   }
 
   async function fetchCurrentUser() {
@@ -1462,15 +1524,14 @@
       }
       state.token = data.token;
       state.user = data.user;
+      state.activeGameId = null;
       saveSessionVault(state.token, state.user);
-      if (data.whatsappChannelUrl) {
-        state.publicSettings.whatsappChannelUrl = data.whatsappChannelUrl;
-        syncChannelLinks();
-      }
       socket.emit('auth:identify', { token: state.token });
+      closeModal('authModal');
+      closeModal('forgotPasswordModal');
+      closeModal('termsModal');
       updateUserUI();
       fetchMyTransactions();
-      closeModal('authModal');
       showToast(`Welcome back, ${state.user.displayName}!`);
     } catch {
       showAuthError('Network error. Please try again.');
@@ -1518,16 +1579,14 @@
       }
       state.token = data.token;
       state.user = data.user;
+      state.activeGameId = null;
       saveSessionVault(state.token, state.user);
-      if (data.whatsappChannelUrl) {
-        state.publicSettings.whatsappChannelUrl = data.whatsappChannelUrl;
-        syncChannelLinks();
-      }
       socket.emit('auth:identify', { token: state.token });
+      closeModal('authModal');
+      closeModal('forgotPasswordModal');
+      closeModal('termsModal');
       updateUserUI();
       fetchMyTransactions();
-      closeModal('authModal');
-      openModal('channelModal');
       if (state.user.bonusRestricted) {
         showToast('Account created (Bonus privileges restricted due to multi-device match).');
       } else {
@@ -1596,16 +1655,22 @@
     }
   });
 
-  el.logoutBtn.addEventListener('click', () => {
+  function performLogout() {
     state.token = '';
     state.user = null;
+    state.activeGameId = null;
     state.transactions = [];
+    stopCrashRenderLoop();
+    audio.setLocked(true);
     clearSessionVault();
     socket.emit('auth:identify', { token: '' });
     closeModal('profileModal');
     updateUserUI();
     showToast('Logged out successfully.');
-  });
+  }
+
+  el.logoutBtn?.addEventListener('click', performLogout);
+  el.headerLogoutBtn?.addEventListener('click', performLogout);
 
   // ==========================================================================
   // Automated QR Deposit + Saved Pakistani Payout Accounts + Rollover & Fee
@@ -1847,8 +1912,8 @@
     openModal('withdrawModal');
   }
 
-  el.openDepositBtn.addEventListener('click', openDepositFlow);
-  el.openWithdrawBtn.addEventListener('click', openWithdrawFlow);
+  el.headerDepositBtn?.addEventListener('click', openDepositFlow);
+  el.openWithdrawBtn?.addEventListener('click', openWithdrawFlow);
   el.profileDepositBtn.addEventListener('click', () => {
     closeModal('profileModal');
     openDepositFlow();
@@ -2687,9 +2752,11 @@
   }
 
   function resizeCanvas() {
+    if (!state.user || state.activeGameId !== 'skywing-crash') return;
     const parent = el.canvas.parentElement;
     if (!parent) return;
     const rect = parent.getBoundingClientRect();
+    if (rect.width < 10 || rect.height < 10) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     const prevW = canvasWidth;
     const prevH = canvasHeight;
@@ -2724,7 +2791,6 @@
     const ro = new ResizeObserver(() => resizeCanvas());
     ro.observe(el.canvas.parentElement);
   }
-  resizeCanvas();
 
   function drawStarParticleNetwork(nowMs, mult, birdPos, isFlying) {
     const speedScale = isFlying ? 1 + Math.min(7.5, (mult - 1) * 0.72) : 0.65;
@@ -2919,8 +2985,28 @@
   }
 
   let lastKnownBirdPos = { x: 80, y: canvasHeight - 60 };
+  let crashRafId = null;
+
+  function startCrashRenderLoop() {
+    if (!state.user || state.activeGameId !== 'skywing-crash') return;
+    if (!crashRafId) {
+      crashRafId = requestAnimationFrame(renderCanvas);
+    }
+  }
+
+  function stopCrashRenderLoop() {
+    if (crashRafId) {
+      cancelAnimationFrame(crashRafId);
+      crashRafId = null;
+    }
+    audio.stopTension();
+  }
 
   function renderCanvas(nowMs) {
+    if (!state.user || state.activeGameId !== 'skywing-crash') {
+      crashRafId = null;
+      return;
+    }
     ctx.save();
 
     if (screenShake > 0.2) {
@@ -3177,10 +3263,8 @@
     }
 
     ctx.restore();
-    requestAnimationFrame(renderCanvas);
+    crashRafId = requestAnimationFrame(renderCanvas);
   }
-
-  requestAnimationFrame(renderCanvas);
 
   // ==========================================================================
   // Socket.io Real-Time Client Sync
@@ -3418,13 +3502,16 @@
 
   socket.on('round:flying', (data) => {
     applyServerRoundSnapshot({ ...data, phase: 'FLYING', flightState: 'flying' }, false);
-    syncPhaseOverlays();
-    audio.startTension();
-    updatePanelButtons();
+    if (state.user && state.activeGameId === 'skywing-crash') {
+      syncPhaseOverlays();
+      audio.startTension();
+      updatePanelButtons();
+    }
   });
 
   socket.on('round:tick', (data) => {
     if (!applyServerRoundSnapshot(data, false)) return;
+    if (!state.user || state.activeGameId !== 'skywing-crash') return;
     if (state.game.phase === 'FLYING') {
       el.liveMultiplierText.textContent = `${Number(state.game.currentMultiplier || 1).toFixed(2)}x`;
       updatePanelButtons();
@@ -3440,6 +3527,7 @@
     const prevPhase = state.game.phase;
     const prevRound = state.game.currentRoundId;
     if (!applyServerRoundSnapshot(data, false)) return;
+    if (!state.user || state.activeGameId !== 'skywing-crash') return;
 
     if (prevPhase !== state.game.phase || prevRound !== state.game.currentRoundId) {
       syncPhaseOverlays();
@@ -3461,17 +3549,16 @@
       Number(data.currentRoundId ?? data.roundNumber) === Number(state.game.currentRoundId);
     applyServerRoundSnapshot({ ...data, phase: 'CRASHED', flightState: 'crashed' }, false);
 
-    if (!alreadyCrashedThisRound) {
-      audio.playCrash();
-      spawnCrashBurst(lastKnownBirdPos.x, lastKnownBirdPos.y);
-    }
-
-    syncPhaseOverlays();
-    if (state.activeGameId === 'skywing-crash') {
+    if (state.user && state.activeGameId === 'skywing-crash') {
+      if (!alreadyCrashedThisRound) {
+        audio.playCrash();
+        spawnCrashBurst(lastKnownBirdPos.x, lastKnownBirdPos.y);
+      }
+      syncPhaseOverlays();
       renderHistory();
       renderSidebar();
+      updatePanelButtons();
     }
-    updatePanelButtons();
 
     if (state.user) fetchCurrentUser();
   });
@@ -3500,7 +3587,7 @@
       const slot = data.slot === 2 ? 2 : 1;
       if (state.panels[slot].placedBet && !state.panels[slot].placedBet.cashedOut) {
         state.panels[slot].placedBet.cashedOut = true;
-        audio.playCashout();
+        if (state.activeGameId === 'skywing-crash') audio.playCashout();
         showToast(
           `Auto Cashout ${data.cashoutMultiplier.toFixed(2)}x (+${fmtMoney(data.payout, data.currencyMode)})`
         );
@@ -3920,7 +4007,8 @@
     }
   }
 
-  el.shareEarnBannerBtn?.addEventListener('click', () => shareOrCopyReferralLink(el.shareEarnBannerBtn));
+  el.shareHeaderBtn?.addEventListener('click', () => shareOrCopyReferralLink(el.shareHeaderBtn));
+  el.drawerShareBtn?.addEventListener('click', () => shareOrCopyReferralLink(el.drawerShareBtn));
 
   el.profileCopyRefBtn?.addEventListener('click', () => {
     if (!state.user?.referralCode) return;
@@ -3973,8 +4061,6 @@
     }
   }
 
-  document.getElementById('openRewardsNavBtn')?.addEventListener('click', openRewardsFlow);
-  document.getElementById('openRewardsTopBtn')?.addEventListener('click', openRewardsFlow);
   el.profileRewardsBtn?.addEventListener('click', () => {
     closeModal('profileModal');
     openRewardsFlow();
@@ -4027,7 +4113,7 @@
   });
 
   // ==========================================================================
-  // Player Local Audio Settings Drawer
+  // Player Local Audio Settings (Integrated in Profile & Settings Drawer)
   // ==========================================================================
   function saveAndApplyLocalAudio() {
     const cfg = {
@@ -4042,10 +4128,6 @@
     if (!cfg.bgmEnabled) audio.stopBGM();
   }
 
-  document.getElementById('openAudioDrawerBtn')?.addEventListener('click', () => {
-    syncPlayerAudioDrawerUI();
-    openModal('audioModal');
-  });
   el.playerAudioBgm?.addEventListener('change', saveAndApplyLocalAudio);
   el.playerAudioPreset?.addEventListener('change', saveAndApplyLocalAudio);
   el.playerAudioVolume?.addEventListener('input', saveAndApplyLocalAudio);
@@ -4058,8 +4140,83 @@
   });
 
   // ==========================================================================
-  // In-App Live Support Ticket Chat
+  // In-App Live Support Ticket Chat (Screenshot & Photo Upload Enabled)
   // ==========================================================================
+  function compressSupportChatImage(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type.startsWith('image/')) {
+        reject(new Error('Please select a valid image file (JPG, PNG, WebP).'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Failed to read image file.'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Invalid image file.'));
+        img.onload = () => {
+          const maxDim = 1024;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            const scale = maxDim / Math.max(width, height);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+          const off = document.createElement('canvas');
+          off.width = width;
+          off.height = height;
+          off.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(off.toDataURL('image/jpeg', 0.78));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function clearNewTicketImage() {
+    state.pendingNewTicketImg = '';
+    if (el.newTicketImage) el.newTicketImage.value = '';
+    if (el.newTicketImgPreview) el.newTicketImgPreview.removeAttribute('src');
+    el.newTicketImgPreviewWrap?.classList.add('hidden');
+  }
+
+  function clearReplyTicketImage() {
+    state.pendingReplyTicketImg = '';
+    if (el.userChatImage) el.userChatImage.value = '';
+    if (el.userChatImgPreview) el.userChatImgPreview.removeAttribute('src');
+    el.userChatImgPreviewWrap?.classList.add('hidden');
+  }
+
+  el.newTicketAttachBtn?.addEventListener('click', () => el.newTicketImage?.click());
+  el.newTicketClearImgBtn?.addEventListener('click', clearNewTicketImage);
+  el.newTicketImage?.addEventListener('change', async () => {
+    const file = el.newTicketImage.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressSupportChatImage(file);
+      state.pendingNewTicketImg = compressed;
+      if (el.newTicketImgPreview) el.newTicketImgPreview.src = compressed;
+      el.newTicketImgPreviewWrap?.classList.remove('hidden');
+    } catch (err) {
+      showToast(err.message || 'Could not process image.', true);
+    }
+  });
+
+  el.userChatAttachBtn?.addEventListener('click', () => el.userChatImage?.click());
+  el.userChatClearImgBtn?.addEventListener('click', clearReplyTicketImage);
+  el.userChatImage?.addEventListener('change', async () => {
+    const file = el.userChatImage.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressSupportChatImage(file);
+      state.pendingReplyTicketImg = compressed;
+      if (el.userChatImgPreview) el.userChatImgPreview.src = compressed;
+      el.userChatImgPreviewWrap?.classList.remove('hidden');
+    } catch (err) {
+      showToast(err.message || 'Could not process image.', true);
+    }
+  });
+
   function renderUserSupportTickets() {
     if (!el.userTicketList) return;
     if (!state.supportTickets.length) {
@@ -4103,12 +4260,20 @@
         .map(
           (m) => `
           <div class="chat-msg ${m.sender === 'admin' ? 'admin' : 'user'}">
-            <div>${escapeHtml(m.text)}</div>
+            ${m.imageData ? `<img src="${escapeHtml(m.imageData)}" class="chat-msg-img" alt="Attached screenshot" />` : ''}
+            ${m.text ? `<div>${escapeHtml(m.text)}</div>` : ''}
             <span class="chat-msg-time">${m.sender === 'admin' ? 'Admin' : 'You'} · ${new Date(m.createdAt).toLocaleTimeString()}</span>
           </div>
         `
         )
         .join('');
+      el.userChatThread.querySelectorAll('.chat-msg-img').forEach((imgEl) => {
+        imgEl.addEventListener('click', () => {
+          if (el.chatLightboxTitle) el.chatLightboxTitle.textContent = `Support Attachment · ${active.subject}`;
+          if (el.chatLightboxImg) el.chatLightboxImg.src = imgEl.src;
+          openModal('chatImageLightboxModal');
+        });
+      });
       el.userChatThread.scrollTop = el.userChatThread.scrollHeight;
       el.userChatReplyForm?.classList.toggle('hidden', active.status === 'closed');
     }
@@ -4134,8 +4299,6 @@
     }
   }
 
-  document.getElementById('openSupportNavBtn')?.addEventListener('click', openSupportFlow);
-  document.getElementById('openSupportTopBtn')?.addEventListener('click', openSupportFlow);
   el.profileSupportBtn?.addEventListener('click', () => {
     closeModal('profileModal');
     openSupportFlow();
@@ -4149,7 +4312,11 @@
     e.preventDefault();
     const subject = el.newTicketSubject.value.trim();
     const text = el.newTicketText.value.trim();
-    if (!subject || !text) return;
+    const imageData = state.pendingNewTicketImg || '';
+    if (!subject || (!text && !imageData)) {
+      showToast('Enter a subject and either a message or screenshot.', true);
+      return;
+    }
     try {
       const res = await fetch('/api/support/tickets', {
         method: 'POST',
@@ -4157,7 +4324,7 @@
           'Content-Type': 'application/json',
           Authorization: `Bearer ${state.token}`,
         },
-        body: JSON.stringify({ subject, text }),
+        body: JSON.stringify({ subject, text, imageData }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -4165,6 +4332,7 @@
         return;
       }
       el.newTicketForm.reset();
+      clearNewTicketImage();
       el.newTicketForm.classList.add('hidden');
       state.supportTickets.unshift(data.ticket);
       state.activeTicketId = String(data.ticket._id || data.ticket.id);
@@ -4178,15 +4346,16 @@
   el.userChatReplyForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = el.userChatReplyInput.value.trim();
-    if (!text || !state.activeTicketId) return;
+    const imageData = state.pendingReplyTicketImg || '';
+    if ((!text && !imageData) || !state.activeTicketId) return;
     try {
-      const res = await fetch(`/api/support/tickets/${state.activeTicketId}/message`, {
+      const res = await fetch(`/api/support/tickets/${state.activeTicketId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${state.token}`,
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, imageData }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -4194,6 +4363,7 @@
         return;
       }
       el.userChatReplyInput.value = '';
+      clearReplyTicketImage();
       const idx = state.supportTickets.findIndex((t) => String(t._id || t.id) === state.activeTicketId);
       if (idx >= 0) state.supportTickets[idx] = data.ticket;
       renderUserSupportTickets();
@@ -4203,7 +4373,7 @@
   });
 
   // ==========================================================================
-  // Initial Load (Pre-render Cached Vault Restoration -> Async Authoritative Sync)
+  // Initial Load (Start Frozen & Audio-Locked Until Login + Card Click)
   // ==========================================================================
   if (urlRefCode && el.regRefCode) {
     el.regRefCode.value = urlRefCode;
@@ -4213,9 +4383,5 @@
   fetchCurrentUser();
   if (state.token) {
     fetchMyTransactions();
-  } else if (!state.user) {
-    openAuthModal(urlRefCode ? 'register' : 'login');
   }
-  renderPlinkoBoard();
-  renderMinesGrid();
 })();

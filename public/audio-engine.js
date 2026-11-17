@@ -2,11 +2,12 @@
   'use strict';
 
   class SkyWingAudioEngine {
-    constructor() {
+    constructor(options = {}) {
       this.ctx = null;
       this.compressor = null;
       this.masterGain = null;
       this.muted = false;
+      this.locked = Boolean(options && options.startLocked);
       this.config = {
         bgmEnabled: true,
         soundPreset: 'aviator-jet',
@@ -30,6 +31,7 @@
     }
 
     ensureContext() {
+      if (this.locked) return null;
       if (!this.ctx) {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (!AudioCtx) return null;
@@ -56,6 +58,7 @@
     }
 
     getDestination() {
+      if (this.locked) return null;
       const ctx = this.ensureContext();
       if (!ctx) return null;
       return this.compressor || ctx.destination;
@@ -63,8 +66,20 @@
 
     applyMasterGain() {
       if (!this.masterGain || !this.ctx) return;
-      const vol = this.muted ? 0 : Math.max(0, Math.min(1, Number(this.config.masterVolume ?? 75) / 100));
+      const vol =
+        this.muted || this.locked
+          ? 0
+          : Math.max(0, Math.min(1, Number(this.config.masterVolume ?? 75) / 100));
       this.masterGain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.04);
+    }
+
+    setLocked(locked) {
+      this.locked = Boolean(locked);
+      if (this.locked) {
+        this.stopTension();
+        this.stopBGM();
+      }
+      this.applyMasterGain();
     }
 
     setMuted(muted) {
@@ -73,7 +88,7 @@
       if (this.muted) {
         this.stopTension();
         this.stopBGM();
-      } else if (this.config.bgmEnabled && this.ctx) {
+      } else if (!this.locked && this.config.bgmEnabled && this.ctx) {
         this.startBGM();
       }
     }
@@ -91,7 +106,7 @@
       };
       this.applyMasterGain();
 
-      if (!this.config.bgmEnabled || this.muted) {
+      if (!this.config.bgmEnabled || this.muted || this.locked) {
         this.stopBGM();
       } else if (autoStartBgm && this.ctx && (!this.bgmRunning || prevPreset !== this.config.soundPreset || !prevBgm)) {
         this.startBGM();
@@ -102,7 +117,7 @@
     // Background Music Sequencer (5 Synthesized Presets incl. Aviator Jet)
     // ========================================================================
     startBGM(forcePreset = null) {
-      if (this.muted) return;
+      if (this.muted || this.locked) return;
       const ctx = this.ensureContext();
       if (!ctx) return;
       if (forcePreset) {
@@ -124,7 +139,7 @@
                 : 175;
 
       const tick = () => {
-        if (!this.bgmRunning || this.muted || !this.ctx || this.ctx.state !== 'running') return;
+        if (!this.bgmRunning || this.muted || this.locked || !this.ctx || this.ctx.state !== 'running') return;
         this.scheduleBgmStep(this.bgmStep++);
       };
 
@@ -270,7 +285,7 @@
     // Authentic Aviator / Avtix Game Sound Effects
     // ========================================================================
     playClick() {
-      if (this.muted) return;
+      if (this.muted || this.locked) return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
@@ -289,7 +304,7 @@
 
     // Crisp High-Energy Casino Chime (Bet Placed)
     playCasinoChime() {
-      if (this.muted) return;
+      if (this.muted || this.locked) return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
@@ -304,7 +319,7 @@
 
     // Crisp Tension Tick as Multiplier Climbs
     playTensionTick(mult = 1.0) {
-      if (this.muted) return;
+      if (this.muted || this.locked) return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
@@ -315,7 +330,7 @@
     }
 
     playWingFlap() {
-      if (this.muted) return;
+      if (this.muted || this.locked) return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
@@ -361,7 +376,7 @@
 
     // Rising Jet Turbine / Propeller Acceleration Pitch + Air Rush
     startTension() {
-      if (this.muted) return;
+      if (this.muted || this.locked) return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
@@ -435,7 +450,7 @@
     }
 
     updateTension(mult) {
-      if (!this.tensionOsc || !this.ctx || this.muted) return;
+      if (!this.tensionOsc || !this.ctx || this.muted || this.locked) return;
       const t = this.ctx.currentTime;
       const baseFreq = Math.min(820, 140 + (mult - 1) * 52);
       const cutoff = Math.min(3400, 440 + (mult - 1) * 260);
@@ -479,7 +494,7 @@
 
     // Live Preview of Aviator Jet Takeoff Acceleration (Admin Test Bench)
     playTakeoffPreview() {
-      if (this.muted) return;
+      if (this.muted || this.locked) return;
       this.startTension();
       let simMult = 1.0;
       const iv = setInterval(() => {
@@ -494,7 +509,7 @@
 
     // Victory Arpeggio / Avtix Cashout Chime
     playCashout() {
-      if (this.muted) return;
+      if (this.muted || this.locked) return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
@@ -524,7 +539,7 @@
     // Multi-Stage Dynamic Crash Explosion
     playCrash() {
       this.stopTension();
-      if (this.muted) return;
+      if (this.muted || this.locked) return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;

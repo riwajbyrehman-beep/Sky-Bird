@@ -3,7 +3,8 @@ import mongoose from 'mongoose';
 const supportMessageSchema = new mongoose.Schema(
   {
     sender: { type: String, enum: ['user', 'admin'], required: true },
-    text: { type: String, required: true, trim: true, maxlength: 1000 },
+    text: { type: String, default: '', trim: true, maxlength: 1000 },
+    imageData: { type: String, default: '' },
     createdAt: { type: Date, default: Date.now },
   },
   { _id: false }

@@ -904,8 +904,8 @@ const db = {
   },
 
   // Support Ticket Operations
-  async createSupportTicket({ userId, phoneNumber, displayName, subject, text }) {
-    const msg = { sender: 'user', text, createdAt: new Date() };
+  async createSupportTicket({ userId, phoneNumber, displayName, subject, text, imageData = '' }) {
+    const msg = { sender: 'user', text: text || '', imageData: imageData || '', createdAt: new Date() };
     if (isMongoReady()) {
       const doc = await SupportTicket.create({
         userId: String(userId),
@@ -925,7 +925,7 @@ const db = {
       displayName,
       subject,
       status: 'open',
-      messages: [{ sender: 'user', text, createdAt: new Date().toISOString() }],
+      messages: [{ sender: 'user', text: text || '', imageData: imageData || '', createdAt: new Date().toISOString() }],
       lastMessageAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     };
@@ -968,13 +968,13 @@ const db = {
     return found ? { ...found } : null;
   },
 
-  async addSupportMessage(id, sender, text) {
+  async addSupportMessage(id, sender, text, imageData = '') {
     if (isMongoReady()) {
       if (!mongoose.Types.ObjectId.isValid(id)) return null;
       const doc = await SupportTicket.findByIdAndUpdate(
         id,
         {
-          $push: { messages: { sender, text, createdAt: new Date() } },
+          $push: { messages: { sender, text: text || '', imageData: imageData || '', createdAt: new Date() } },
           $set: { status: 'open', lastMessageAt: new Date() },
         },
         { new: true }
@@ -984,7 +984,7 @@ const db = {
     const idx = localStore.supportTickets.findIndex((t) => String(t._id) === String(id));
     if (idx === -1) return null;
     const t = { ...localStore.supportTickets[idx] };
-    t.messages = [...(t.messages || []), { sender, text, createdAt: new Date().toISOString() }];
+    t.messages = [...(t.messages || []), { sender, text: text || '', imageData: imageData || '', createdAt: new Date().toISOString() }];
     t.status = 'open';
     t.lastMessageAt = new Date().toISOString();
     localStore.supportTickets[idx] = t;
@@ -2823,12 +2823,25 @@ app.get('/api/support/tickets/my', requireAuth, async (req, res) => {
   }
 });
 
+function sanitizeSupportImageData(raw) {
+  const val = String(raw || '').trim();
+  if (!val) return '';
+  if (!/^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(val)) {
+    return '';
+  }
+  if (val.length > 2_800_000) {
+    return '';
+  }
+  return val;
+}
+
 app.post('/api/support/tickets', requireAuth, async (req, res) => {
   try {
     const subject = String(req.body.subject || '').trim().slice(0, 120);
     const text = String(req.body.text || '').trim().slice(0, 1000);
-    if (!subject || !text) {
-      return res.status(400).json({ error: 'Subject and message are required.' });
+    const imageData = sanitizeSupportImageData(req.body.imageData);
+    if (!subject || (!text && !imageData)) {
+      return res.status(400).json({ error: 'Subject and a message or screenshot are required.' });
     }
     const ticket = await db.createSupportTicket({
       userId: req.user._id,
@@ -2836,6 +2849,7 @@ app.post('/api/support/tickets', requireAuth, async (req, res) => {
       displayName: req.user.displayName || maskPhone(req.user.phoneNumber),
       subject,
       text,
+      imageData,
     });
     io.to('admins').emit('support:ticket_updated', ticket);
     res.status(201).json({ ticket });
@@ -2845,15 +2859,18 @@ app.post('/api/support/tickets', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/support/tickets/:id/message', requireAuth, async (req, res) => {
+app.post(['/api/support/tickets/:id/message', '/api/support/tickets/:id/messages'], requireAuth, async (req, res) => {
   try {
     const existing = await db.findSupportTicketById(req.params.id);
     if (!existing || String(existing.userId) !== String(req.user._id)) {
       return res.status(404).json({ error: 'Support ticket not found.' });
     }
     const text = String(req.body.text || '').trim().slice(0, 1000);
-    if (!text) return res.status(400).json({ error: 'Message cannot be empty.' });
-    const updated = await db.addSupportMessage(req.params.id, 'user', text);
+    const imageData = sanitizeSupportImageData(req.body.imageData);
+    if (!text && !imageData) {
+      return res.status(400).json({ error: 'Message text or image attachment is required.' });
+    }
+    const updated = await db.addSupportMessage(req.params.id, 'user', text, imageData);
     io.to('admins').emit('support:ticket_updated', updated);
     emitToUser(req.user._id, 'support:ticket_updated', updated);
     res.json({ ticket: updated });
@@ -3472,8 +3489,11 @@ app.get('/api/admin/support/tickets', requireAdmin, async (req, res) => {
 app.post('/api/admin/support/tickets/:id/reply', requireAdmin, async (req, res) => {
   try {
     const text = String(req.body.text || '').trim().slice(0, 1000);
-    if (!text) return res.status(400).json({ error: 'Reply text is required.' });
-    const updated = await db.addSupportMessage(req.params.id, 'admin', text);
+    const imageData = sanitizeSupportImageData(req.body.imageData);
+    if (!text && !imageData) {
+      return res.status(400).json({ error: 'Reply text or image attachment is required.' });
+    }
+    const updated = await db.addSupportMessage(req.params.id, 'admin', text, imageData);
     if (!updated) return res.status(404).json({ error: 'Ticket not found.' });
     emitToUser(updated.userId, 'support:ticket_updated', updated);
     io.to('admins').emit('support:ticket_updated', updated);

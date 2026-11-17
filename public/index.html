@@ -44,22 +44,8 @@
         <span>SkyWing</span>
       </a>
 
-      <nav class="nav-links" aria-label="Primary Navigation">
-        <button type="button" class="nav-link" id="openHowToBtn">How to Play</button>
-        <button type="button" class="nav-link" id="openFairBtn">Provably Fair</button>
-        <button type="button" class="nav-link" id="openRewardsNavBtn">VIP &amp; Rewards</button>
-        <button type="button" class="nav-link" id="openSupportNavBtn">Live Support</button>
-        <button type="button" class="nav-link" id="openChannelBtn">Official Channel</button>
-      </nav>
-
       <div class="header-actions">
         <div id="headerGameControls" class="header-game-controls hidden">
-          <!-- Fun Mode / Real Money PKR Switcher -->
-          <div class="mode-switcher" role="group" aria-label="Currency Mode Switcher">
-            <button type="button" class="mode-btn active-fun" id="modeFunBtn">Fun (FC)</button>
-            <button type="button" class="mode-btn" id="modeRealBtn">Real (PKR)</button>
-          </div>
-
           <div class="wallet-box" title="Active Wallet Balance">
             <span class="wallet-balance tabular-nums" id="walletBalanceDisplay">0.00 FC</span>
             <span class="wallet-label" id="walletModeLabel">Fun Credits</span>
@@ -67,102 +53,57 @@
 
           <button
             type="button"
-            class="btn btn-install"
-            id="installAppBtn"
-            title="Install SkyWing Mobile App"
+            class="btn btn-emerald header-compact-btn"
+            id="headerDepositBtn"
+            title="Deposit Real Money (PKR)"
           >
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
+            + Deposit
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-share-compact header-compact-btn"
+            id="shareHeaderBtn"
+            title="Share Referral Link &amp; Earn Up to 15% Commission"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
             </svg>
-            <span class="install-label">Install App</span>
+            <span>Share (15%)</span>
           </button>
 
           <button
             type="button"
-            class="sound-toggle-btn active"
-            id="soundToggleBtn"
-            title="Toggle Game Audio"
-            aria-label="Toggle Game Audio"
-            aria-pressed="true"
+            class="btn btn-secondary header-compact-btn"
+            id="headerHelpBtn"
+            title="Help, Rules &amp; Live Support"
           >
-            <svg
-              id="soundOnIcon"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-            </svg>
-            <svg
-              id="soundOffIcon"
-              class="hidden"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-              <line x1="23" y1="9" x2="17" y2="15" />
-              <line x1="17" y1="9" x2="23" y2="15" />
-            </svg>
-            <span class="sound-eq" aria-hidden="true">
-              <span></span><span></span><span></span>
-            </span>
-            <span class="sound-label" id="soundStatusLabel">SFX On</span>
-          </button>
-
-          <button
-            type="button"
-            class="btn btn-secondary"
-            id="openAudioDrawerBtn"
-            title="Audio & Soundtrack Preferences"
-            aria-label="Audio Preferences"
-            style="padding: 7px 10px; font-size: 0.78rem;"
-          >
-            Audio
-          </button>
-
-          <button
-            type="button"
-            class="btn btn-secondary"
-            id="openRewardsTopBtn"
-            title="VIP Tiers, Daily Login & Referral Rewards"
-            style="padding: 7px 10px; font-size: 0.78rem; color: #fde047;"
-          >
-            VIP
-          </button>
-
-          <button
-            type="button"
-            class="btn btn-secondary"
-            id="openSupportTopBtn"
-            title="In-App Live Support Chat"
-            style="padding: 7px 10px; font-size: 0.78rem; color: #7dd3fc;"
-          >
-            Support
+            Help
           </button>
         </div>
 
-        <button type="button" class="btn btn-primary" id="authTriggerBtn">Log In / Join</button>
+        <button type="button" class="btn btn-primary header-user-btn" id="authTriggerBtn" title="Account Profile &amp; Settings">
+          Log In / Join
+        </button>
+
+        <button
+          type="button"
+          class="btn btn-logout-ghost hidden"
+          id="headerLogoutBtn"
+          title="Log Out"
+          aria-label="Log Out"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          <span class="logout-btn-label">Log Out</span>
+        </button>
       </div>
     </header>
 
@@ -181,26 +122,29 @@
         <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;" id="maintenanceMessage">
           Platform is undergoing scheduled maintenance. Please check back shortly.
         </p>
-        <a
-          id="maintenanceSupportLink"
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="btn btn-whatsapp"
-          style="width: 100%; padding: 11px 16px;"
-        >
-          Contact Official Support
-        </a>
+        <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">
+          In-App Live Support Desk inside your Profile Drawer is available once servers resume.
+        </p>
       </div>
     </div>
 
-    <!-- Auth-First Entry Gate (Shown to Unauthenticated Visitors Before Entering Lobby) -->
+    <!-- Clean Unauthenticated Landing Gate (Zero Background Canvases & Zero Audio Until Login) -->
     <section id="authEntryGate" class="auth-entry-gate hidden" aria-label="Player Authentication Entry">
       <div class="auth-gate-card">
-        <div class="auth-gate-badge">SKYWING ARENA · PAKISTAN</div>
-        <h1 class="auth-gate-title">Sign In to Enter the Live SkyWing Arena</h1>
+        <div class="auth-gate-brand-emblem" aria-hidden="true">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 7h.01" />
+            <path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20" />
+            <path d="m20 7 2 .5-2 .5" />
+            <path d="M10 18v3" />
+            <path d="M14 17.75V21" />
+            <path d="M7 18a6 6 0 0 0 3.84-10.61" />
+          </svg>
+        </div>
+        <div class="auth-gate-badge">SKYWING CRASH</div>
+        <h1 class="auth-gate-title">Welcome to SkyWing Arena</h1>
         <p class="auth-gate-sub">
-          Access SkyWing Crash, Cyber Plinko, and Golden Mines with instant Fun Mode (FC) practice credits and Real Money (PKR) wallets. Log in or register in seconds.
+          Log in or create an account to access the Game Lobby, dual Fun &amp; Real wallets, and provably fair live rounds.
         </p>
 
         <div class="auth-gate-actions">
@@ -211,134 +155,97 @@
             Create Account (18+)
           </button>
         </div>
-
-        <div class="auth-gate-features">
-          <div class="auth-gate-feat">
-            <strong>3 Live Arcade Games</strong>
-            <span>SkyWing Crash, Cyber Plinko &amp; Golden Mines unified under one wallet.</span>
-          </div>
-          <div class="auth-gate-feat">
-            <strong>Dual FC &amp; PKR Wallets</strong>
-            <span>Practice risk-free in Fun Mode or play Real PKR with dynamic QR deposits.</span>
-          </div>
-          <div class="auth-gate-feat">
-            <strong>Provably Fair Engine</strong>
-            <span>Real-time SHA-256 commit &amp; reveal seeds for every multiplier round.</span>
-          </div>
-        </div>
       </div>
     </section>
 
     <main id="mainGameShell" class="app-shell hidden">
-      <!-- Currency Mode Notice & Real Wallet Deposit/Withdraw Bar -->
-      <div class="fc-notice-bar">
-        <div class="fc-notice-left">
-          <div id="funModeNotice">
-            <strong style="color: var(--accent-gold-bright);">Fun Mode (FC)</strong>
-            <span>— Non-Withdrawable Virtual Points for Practice & Entertainment.</span>
-          </div>
-          <div id="realModeNotice" class="hidden">
-            <strong style="color: #34d399;">Real Money Mode (PKR)</strong>
-            <span>— EasyPaisa, JazzCash & Pakistani E-Wallet / Bank QR Deposits.</span>
+      <!-- Compact Top Utility Strip (Wallet Switcher + Withdraw + Live Account Status) -->
+      <div class="compact-utility-bar">
+        <div class="utility-left">
+          <div class="mode-switcher" role="group" aria-label="Currency Mode Switcher">
+            <button type="button" class="mode-btn active-fun" id="modeFunBtn">Fun (FC)</button>
+            <button type="button" class="mode-btn" id="modeRealBtn">Real (PKR)</button>
           </div>
           <div id="realWalletActions" class="real-wallet-actions hidden">
-            <button type="button" class="btn btn-emerald" id="openDepositBtn" style="padding: 5px 12px; font-size: 0.78rem;">
-              + Deposit PKR
-            </button>
-            <button type="button" class="btn btn-secondary" id="openWithdrawBtn" style="padding: 5px 12px; font-size: 0.78rem;">
+            <button type="button" class="btn btn-secondary btn-xs" id="openWithdrawBtn">
               Withdraw PKR
             </button>
           </div>
         </div>
-        <div class="fc-notice-right tabular-nums">
+        <div class="utility-right tabular-nums">
           <span id="onlinePlayersCount">1 Online</span>
           <span aria-hidden="true">·</span>
-          <span id="userAccountLabel">Guest Mode</span>
+          <span id="userAccountLabel" class="account-clean-label">Player</span>
         </div>
       </div>
 
-      <!-- Share & Earn Referral Promo Banner (Visible When Logged In) -->
-      <div id="officialAppBanner" class="apk-promo-banner hidden" role="region" aria-label="Share and Earn Referral Commission">
-        <div class="apk-promo-content">
-          <span class="apk-promo-icon" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="18" cy="5" r="3" />
-              <circle cx="6" cy="12" r="3" />
-              <circle cx="18" cy="19" r="3" />
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-            </svg>
-          </span>
-          <div class="apk-promo-text">
-            <strong>Share App &amp; Earn Commission Up to 15%!</strong>
-            <span>Invite friends with your referral link and earn up to 15% commission credited to your Real PKR wallet.</span>
+      <!-- Post-Login Visual Game Lobby (Click Card to Launch Arena) -->
+      <section class="game-lobby-section" id="gameLobbySection" aria-label="Game Lobby">
+        <div class="lobby-section-head">
+          <div>
+            <h1 class="lobby-heading">Game Lobby</h1>
+            <p class="lobby-subheading">Select an arcade arena below to start playing</p>
           </div>
         </div>
-        <button type="button" class="btn btn-primary apk-promo-btn" id="shareEarnBannerBtn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-            <polyline points="16 6 12 2 8 6" />
-            <line x1="12" y1="2" x2="12" y2="15" />
-          </svg>
-          <span>Share &amp; Earn</span>
-        </button>
-      </div>
 
-      <!-- Withdrawal Operating Hours Banner (Shown when restricted & outside 9AM-5PM) -->
-      <div id="withdrawalHoursBanner" class="hours-warning-banner hidden" role="status">
-        <div>
-          <strong style="color: #fbbf24;">Withdrawal Window Notice:</strong>
-          <span id="withdrawalHoursBannerText">Withdrawals are only open from 9:00 AM to 5:00 PM.</span>
-        </div>
-        <span class="tabular-nums" id="withdrawalHoursWindowTag" style="font-weight: 700; font-size: 0.78rem;">09:00 – 17:00</span>
-      </div>
-
-      <!-- Multi-Game Lobby Switcher Carousel -->
-      <section class="game-lobby-bar" id="gameLobbyBar" aria-label="Game Lobby">
-        <button type="button" class="game-lobby-card active" data-game="skywing-crash">
-          <div class="game-lobby-meta">
-            <span class="game-lobby-icon" aria-hidden="true">✈</span>
-            <div>
+        <div class="game-lobby-grid" id="gameLobbyBar">
+          <button type="button" class="game-lobby-card" data-game="skywing-crash">
+            <div class="lobby-art-wrap">
+              <img src="/images/crash-cover.jpg" class="lobby-card-art" alt="SkyWing Crash Artwork" />
+              <span class="game-lobby-badge" data-game-badge="skywing-crash">LIVE</span>
+            </div>
+            <div class="lobby-card-body">
               <div class="game-lobby-title">SkyWing Crash</div>
-              <div class="game-lobby-sub">Multiplayer Aviator</div>
+              <div class="game-lobby-sub">Multiplayer multiplier flight with dual cashout panels.</div>
+              <span class="lobby-play-cta">Launch Arena →</span>
             </div>
-          </div>
-          <span class="game-lobby-badge" data-game-badge="skywing-crash">LIVE</span>
-        </button>
+          </button>
 
-        <button type="button" class="game-lobby-card" data-game="cyber-plinko">
-          <div class="game-lobby-meta">
-            <span class="game-lobby-icon" aria-hidden="true">◎</span>
-            <div>
+          <button type="button" class="game-lobby-card" data-game="cyber-plinko">
+            <div class="lobby-art-wrap">
+              <img src="/images/plinko-cover.jpg" class="lobby-card-art" alt="Cyber Plinko Artwork" />
+              <span class="game-lobby-badge" data-game-badge="cyber-plinko">LIVE</span>
+            </div>
+            <div class="lobby-card-body">
               <div class="game-lobby-title">Cyber Plinko</div>
-              <div class="game-lobby-sub">Up to 29x Drop</div>
+              <div class="game-lobby-sub">8-row cryptographic peg drop with up to 29x pockets.</div>
+              <span class="lobby-play-cta">Launch Arena →</span>
             </div>
-          </div>
-          <span class="game-lobby-badge" data-game-badge="cyber-plinko">LIVE</span>
-        </button>
+          </button>
 
-        <button type="button" class="game-lobby-card" data-game="golden-mines">
-          <div class="game-lobby-meta">
-            <span class="game-lobby-icon" aria-hidden="true">◆</span>
-            <div>
+          <button type="button" class="game-lobby-card" data-game="golden-mines">
+            <div class="lobby-art-wrap">
+              <img src="/images/mines-cover.jpg" class="lobby-card-art" alt="Golden Mines Artwork" />
+              <span class="game-lobby-badge" data-game-badge="golden-mines">LIVE</span>
+            </div>
+            <div class="lobby-card-body">
               <div class="game-lobby-title">Golden Mines</div>
-              <div class="game-lobby-sub">5x5 Diamond Grid</div>
+              <div class="game-lobby-sub">5x5 diamond vault grid with instant cashout control.</div>
+              <span class="lobby-play-cta">Launch Arena →</span>
             </div>
-          </div>
-          <span class="game-lobby-badge" data-game-badge="golden-mines">LIVE</span>
-        </button>
-      </section>
-
-      <!-- Last 15 Round Multiplier History (Isolated Per Active Game) -->
-      <section class="history-strip" aria-label="Recent Multipliers">
-        <span class="history-label" id="historyLabel">Last 15 Flights</span>
-        <div class="history-items" id="historyList">
-          <span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for flight history...</span>
+          </button>
         </div>
       </section>
 
-      <!-- Main Game Workspace -->
-      <section class="game-grid">
+      <!-- Active Selected Game Workspace (Revealed Only Upon Clicking a Game Card) -->
+      <div id="activeGameWorkspace" class="active-game-workspace hidden">
+        <div class="arena-nav-bar" id="arenaNavBar">
+          <button type="button" class="btn btn-secondary back-lobby-btn" id="backToLobbyBtn">
+            ← Back to Games Lobby
+          </button>
+          <span class="active-arena-title" id="activeArenaTitle">SkyWing Crash</span>
+        </div>
+
+        <!-- Last 15 Round Multiplier History (Isolated Per Active Game) -->
+        <section class="history-strip" aria-label="Recent Multipliers">
+          <span class="history-label" id="historyLabel">Last 15 Flights</span>
+          <div class="history-items" id="historyList">
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for flight history...</span>
+          </div>
+        </section>
+
+        <!-- Main Game Workspace -->
+        <section class="game-grid">
         <div class="arena-column">
           <div id="crashArenaContainer" style="display: flex; flex-direction: column; gap: 12px;">
           <!-- Flight Canvas -->
@@ -654,19 +561,18 @@
           </div>
         </aside>
       </section>
+      </div>
     </main>
 
     <!-- Footer -->
     <footer id="siteFooter" class="site-footer hidden">
       <div>
-        <span>SkyWing Crash</span>
+        <span>SkyWing</span>
         <span aria-hidden="true"> · </span>
-        <span>Dual Wallet: Fun Mode (FC) & Real Money (PKR).</span>
+        <span>18+ Responsible Play</span>
       </div>
       <div class="footer-links">
-        <button type="button" class="footer-link" id="footerChannelBtn">WhatsApp &amp; Telegram</button>
-        <button type="button" class="footer-link" id="footerFairBtn">Provably Fair</button>
-        <button type="button" class="footer-link" id="footerHowToBtn">Rules</button>
+        <button type="button" class="footer-link" id="footerHelpBtn">Help, Rules &amp; Support</button>
         <a href="/admin" class="secret-admin-trigger" title="Operations Console">·</a>
       </div>
     </footer>
@@ -683,7 +589,7 @@
     >
       <div class="modal-card">
         <div class="modal-header">
-          <h2 class="modal-title" id="authModalTitle">Player Account (Pakistan)</h2>
+          <h2 class="modal-title" id="authModalTitle">Player Account</h2>
           <button type="button" class="modal-close" data-close="authModal" aria-label="Close">×</button>
         </div>
 
@@ -800,83 +706,164 @@
     </div>
 
     <!-- ======================================================================
-         Account Profile Modal (VIP Tier, Referral Link & Dual Wallet)
+         Dedicated Slide-Over User Profile & Settings Drawer
          ====================================================================== -->
-    <div class="modal-backdrop" id="profileModal" role="dialog" aria-modal="true">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h2 class="modal-title">Player Wallet &amp; Profile</h2>
-          <button type="button" class="modal-close" data-close="profileModal" aria-label="Close">×</button>
-        </div>
-
-        <div class="vip-banner-card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="vip-tier-pill" id="profileVipBadge">Bronze VIP</span>
-            <span class="tabular-nums" style="font-size: 0.78rem; color: var(--text-secondary);" id="profileVipCashback">5% Weekly Cashback</span>
-          </div>
-          <div class="referral-code-box">
+    <div class="modal-backdrop drawer-backdrop" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileDrawerTitle">
+      <div class="drawer-panel">
+        <div class="drawer-header">
+          <div class="drawer-user-identity">
+            <span class="drawer-avatar" id="profileAvatarInitial" aria-hidden="true">S</span>
             <div>
-              <div style="font-size: 0.7rem; color: var(--text-muted);">Invite Friends (15% 1st Deposit Bonus)</div>
-              <strong class="tabular-nums" style="font-size: 0.9rem; color: #34d399;" id="profileRefCode">---</strong>
+              <h2 class="drawer-title" id="profileDrawerTitle">Player Account</h2>
+              <div class="drawer-sub tabular-nums">
+                <span id="profileName">-</span>
+                <span aria-hidden="true"> · </span>
+                <span id="profilePhone">-</span>
+              </div>
             </div>
-            <button type="button" class="btn btn-emerald btn-xs" id="profileCopyRefBtn">Copy Invite Link</button>
           </div>
+          <button type="button" class="modal-close" data-close="profileModal" aria-label="Close Profile Drawer">×</button>
         </div>
 
-        <div
-          class="seed-box"
-          style="display: flex; flex-direction: column; gap: 7px; font-family: var(--font-body); font-size: 0.9rem;"
-        >
-          <div style="display: flex; justify-content: space-between;">
-            <span style="color: var(--text-muted);">Mobile</span>
-            <strong class="tabular-nums" id="profilePhone">-</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between;">
-            <span style="color: var(--text-muted);">Nickname</span>
-            <strong id="profileName">-</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between;">
-            <span style="color: var(--text-muted);">Fun Mode Balance</span>
-            <strong class="tabular-nums" style="color: var(--accent-gold-bright);" id="profileFunBalance">
-              0.00 FC
-            </strong>
-          </div>
-          <div style="display: flex; justify-content: space-between;">
-            <span style="color: var(--text-muted);">Real Money Balance</span>
-            <strong class="tabular-nums" style="color: #34d399;" id="profileRealBalance">
-              0.00 PKR
-            </strong>
-          </div>
-          <div style="display: flex; justify-content: space-between;">
-            <span style="color: var(--text-muted);">Total Deposited</span>
-            <span class="tabular-nums" id="profileDeposited">0.00 PKR</span>
-          </div>
-          <div style="display: flex; justify-content: space-between;">
-            <span style="color: var(--text-muted);">Total Withdrawn</span>
-            <span class="tabular-nums" id="profileWithdrawn">0.00 PKR</span>
-          </div>
-          <div style="display: flex; justify-content: space-between;">
-            <span style="color: var(--text-muted);">Referral Earnings</span>
-            <strong class="tabular-nums" style="color: #fbbf24;" id="profileRefEarnings">0.00 PKR</strong>
-          </div>
+        <div class="drawer-scroll-body">
+          <!-- Wallet & Rollover Card -->
+          <section class="drawer-section">
+            <div class="drawer-section-head">
+              <span class="drawer-section-title">Wallet &amp; Payouts</span>
+              <span class="tabular-nums drawer-meta-inline" id="profileRolloverStatus">1x Rollover Ready</span>
+            </div>
+            <div class="drawer-wallet-grid">
+              <div class="drawer-wallet-stat">
+                <span class="drawer-stat-label">Fun Credits</span>
+                <strong class="tabular-nums" style="color: var(--accent-gold-bright);" id="profileFunBalance">0.00 FC</strong>
+              </div>
+              <div class="drawer-wallet-stat">
+                <span class="drawer-stat-label">Real Money</span>
+                <strong class="tabular-nums" style="color: #34d399;" id="profileRealBalance">0.00 PKR</strong>
+              </div>
+            </div>
+            <div class="drawer-stat-rows tabular-nums">
+              <div><span>Total Deposited</span><span id="profileDeposited">0.00 PKR</span></div>
+              <div><span>Total Withdrawn</span><span id="profileWithdrawn">0.00 PKR</span></div>
+              <div><span>Saved Payout Accounts</span><span id="profileSavedPayoutCount">0 Saved</span></div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button type="button" class="btn btn-emerald" id="profileDepositBtn">+ Deposit PKR</button>
+              <button type="button" class="btn btn-secondary" id="profileWithdrawBtn">Withdraw PKR</button>
+            </div>
+          </section>
+
+          <!-- VIP Loyalty & 15% Referral Program -->
+          <section class="drawer-section">
+            <div class="drawer-section-head">
+              <span class="drawer-section-title">VIP Tier &amp; 15% Commission</span>
+              <strong style="font-size: 0.78rem; color: var(--accent-gold-bright);" id="profileVipBadge">Bronze VIP</strong>
+            </div>
+            <div class="vip-progress-track">
+              <div class="vip-progress-fill" id="profileVipProgress" style="width: 0%;"></div>
+            </div>
+            <div class="drawer-stat-rows">
+              <span id="profileVipCashback" style="color: var(--text-secondary);">5% Weekly Cashback</span>
+              <span id="profileVipNextText" class="tabular-nums" style="color: var(--text-muted);">Silver at 5,000 PKR</span>
+            </div>
+            <div class="referral-code-box">
+              <div>
+                <div style="font-size: 0.7rem; color: var(--text-muted);">Referral Code · Earned: <strong class="tabular-nums" style="color:#fbbf24;" id="profileRefEarnings">0.00 PKR</strong></div>
+                <strong class="tabular-nums" style="font-size: 0.92rem; color: #34d399;" id="profileRefCode">---</strong>
+              </div>
+              <button type="button" class="btn btn-emerald btn-xs" id="profileCopyRefBtn">Copy Link</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button type="button" class="btn btn-share-compact" id="drawerShareBtn" style="font-size: 0.78rem; padding: 8px 10px;">
+                Share (15%)
+              </button>
+              <button type="button" class="btn btn-secondary" id="profileRewardsBtn">VIP &amp; Bonuses</button>
+            </div>
+          </section>
+
+          <!-- Personal Sound, Volume & BGM Preferences -->
+          <section class="drawer-section">
+            <div class="drawer-section-head">
+              <span class="drawer-section-title">Audio &amp; Soundtrack</span>
+              <button
+                type="button"
+                class="sound-toggle-btn active"
+                id="soundToggleBtn"
+                title="Toggle Master Game Audio"
+                aria-label="Toggle Master Game Audio"
+                aria-pressed="true"
+                style="height: 30px; padding: 0 9px; font-size: 0.74rem;"
+              >
+                <svg id="soundOnIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                </svg>
+                <svg id="soundOffIcon" class="hidden" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <line x1="23" y1="9" x2="17" y2="15" />
+                  <line x1="17" y1="9" x2="23" y2="15" />
+                </svg>
+                <span class="sound-eq" aria-hidden="true"><span></span><span></span><span></span></span>
+                <span id="soundStatusLabel">SFX On</span>
+              </button>
+            </div>
+
+            <div class="drawer-stat-rows" style="align-items: center;">
+              <span style="color: var(--text-secondary);">Background Music (BGM)</span>
+              <label class="toggle-label">
+                <span class="switch">
+                  <input type="checkbox" id="playerAudioBgm" checked />
+                  <span class="slider"></span>
+                </span>
+                <span id="playerAudioBgmLabel" style="font-size: 0.76rem; font-weight: 700;">ON</span>
+              </label>
+            </div>
+
+            <div class="form-group" style="gap: 4px;">
+              <label class="form-label" for="playerAudioPreset">Sound Engine Preset</label>
+              <select class="form-input" id="playerAudioPreset" style="padding: 8px 10px; font-size: 0.84rem;">
+                <option value="aviator-jet">Aviator Jet &amp; Propeller</option>
+                <option value="cyber-flight">Cyber Flight Synth</option>
+                <option value="casino-chime">High-Energy Casino Chime</option>
+                <option value="turbo-arcade">Turbo Arcade Pulse</option>
+                <option value="stealth-minimal">Minimal Pro</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="gap: 4px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.78rem;">
+                <label class="form-label" for="playerAudioVolume">Volume</label>
+                <strong class="tabular-nums" id="playerAudioVolVal" style="color: #38bdf8;">75%</strong>
+              </div>
+              <input type="range" id="playerAudioVolume" min="0" max="100" step="1" value="75" style="width: 100%; accent-color: #f59e0b;" />
+            </div>
+
+            <button type="button" class="btn btn-secondary btn-xs" id="playerAudioResetBtn" style="align-self: flex-start;">
+              Sync Server Audio Defaults
+            </button>
+          </section>
+
+          <!-- Help, Provably Fair & Utilities -->
+          <section class="drawer-section">
+            <span class="drawer-section-title">Support &amp; Utilities</span>
+            <button type="button" class="btn btn-emerald" id="profileSupportBtn" style="width: 100%; justify-content: center;">
+              Open Live In-App Support Desk
+            </button>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button type="button" class="btn btn-secondary" id="drawerFairBtn">Provably Fair</button>
+              <button type="button" class="btn btn-secondary" id="drawerHowToBtn">How to Play</button>
+            </div>
+            <button type="button" class="btn btn-install" id="installAppBtn" style="width: 100%;">
+              Install SkyWing Mobile App
+            </button>
+          </section>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <button type="button" class="btn btn-emerald" id="profileDepositBtn">+ Deposit PKR</button>
-          <button type="button" class="btn btn-secondary" id="profileWithdrawBtn">Withdraw PKR</button>
+        <div class="drawer-footer">
+          <button type="button" class="btn btn-danger" id="logoutBtn" style="width: 100%;">
+            Log Out
+          </button>
         </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <button type="button" class="btn btn-secondary" id="profileRewardsBtn">VIP &amp; Rewards</button>
-          <button type="button" class="btn btn-secondary" id="profileSupportBtn">Live Support</button>
-        </div>
-
-        <button type="button" class="btn btn-secondary" id="profileChannelBtn" style="width: 100%;">
-          Follow Official WhatsApp Channel
-        </button>
-        <button type="button" class="btn btn-danger" id="logoutBtn" style="width: 100%;">
-          Log Out
-        </button>
       </div>
     </div>
 
@@ -1156,58 +1143,7 @@
       </div>
     </div>
 
-    <!-- ======================================================================
-         Official Channels & Support Modal (WhatsApp + Telegram + Help)
-         ====================================================================== -->
-    <div class="modal-backdrop" id="channelModal" role="dialog" aria-modal="true">
-      <div class="modal-card" style="text-align: center;">
-        <div class="modal-header">
-          <h2 class="modal-title" style="margin: 0 auto;">Official Channels &amp; Support</h2>
-          <button type="button" class="modal-close" data-close="channelModal" aria-label="Close">×</button>
-        </div>
-
-        <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
-          Join our official channels for flight events, bonus drops, and instant helpline assistance.
-        </p>
-
-        <a
-          id="whatsappChannelDirectLink"
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="btn btn-whatsapp"
-          style="width: 100%; padding: 12px 16px; font-size: 0.94rem;"
-        >
-          Open Official WhatsApp Channel
-        </a>
-
-        <a
-          id="telegramChannelDirectLink"
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="btn btn-telegram"
-          style="width: 100%; padding: 12px 16px; font-size: 0.94rem;"
-        >
-          Join Official Telegram Channel
-        </a>
-
-        <a
-          id="whatsappSupportDirectLink"
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="btn btn-secondary"
-          style="width: 100%; padding: 11px 16px; font-size: 0.9rem;"
-        >
-          WhatsApp Support / Helpline
-        </a>
-
-        <button type="button" class="btn btn-secondary" data-close="channelModal" style="width: 100%;">
-          Continue to Game
-        </button>
-      </div>
-    </div>
+    <!-- Channel Modal removed: Built-in Live In-App Support Desk handles all customer care -->
 
     <!-- ======================================================================
          Provably Fair Modal
@@ -1277,26 +1213,43 @@
     </div>
 
     <!-- ======================================================================
-         How To Play Modal
+         Consolidated Help, Rules & Support Center Modal
          ====================================================================== -->
     <div class="modal-backdrop" id="howToModal" role="dialog" aria-modal="true">
-      <div class="modal-card">
+      <div class="modal-card wide">
         <div class="modal-header">
-          <h2 class="modal-title">How to Play SkyWing</h2>
+          <h2 class="modal-title">Help, Rules &amp; Support Center</h2>
           <button type="button" class="modal-close" data-close="howToModal" aria-label="Close">×</button>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 12px; color: var(--text-secondary); font-size: 0.9rem;">
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 8px;">
+          <button type="button" class="btn btn-emerald" id="helpOpenSupportBtn">
+            Live In-App Support Desk
+          </button>
+          <button type="button" class="btn btn-secondary" id="helpOpenFairBtn">
+            Provably Fair Verifier
+          </button>
+          <button type="button" class="btn btn-secondary" id="helpOpenTermsBtn">
+            Terms &amp; 18+ Policy
+          </button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; color: var(--text-secondary); font-size: 0.88rem; line-height: 1.5;">
           <div>
-            <strong style="color: var(--text-primary);">1. Choose Fun Mode (FC) or Real Mode (PKR)</strong>
-            <p style="margin: 4px 0 0;">Use the top switcher anytime. Fun Credits are free virtual points for practice; Real Mode uses your Pakistani Rupee balance funded via EasyPaisa, JazzCash, or Bank.</p>
+            <strong style="color: var(--text-primary);">1. Game Lobby &amp; Arenas</strong>
+            <p style="margin: 4px 0 0;">Launch <strong>SkyWing Crash</strong> (dual betting panels &amp; real-time cashout), <strong>Cyber Plinko</strong> (8-row cryptographic peg drop up to 29x), or <strong>Golden Mines</strong> (5x5 diamond vault grid) directly from your Game Lobby.</p>
           </div>
           <div>
-            <strong style="color: var(--text-primary);">2. Place One or Two Side-by-Side Bets</strong>
-            <p style="margin: 4px 0 0;">During the 5-second countdown, place bets on Bet 1 and/or Bet 2. Auto Cashout is OFF by default — turn it ON only if you want automatic cashout at a target multiplier.</p>
+            <strong style="color: var(--text-primary);">2. Fun Mode (FC) &amp; Real Money (PKR) Wallets</strong>
+            <p style="margin: 4px 0 0;">Switch anytime between risk-free Fun Credits (FC) and Real PKR. Use <strong>+ Deposit</strong> in the header for dynamic QR deposits (EasyPaisa, JazzCash &amp; Bank) and <strong>Withdraw PKR</strong> once the 1x rollover requirement is met (standard payout window: <span id="helpWithdrawHoursText">09:00 – 17:00</span>).</p>
           </div>
           <div>
-            <strong style="color: var(--text-primary);">3. Cash Out Before the Bird Flies Away</strong>
-            <p style="margin: 4px 0 0;">Watch the multiplier climb from 1.00x. Tap Cash Out before the bird bursts to lock in your winnings.</p>
+            <strong style="color: var(--text-primary);">3. Share &amp; Earn 15% Commission</strong>
+            <p style="margin: 4px 0 0;">Use the <strong>Share (15%)</strong> button in the header bar or Profile Drawer to copy your referral link and earn 15% bonus commission on referred deposits.</p>
+          </div>
+          <div>
+            <strong style="color: var(--text-primary);">4. Support &amp; Fairness Verification</strong>
+            <p style="margin: 4px 0 0;">Need assistance with a deposit TID or withdrawal? Open the <strong>Live In-App Support Desk</strong> above to message Support with optional payment screenshots. Every multiplier round can be verified via SHA-256 commit &amp; reveal.</p>
           </div>
         </div>
       </div>
@@ -1348,54 +1301,7 @@
     </div>
 
     <!-- ======================================================================
-         Player Local Audio & Soundtrack Drawer Modal
-         ====================================================================== -->
-    <div class="modal-backdrop" id="audioModal" role="dialog" aria-modal="true">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h2 class="modal-title">Audio &amp; Soundtrack Settings</h2>
-          <button type="button" class="modal-close" data-close="audioModal" aria-label="Close">×</button>
-        </div>
-
-        <div class="pay-config-box">
-          <div class="modal-header">
-            <strong style="color: var(--accent-gold-bright);">Background Music (BGM)</strong>
-            <label class="toggle-label">
-              <span class="switch">
-                <input type="checkbox" id="playerAudioBgm" checked />
-                <span class="slider"></span>
-              </span>
-              <span id="playerAudioBgmLabel">ON</span>
-            </label>
-          </div>
-          <span class="form-hint">Saved locally on your device. Master mute button in top bar still overrides immediately.</span>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="playerAudioPreset">Sound Engine Preset</label>
-          <select class="form-input" id="playerAudioPreset">
-            <option value="aviator-jet">Aviator Jet &amp; Propeller</option>
-            <option value="cyber-flight">Cyber Flight Synth</option>
-            <option value="casino-chime">High-Energy Casino Chime</option>
-            <option value="turbo-arcade">Turbo Arcade Pulse</option>
-            <option value="stealth-minimal">Minimal Pro</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <div style="display: flex; justify-content: space-between;">
-            <label class="form-label" for="playerAudioVolume">Local Volume</label>
-            <strong class="tabular-nums" id="playerAudioVolVal" style="color: #38bdf8;">75%</strong>
-          </div>
-          <input type="range" id="playerAudioVolume" min="0" max="100" step="1" value="75" style="width: 100%; accent-color: #f59e0b;" />
-        </div>
-
-        <button type="button" class="btn btn-secondary" id="playerAudioResetBtn">Sync with Global Server Defaults</button>
-      </div>
-    </div>
-
-    <!-- ======================================================================
-         In-App Live Support Ticket Chat Modal
+         In-App Live Support Ticket Chat Modal (Image Attachments Enabled)
          ====================================================================== -->
     <div class="modal-backdrop" id="supportModal" role="dialog" aria-modal="true">
       <div class="modal-card wide">
@@ -1415,8 +1321,19 @@
           <div style="display: flex; flex-direction: column; gap: 8px;">
             <form id="newTicketForm" class="form-group hidden" style="gap: 8px;">
               <input type="text" class="form-input" id="newTicketSubject" placeholder="Subject (e.g. Deposit Delay / Withdrawal Help)" maxlength="120" required />
-              <textarea class="form-input" id="newTicketText" rows="3" placeholder="Describe your issue..." maxlength="1000" required></textarea>
-              <button type="submit" class="btn btn-primary">Send Support Ticket</button>
+              <textarea class="form-input" id="newTicketText" rows="3" placeholder="Describe your issue (or attach a screenshot below)..." maxlength="1000"></textarea>
+              <div id="newTicketImgPreviewWrap" class="chat-attach-preview hidden">
+                <img id="newTicketImgPreview" alt="Ticket attachment preview" />
+                <span style="font-size: 0.75rem; color: var(--text-secondary);">Screenshot ready</span>
+                <button type="button" class="btn btn-danger btn-xs" id="newTicketClearImgBtn">Remove</button>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="file" id="newTicketImage" accept="image/*" class="hidden" />
+                <button type="button" class="btn btn-secondary btn-xs" id="newTicketAttachBtn">
+                  Attach Screenshot
+                </button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Send Support Ticket</button>
+              </div>
             </form>
 
             <div id="activeTicketPane" style="display: flex; flex-direction: column;">
@@ -1427,12 +1344,44 @@
               <div class="chat-thread" id="userChatThread">
                 <span class="form-hint">Real-time chat messages with Admin Support appear here.</span>
               </div>
-              <form id="userChatReplyForm" class="chat-compose-row hidden">
-                <input type="text" class="form-input" id="userChatReplyInput" placeholder="Write a message..." maxlength="1000" required />
-                <button type="submit" class="btn btn-emerald">Send</button>
+              <form id="userChatReplyForm" class="hidden" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+                <div id="userChatImgPreviewWrap" class="chat-attach-preview hidden">
+                  <img id="userChatImgPreview" alt="Reply attachment preview" />
+                  <span style="font-size: 0.75rem; color: var(--text-secondary);">Screenshot attached</span>
+                  <button type="button" class="btn btn-danger btn-xs" id="userChatClearImgBtn">Remove</button>
+                </div>
+                <div class="chat-compose-row" style="margin-top: 0;">
+                  <input type="file" id="userChatImage" accept="image/*" class="hidden" />
+                  <button type="button" class="btn btn-secondary chat-attach-btn" id="userChatAttachBtn" title="Attach screenshot or receipt">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                  </button>
+                  <input type="text" class="form-input" id="userChatReplyInput" placeholder="Write a message or attach image..." maxlength="1000" />
+                  <button type="submit" class="btn btn-emerald">Send</button>
+                </div>
               </form>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full-Size Chat Image Lightbox Modal -->
+    <div class="modal-backdrop" id="chatImageLightboxModal" role="dialog" aria-modal="true" style="z-index: 140;">
+      <div class="modal-card wide">
+        <div class="modal-header">
+          <h2 class="modal-title" id="chatLightboxTitle">Support Attachment</h2>
+          <button type="button" class="modal-close" data-close="chatImageLightboxModal" aria-label="Close">×</button>
+        </div>
+        <div style="text-align: center;">
+          <img
+            id="chatLightboxImg"
+            alt="Full support attachment"
+            style="max-width: 100%; max-height: 70vh; border-radius: 10px; border: 1px solid var(--border-strong); object-fit: contain;"
+          />
         </div>
       </div>
     </div>
