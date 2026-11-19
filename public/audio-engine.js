@@ -28,6 +28,15 @@
       this.bgmRunning = false;
       this.lastFlapAt = 0;
       this.lastTickMult = 1.0;
+      this.activeGame = null;
+    }
+
+    setActiveGame(gameId) {
+      const next = gameId || null;
+      if (this.activeGame !== next && next !== 'skywing-crash') {
+        this.stopTension();
+      }
+      this.activeGame = next;
     }
 
     ensureContext() {
@@ -319,7 +328,7 @@
 
     // Crisp Tension Tick as Multiplier Climbs
     playTensionTick(mult = 1.0) {
-      if (this.muted || this.locked) return;
+      if (this.muted || this.locked || this.activeGame !== 'skywing-crash') return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
@@ -330,7 +339,7 @@
     }
 
     playWingFlap() {
-      if (this.muted || this.locked) return;
+      if (this.muted || this.locked || this.activeGame !== 'skywing-crash') return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
@@ -376,7 +385,7 @@
 
     // Rising Jet Turbine / Propeller Acceleration Pitch + Air Rush
     startTension() {
-      if (this.muted || this.locked) return;
+      if (this.muted || this.locked || this.activeGame !== 'skywing-crash') return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
@@ -450,7 +459,10 @@
     }
 
     updateTension(mult) {
-      if (!this.tensionOsc || !this.ctx || this.muted || this.locked) return;
+      if (!this.tensionOsc || !this.ctx || this.muted || this.locked || this.activeGame !== 'skywing-crash') {
+        if (this.activeGame !== 'skywing-crash' && this.tensionOsc) this.stopTension();
+        return;
+      }
       const t = this.ctx.currentTime;
       const baseFreq = Math.min(820, 140 + (mult - 1) * 52);
       const cutoff = Math.min(3400, 440 + (mult - 1) * 260);
@@ -593,6 +605,142 @@
 
       [1560, 2090, 1240].forEach((freq, idx) => {
         this.playTone(freq, 'triangle', t + idx * 0.025, 0.14, 0.055);
+      });
+    }
+
+    // ========================================================================
+    // Game-Specific Arcade SFX (Plinko, Golden Mines, Cyber Dice)
+    // ========================================================================
+    playPlinkoBounce() {
+      if (this.muted || this.locked || this.activeGame !== 'cyber-plinko') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      const pitch = 680 + Math.random() * 240;
+      this.playTone(pitch, 'sine', t, 0.055, 0.06);
+      this.playTone(pitch * 1.5, 'triangle', t, 0.03, 0.02);
+    }
+
+    playPlinkoBucket(mult = 1) {
+      if (this.muted || this.locked || this.activeGame !== 'cyber-plinko') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      if (mult >= 1.5) {
+        [587.33, 783.99, 1046.5].forEach((f, i) => {
+          this.playTone(f, 'sine', t + i * 0.04, 0.18, 0.09);
+        });
+      } else {
+        this.playTone(mult >= 1 ? 520 : 280, 'triangle', t, 0.14, 0.075);
+      }
+    }
+
+    playMinesTile() {
+      if (this.muted || this.locked || this.activeGame !== 'golden-mines') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      this.playTone(540, 'triangle', ctx.currentTime, 0.06, 0.065);
+    }
+
+    playMinesDiamond() {
+      if (this.muted || this.locked || this.activeGame !== 'golden-mines') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      this.playTone(880, 'sine', t, 0.14, 0.09);
+      this.playTone(1318.51, 'sine', t + 0.045, 0.18, 0.085);
+    }
+
+    playDiceRoll() {
+      if (this.muted || this.locked || this.activeGame !== 'cyber-dice') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      [340, 480, 410, 560].forEach((f, idx) => {
+        this.playTone(f, 'triangle', t + idx * 0.042, 0.05, 0.06);
+      });
+    }
+
+    playDiceWin() {
+      if (this.muted || this.locked || this.activeGame !== 'cyber-dice') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      [587.33, 880, 1174.66].forEach((f, idx) => {
+        this.playTone(f, 'sine', t + idx * 0.045, 0.22, 0.1);
+      });
+    }
+
+    playLimboLaunch() {
+      if (this.muted || this.locked || this.activeGame !== 'cyber-limbo') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(190, t);
+      osc.frequency.exponentialRampToValueAtTime(680, t + 0.18);
+      gain.gain.setValueAtTime(0.055, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      osc.connect(gain).connect(dest);
+      osc.start(t);
+      osc.stop(t + 0.21);
+    }
+
+    playCoinFlip() {
+      if (this.muted || this.locked || this.activeGame !== 'neon-flip') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      [1180, 1560, 1320, 1760].forEach((f, idx) => {
+        this.playTone(f, 'sine', t + idx * 0.06, 0.09, 0.065);
+      });
+    }
+
+    playWheelTick() {
+      if (this.muted || this.locked || this.activeGame !== 'lucky-wheel') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      this.playTone(880, 'triangle', ctx.currentTime, 0.035, 0.065);
+    }
+
+    playCardDeal() {
+      if (this.muted || this.locked || this.activeGame !== 'dragon-hilo') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      this.playTone(460, 'triangle', t, 0.055, 0.075);
+      this.playTone(720, 'sine', t + 0.045, 0.07, 0.05);
+    }
+
+    playSlotReel(step = 0) {
+      if (this.muted || this.locked || this.activeGame !== 'emerald-slots') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const freqs = [440, 554.37, 659.25];
+      this.playTone(freqs[step % freqs.length], 'square', ctx.currentTime, 0.05, 0.045, 1600);
+    }
+
+    playArcadeWin(gameId) {
+      if (this.muted || this.locked || this.activeGame !== gameId) return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+        this.playTone(f, 'sine', t + i * 0.042, 0.22, 0.095);
       });
     }
   }

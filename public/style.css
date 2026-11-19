@@ -38,7 +38,7 @@
 html {
   width: 100%;
   max-width: 100vw;
-  overflow-x: hidden;
+  overflow-x: clip;
   overflow-y: auto;
   touch-action: manipulation;
   -webkit-overflow-scrolling: touch;
@@ -50,16 +50,13 @@ body {
   width: 100%;
   max-width: 100vw;
   background-color: var(--bg-base);
-  background-image:
-    radial-gradient(ellipse 80% 45% at 50% -12%, rgba(245, 158, 11, 0.08), transparent),
-    radial-gradient(ellipse 60% 38% at 88% 8%, rgba(16, 185, 129, 0.05), transparent);
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-  overflow-x: hidden;
+  min-height: 100dvh;
+  overflow-x: clip;
   overflow-y: auto;
   touch-action: manipulation;
 }
@@ -568,7 +565,7 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Compact Top Utility Strip */
@@ -2917,24 +2914,26 @@ select:focus-visible {
 
 .qr-img-box {
   background: #ffffff;
-  padding: 10px;
+  padding: 14px;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  min-width: 196px;
-  min-height: 196px;
+  min-width: 248px;
+  min-height: 248px;
   display: grid;
   place-items: center;
 }
 
 .qr-img-box img {
   display: block;
-  width: 186px;
-  height: 186px;
+  width: 220px;
+  height: 220px;
+  image-rendering: pixelated;
+  border-radius: 4px;
 }
 
 .qr-placeholder-box {
-  width: 186px;
-  height: 186px;
+  width: 220px;
+  height: 220px;
   display: grid;
   place-items: center;
   padding: 14px;
@@ -3539,3 +3538,681 @@ select:focus-visible {
   gap: 8px;
   align-items: end;
 }
+
+/* ============================================================================
+   Top-of-Screen Sticky Separated Navigation Pane
+   ============================================================================ */
+.top-feature-pane {
+  position: sticky;
+  top: 62px;
+  z-index: 39;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  background: rgba(8, 13, 26, 0.96);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.44);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  max-width: 100%;
+}
+
+.top-feature-pane::-webkit-scrollbar {
+  display: none;
+}
+
+.feature-pane-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(148, 163, 184, 0.28);
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+.feature-pane-tab {
+  appearance: none;
+  border: 1px solid transparent;
+  background: rgba(15, 23, 42, 0.55);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+.feature-pane-tab:hover {
+  color: var(--text-primary);
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.feature-pane-tab.active {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.48);
+}
+
+.feature-pane-tab.is-new {
+  color: #38bdf8;
+}
+
+.feature-pane-tab.is-new.active {
+  background: rgba(56, 189, 248, 0.18);
+  color: #7dd3fc;
+  border-color: rgba(56, 189, 248, 0.48);
+}
+
+.feature-pane-tab.is-utility {
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.22);
+}
+
+.feature-pane-tab.is-utility:hover,
+.feature-pane-tab.is-utility.active {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fde68a;
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+/* ============================================================================
+   Cyber Dice Arena (4th Unified-Pool Arcade Game)
+   ============================================================================ */
+.dice-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  background: rgba(6, 9, 19, 0.85);
+  border: 1px solid var(--border-hairline);
+  border-radius: 14px;
+  padding: 18px 16px;
+}
+
+.dice-duel-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.cyber-die-box {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #0f172a, #090e1c);
+  border: 1.5px solid rgba(56, 189, 248, 0.45);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #7dd3fc;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, color 0.2s ease;
+}
+
+.cyber-die-box.rolling {
+  transform: rotate(12deg) scale(1.06);
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+
+.cyber-die-box.win {
+  border-color: #34d399;
+  color: #34d399;
+}
+
+.cyber-die-box.loss {
+  border-color: #f87171;
+  color: #f87171;
+}
+
+.dice-result-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.dice-roll-value {
+  font-family: var(--font-mono);
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.dice-roll-sub {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.dice-gauge-wrap {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dice-track {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.32);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  overflow: visible;
+}
+
+.dice-win-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.78), rgba(52, 211, 153, 0.92));
+  border-radius: 999px;
+  transition: left 0.14s ease, width 0.14s ease;
+}
+
+.dice-marker {
+  position: absolute;
+  top: -5px;
+  width: 6px;
+  height: 22px;
+  border-radius: 3px;
+  background: #fbbf24;
+  transform: translateX(-50%);
+  transition: left 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.85);
+}
+
+.dice-slider {
+  width: 100%;
+  accent-color: #38bdf8;
+  cursor: pointer;
+}
+
+.dice-metrics-bar {
+  width: 100%;
+  max-width: 480px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dice-metric-cell {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid var(--border-hairline);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+}
+
+.dice-metric-cell span {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.dice-metric-cell strong {
+  font-size: 0.92rem;
+  color: var(--text-primary);
+}
+
+/* ============================================================================
+   Play Mode Selector Popup (Fun FC vs Real PKR) & Password Reset Security Check
+   ============================================================================ */
+.play-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .play-mode-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.play-mode-choice {
+  appearance: none;
+  text-align: left;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: rgba(15, 23, 42, 0.85);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.16s ease, transform 0.16s ease, background-color 0.16s ease;
+}
+
+.play-mode-choice:hover {
+  transform: translateY(-1px);
+  border-color: rgba(251, 191, 36, 0.65);
+  background: rgba(30, 41, 59, 0.9);
+}
+
+.play-mode-choice.real-choice:hover,
+.play-mode-choice.real-choice.active {
+  border-color: rgba(52, 211, 153, 0.7);
+}
+
+.play-mode-title {
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.play-mode-bal {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.play-mode-sub {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.remember-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: #10b981;
+  cursor: pointer;
+}
+
+.forgot-sec-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid var(--border-hairline);
+}
+
+.forgot-sec-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.forgot-sec-status {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.forgot-sec-status.verified {
+  color: #34d399;
+}
+
+/* Support Chat Screenshot Button & Dropzone */
+.chat-attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 11px;
+  min-height: 40px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.dropzone-active {
+  outline: 2px dashed #38bdf8;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* ============================================================================
+   Mobile Auto-Adjustment & Zero Horizontal Overflow Guard
+   ============================================================================ */
+@media (max-width: 768px) {
+  .app-shell {
+    padding: 8px 10px 24px;
+    gap: 10px;
+    max-width: 100vw;
+    overflow-x: clip;
+  }
+
+  .top-feature-pane {
+    top: 52px;
+    padding: 6px 8px;
+  }
+
+  .topbar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .compact-utility-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .modal-backdrop {
+    padding: 10px;
+  }
+
+  .modal-card,
+  .modal-card.wide {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    overflow-y: auto;
+    padding: 14px;
+  }
+
+  .support-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dice-metrics-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .deposit-grid-2col {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .dep-amt-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chat-compose-row {
+    flex-wrap: wrap;
+  }
+
+  .chat-compose-row #userChatReplyInput {
+    min-width: 0;
+    flex: 1 1 160px;
+  }
+}
+
+/* ============================================================================
+   Admin Inline Save Controls & 5 New Cyber Arcade Arenas
+   ============================================================================ */
+.setting-inline-save {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.setting-inline-save .form-input,
+.setting-inline-save select {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-inline-save .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Limbo X Stage */
+.limbo-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 16px;
+  border-radius: 14px;
+  background: radial-gradient(circle at top, rgba(14, 165, 233, 0.14), rgba(6, 9, 19, 0.92));
+  border: 1px solid var(--border-hairline);
+}
+
+.limbo-readout {
+  font-family: var(--font-mono);
+  font-size: 3.1rem;
+  font-weight: 800;
+  line-height: 1.05;
+  color: #38bdf8;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.limbo-readout.win {
+  color: #34d399;
+  transform: scale(1.06);
+}
+
+.limbo-readout.loss {
+  color: #f87171;
+}
+
+/* Neon Coin Flip Stage */
+.coinflip-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 16px;
+  border-radius: 14px;
+  background: radial-gradient(circle at center, rgba(245, 158, 11, 0.12), rgba(6, 9, 19, 0.92));
+  border: 1px solid var(--border-hairline);
+}
+
+.cyber-coin {
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #fbbf24;
+  background: linear-gradient(145deg, #1e293b, #0f172a);
+  color: #fde68a;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 28px rgba(245, 158, 11, 0.28);
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease;
+}
+
+.cyber-coin.flipping {
+  transform: rotateY(720deg) scale(1.08);
+  border-color: #38bdf8;
+}
+
+.cyber-coin.heads {
+  border-color: #fbbf24;
+  color: #fde68a;
+}
+
+.cyber-coin.tails {
+  border-color: #38bdf8;
+  color: #7dd3fc;
+}
+
+.coin-pick-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* Lucky Wheel Stage */
+.wheel-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 16px;
+  border-radius: 14px;
+  background: rgba(6, 9, 19, 0.9);
+  border: 1px solid var(--border-hairline);
+}
+
+.wheel-canvas-wrap {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  max-width: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.wheel-pointer {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 11px solid transparent;
+  border-right: 11px solid transparent;
+  border-top: 20px solid #fbbf24;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7));
+  z-index: 3;
+}
+
+#luckyWheelCanvas {
+  width: 250px;
+  height: 250px;
+  max-width: 100%;
+}
+
+/* Dragon Hi-Lo Stage */
+.hilo-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 16px;
+  border-radius: 14px;
+  background: rgba(6, 9, 19, 0.9);
+  border: 1px solid var(--border-hairline);
+}
+
+.hilo-cards-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.playing-card-tile {
+  width: 96px;
+  height: 132px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #0f172a;
+  border: 2px solid rgba(148, 163, 184, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.85rem;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+
+.playing-card-tile.red {
+  color: #dc2626;
+}
+
+.playing-card-tile.back {
+  background: linear-gradient(145deg, #1e293b, #0f172a);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.45);
+  font-size: 1.3rem;
+}
+
+.hilo-choices-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .hilo-choices-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Emerald 777 Slots Stage */
+.slots-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 16px;
+  border-radius: 14px;
+  background: radial-gradient(circle at top, rgba(16, 185, 129, 0.15), rgba(6, 9, 19, 0.92));
+  border: 1px solid rgba(52, 211, 153, 0.28);
+}
+
+.slots-reels-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(76px, 108px));
+  gap: 12px;
+}
+
+.slot-reel-box {
+  height: 98px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #0b1325 0%, #16223c 50%, #0b1325 100%);
+  border: 2px solid rgba(52, 211, 153, 0.42);
+  display: grid;
+  place-items: center;
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #fde68a;
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.65);
+  transition: transform 0.16s ease, border-color 0.2s ease;
+}
+
+.slot-reel-box.spinning {
+  border-color: #fbbf24;
+  transform: scale(0.96);
+}
+
+.slots-paytable {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+}
+
+.slots-pay-pill {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--border-hairline);
+}
+
+

@@ -186,6 +186,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    lastActiveAt: {
+      type: Date,
+      default: Date.now,
+    },
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

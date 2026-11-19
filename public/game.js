@@ -5,6 +5,7 @@
   const MULTIPLIER_GROWTH_RATE = 0.068;
   const PK_PHONE_REGEX = /^03[0-9]{9}$/;
   const CNIC_REGEX = /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/;
+  const INACTIVITY_LIMIT_MS = 3 * 24 * 60 * 60 * 1000; // 72 hours
 
   const PLINKO_TABLES = {
     low: [5.6, 2.1, 1.1, 1.0, 0.5, 1.0, 1.1, 2.1, 5.6],
@@ -12,7 +13,24 @@
     high: [29.0, 4.0, 1.5, 0.3, 0.2, 0.3, 1.5, 4.0, 29.0],
   };
 
-  // Persistent LocalStorage & Cookie Session Vault
+  const WHEEL_SEGMENTS = [
+    { label: '0x', mult: 0, color: '#ef4444' },
+    { label: '1.5x', mult: 1.5, color: '#06b6d4' },
+    { label: '0.5x', mult: 0.5, color: '#64748b' },
+    { label: '2x', mult: 2.0, color: '#10b981' },
+    { label: '0x', mult: 0, color: '#ef4444' },
+    { label: '1.2x', mult: 1.2, color: '#3b82f6' },
+    { label: '5x', mult: 5.0, color: '#f59e0b' },
+    { label: '0.5x', mult: 0.5, color: '#64748b' },
+    { label: '1.5x', mult: 1.5, color: '#06b6d4' },
+    { label: '0x', mult: 0, color: '#ef4444' },
+    { label: '3x', mult: 3.0, color: '#8b5cf6' },
+    { label: '10x', mult: 10.0, color: '#eab308' },
+  ];
+
+  const SLOT_SYMBOLS = ['777', '💎', '👑', '⚡', '🍒', '🍋'];
+
+  // Persistent LocalStorage & Cookie Session Vault (3-Day Inactivity Window)
   function setVaultCookie(name, value, days = 30) {
     try {
       const maxAge = days * 86400;
@@ -46,13 +64,36 @@
     }
   }
 
+  function updateLastActive() {
+    const now = String(Date.now());
+    try {
+      localStorage.setItem('skywing_last_active', now);
+      setVaultCookie('skywing_last_active', now, 7);
+    } catch {
+      // ignore
+    }
+  }
+
+  function isSessionInactiveExpired() {
+    const raw = localStorage.getItem('skywing_last_active') || getVaultCookie('skywing_last_active') || '';
+    if (!raw) return false;
+    const lastTs = Number(raw);
+    if (!Number.isFinite(lastTs) || lastTs <= 0) return false;
+    return Date.now() - lastTs > INACTIVITY_LIMIT_MS;
+  }
+
   function readStoredToken() {
+    if (isSessionInactiveExpired()) {
+      clearSessionVault();
+      return '';
+    }
     const lsToken = localStorage.getItem('skywing_token') || '';
     const ckToken = getVaultCookie('skywing_token') || '';
     const token = lsToken || ckToken;
     if (token) {
       if (!lsToken) localStorage.setItem('skywing_token', token);
       if (!ckToken) setVaultCookie('skywing_token', token);
+      updateLastActive();
     }
     return token;
   }
@@ -89,6 +130,7 @@
       localStorage.setItem('skywing_token', token);
       setVaultCookie('skywing_token', token);
       sessionStorage.setItem('skywing_tab_auth', '1');
+      updateLastActive();
     }
     if (user && typeof user === 'object') {
       const uid = String(user.id || user._id || '');
@@ -135,6 +177,7 @@
 
   function clearSessionVault() {
     localStorage.removeItem('skywing_token');
+    localStorage.removeItem('skywing_last_active');
     localStorage.removeItem('skywing_user_id');
     localStorage.removeItem('skywing_username');
     localStorage.removeItem('skywing_phone');
@@ -143,6 +186,7 @@
     localStorage.removeItem('skywing_user_cache');
     sessionStorage.removeItem('skywing_tab_auth');
     deleteVaultCookie('skywing_token');
+    deleteVaultCookie('skywing_last_active');
     deleteVaultCookie('skywing_user_id');
     deleteVaultCookie('skywing_username');
     deleteVaultCookie('skywing_phone');
@@ -204,9 +248,15 @@
         message: 'Platform is undergoing scheduled maintenance. Please check back shortly.',
       },
       gamesConfig: [
-        { id: 'skywing-crash', name: 'SkyWing Crash', enabled: true, minBet: 10, maxBet: 100000 },
-        { id: 'cyber-plinko', name: 'Cyber Plinko', enabled: true, minBet: 10, maxBet: 50000 },
-        { id: 'golden-mines', name: 'Golden Mines', enabled: true, minBet: 10, maxBet: 50000 },
+        { id: 'skywing-crash', name: 'SkyWing Crash', enabled: true, minBet: 10, maxBet: 100000, houseEdgePct: 4 },
+        { id: 'cyber-plinko', name: 'Cyber Plinko', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'golden-mines', name: 'Golden Mines', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'cyber-dice', name: 'Cyber Dice', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'cyber-limbo', name: 'Limbo X', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'neon-flip', name: 'Neon Coin Flip', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'lucky-wheel', name: 'Lucky Wheel', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'dragon-hilo', name: 'Dragon Hi-Lo', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'emerald-slots', name: 'Emerald 777 Slots', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
       ],
       audioConfig: {
         bgmEnabled: true,
@@ -219,18 +269,37 @@
     transactions: [],
     depositScreenshotData: '',
     qrDepositRef: '',
+    lastQrDataUrl: '',
     deferredInstallPrompt: null,
     supportTickets: [],
     activeTicketId: '',
     pendingNewTicketImg: '',
     pendingReplyTicketImg: '',
+    pendingLaunchGameId: null,
     plinkoRisk: 'medium',
     plinkoBusy: false,
+    diceDirection: 'under',
+    diceTarget: 50,
+    diceBusy: false,
+    limboBusy: false,
+    coinflipPick: 'heads',
+    coinflipBusy: false,
+    wheelRotation: 0,
+    wheelBusy: false,
+    hiloBaseRankIdx: 5,
+    hiloBusy: false,
+    slotsBusy: false,
     qrRequestSeq: 0,
     qrDebounceTimer: null,
     arcade: {
       plinkoHistory: [],
       minesHistory: [],
+      diceHistory: [],
+      limboHistory: [],
+      coinflipHistory: [],
+      wheelHistory: [],
+      hiloHistory: [],
+      slotsHistory: [],
     },
     mines: {
       active: false,
@@ -312,6 +381,16 @@
     gateLoginBtn: document.getElementById('gateLoginBtn'),
     gateRegisterBtn: document.getElementById('gateRegisterBtn'),
 
+    // Sticky Top Feature Navigation & Play Mode Selector
+    topFeaturePane: document.getElementById('topFeaturePane'),
+    playModeSelectModal: document.getElementById('playModeSelectModal'),
+    playModeGameName: document.getElementById('playModeGameName'),
+    playModeFunBtn: document.getElementById('playModeFunBtn'),
+    playModeFunBal: document.getElementById('playModeFunBal'),
+    playModeRealBtn: document.getElementById('playModeRealBtn'),
+    playModeRealBal: document.getElementById('playModeRealBal'),
+    playModeDepositBtn: document.getElementById('playModeDepositBtn'),
+
     // Maintenance & Operating Hours & Game Lobby
     maintenanceOverlay: document.getElementById('maintenanceOverlay'),
     maintenanceStatusPill: document.getElementById('maintenanceStatusPill'),
@@ -326,6 +405,12 @@
     crashArenaContainer: document.getElementById('crashArenaContainer'),
     plinkoArena: document.getElementById('plinkoArena'),
     minesArena: document.getElementById('minesArena'),
+    diceArena: document.getElementById('diceArena'),
+    limboArena: document.getElementById('limboArena'),
+    coinflipArena: document.getElementById('coinflipArena'),
+    wheelArena: document.getElementById('wheelArena'),
+    hiloArena: document.getElementById('hiloArena'),
+    slotsArena: document.getElementById('slotsArena'),
 
     // Plinko & Mines
     plinkoCanvas: document.getElementById('plinkoCanvas'),
@@ -342,6 +427,66 @@
     minesNextMult: document.getElementById('minesNextMult'),
     minesCurrentPayout: document.getElementById('minesCurrentPayout'),
     minesHintText: document.getElementById('minesHintText'),
+
+    // Cyber Dice
+    diceStatusPill: document.getElementById('diceStatusPill'),
+    diceDieA: document.getElementById('diceDieA'),
+    diceDieB: document.getElementById('diceDieB'),
+    diceRollValText: document.getElementById('diceRollValText'),
+    diceResultSub: document.getElementById('diceResultSub'),
+    diceWinZone: document.getElementById('diceWinZone'),
+    diceRollMarker: document.getElementById('diceRollMarker'),
+    diceTargetSlider: document.getElementById('diceTargetSlider'),
+    diceTargetLabel: document.getElementById('diceTargetLabel'),
+    diceWinChanceVal: document.getElementById('diceWinChanceVal'),
+    diceMultVal: document.getElementById('diceMultVal'),
+    diceEstPayoutVal: document.getElementById('diceEstPayoutVal'),
+    diceAmount: document.getElementById('diceAmount'),
+    diceRuleHint: document.getElementById('diceRuleHint'),
+    diceRollBtn: document.getElementById('diceRollBtn'),
+
+    // Limbo X
+    limboStatusBadge: document.getElementById('limboStatusBadge'),
+    limboResultValue: document.getElementById('limboResultValue'),
+    limboResultSub: document.getElementById('limboResultSub'),
+    limboTargetBadge: document.getElementById('limboTargetBadge'),
+    limboChanceVal: document.getElementById('limboChanceVal'),
+    limboEstPayoutVal: document.getElementById('limboEstPayoutVal'),
+    limboAmount: document.getElementById('limboAmount'),
+    limboTargetInput: document.getElementById('limboTargetInput'),
+    limboPlayBtn: document.getElementById('limboPlayBtn'),
+
+    // Neon Coin Flip
+    coinflipStatusBadge: document.getElementById('coinflipStatusBadge'),
+    cyberCoinEl: document.getElementById('cyberCoinEl'),
+    cyberCoinFace: document.getElementById('cyberCoinFace'),
+    coinflipResultSub: document.getElementById('coinflipResultSub'),
+    coinflipAmount: document.getElementById('coinflipAmount'),
+    coinflipEstWinHint: document.getElementById('coinflipEstWinHint'),
+    coinflipPlayBtn: document.getElementById('coinflipPlayBtn'),
+
+    // Lucky Wheel
+    wheelStatusBadge: document.getElementById('wheelStatusBadge'),
+    luckyWheelCanvas: document.getElementById('luckyWheelCanvas'),
+    wheelResultSub: document.getElementById('wheelResultSub'),
+    wheelAmount: document.getElementById('wheelAmount'),
+    wheelSpinBtn: document.getElementById('wheelSpinBtn'),
+
+    // Dragon Hi-Lo
+    hiloStatusBadge: document.getElementById('hiloStatusBadge'),
+    hiloBaseCardEl: document.getElementById('hiloBaseCardEl'),
+    hiloNextCardEl: document.getElementById('hiloNextCardEl'),
+    hiloResultSub: document.getElementById('hiloResultSub'),
+    hiloAmount: document.getElementById('hiloAmount'),
+
+    // Emerald 777 Slots
+    slotsStatusBadge: document.getElementById('slotsStatusBadge'),
+    slotReel0: document.getElementById('slotReel0'),
+    slotReel1: document.getElementById('slotReel1'),
+    slotReel2: document.getElementById('slotReel2'),
+    slotsResultSub: document.getElementById('slotsResultSub'),
+    slotsAmount: document.getElementById('slotsAmount'),
+    slotsSpinBtn: document.getElementById('slotsSpinBtn'),
 
     canvas: document.getElementById('flightCanvas'),
     hudRoundNumber: document.getElementById('hudRoundNumber'),
@@ -373,6 +518,7 @@
     loginForm: document.getElementById('loginForm'),
     loginPhone: document.getElementById('loginPhone'),
     loginPassword: document.getElementById('loginPassword'),
+    loginRememberCheck: document.getElementById('loginRememberCheck'),
     openForgotResetBtn: document.getElementById('openForgotResetBtn'),
     registerForm: document.getElementById('registerForm'),
     regPhone: document.getElementById('regPhone'),
@@ -382,10 +528,16 @@
     regAgeAgreement: document.getElementById('regAgeAgreement'),
     openTermsLink: document.getElementById('openTermsLink'),
 
-    // Forgot Password Self-Reset Modal
+    // Forgot Password Self-Reset Modal & Security Check
     forgotResetForm: document.getElementById('forgotResetForm'),
     forgotResetIdentifier: document.getElementById('forgotResetIdentifier'),
     forgotResetNewPass: document.getElementById('forgotResetNewPass'),
+    forgotSecBox: document.getElementById('forgotSecBox'),
+    forgotTurnstileMount: document.getElementById('forgotTurnstileMount'),
+    forgotHumanRow: document.getElementById('forgotHumanRow'),
+    forgotHumanCheck: document.getElementById('forgotHumanCheck'),
+    forgotSecStatus: document.getElementById('forgotSecStatus'),
+    forgotResetSubmitBtn: document.getElementById('forgotResetSubmitBtn'),
     forgotResetError: document.getElementById('forgotResetError'),
     forgotResetSuccess: document.getElementById('forgotResetSuccess'),
     backToLoginBtn: document.getElementById('backToLoginBtn'),
@@ -417,7 +569,7 @@
     drawerHowToBtn: document.getElementById('drawerHowToBtn'),
     logoutBtn: document.getElementById('logoutBtn'),
 
-    // Deposit Modal (Privacy-Masked Dynamic QR)
+    // Deposit Modal (Privacy-Masked Dynamic QR + Download QR)
     depositModal: document.getElementById('depositModal'),
     depositAccountsList: document.getElementById('depositAccountsList'),
     depGatewayCards: document.getElementById('depGatewayCards'),
@@ -436,6 +588,7 @@
     depQrImg: document.getElementById('depQrImg'),
     depQrPlaceholder: document.getElementById('depQrPlaceholder'),
     depQrLoadingText: document.getElementById('depQrLoadingText'),
+    depSaveQrBtn: document.getElementById('depSaveQrBtn'),
     depMicroHint: document.getElementById('depMicroHint'),
     depTid: document.getElementById('depTid'),
     depScreenshot: document.getElementById('depScreenshot'),
@@ -698,6 +851,9 @@
     localStorage.setItem('skywing_mode', state.currencyMode);
     updateModeAndWalletUI();
     updatePanelButtons();
+    updateDiceMetrics();
+    updateLimboMetrics();
+    updateCoinflipMetrics();
     renderSidebar();
   }
 
@@ -820,7 +976,26 @@
     'skywing-crash': 'SkyWing Crash',
     'cyber-plinko': 'Cyber Plinko',
     'golden-mines': 'Golden Mines',
+    'cyber-dice': 'Cyber Dice',
+    'cyber-limbo': 'Limbo X',
+    'neon-flip': 'Neon Coin Flip',
+    'lucky-wheel': 'Lucky Wheel',
+    'dragon-hilo': 'Dragon Hi-Lo',
+    'emerald-slots': 'Emerald 777 Slots',
   };
+
+  function getGameConfig(gameId) {
+    const games = state.publicSettings.gamesConfig || [];
+    return games.find((g) => g.id === gameId) || null;
+  }
+
+  function syncFeaturePaneTabs() {
+    if (!el.topFeaturePane) return;
+    const activeTab = state.activeGameId || 'lobby';
+    el.topFeaturePane.querySelectorAll('[data-feature-tab]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.featureTab === activeTab);
+    });
+  }
 
   function syncGameWorkspaceView() {
     const isAuthed = Boolean(state.user);
@@ -831,34 +1006,66 @@
 
     if (!hasActiveGame) {
       stopCrashRenderLoop();
+      audio.setActiveGame(null);
       audio.setLocked(true);
     } else if (el.activeArenaTitle) {
       el.activeArenaTitle.textContent = GAME_LABELS[state.activeGameId] || 'Game Arena';
     }
+    syncFeaturePaneTabs();
   }
 
   function returnToGameLobby() {
     state.activeGameId = null;
     stopCrashRenderLoop();
+    audio.setActiveGame(null);
     audio.setLocked(true);
     syncGamesLobbyUI();
     syncGameWorkspaceView();
   }
 
+  function openPlayModeSelector(gameId) {
+    if (!state.user) {
+      openAuthModal(urlRefCode ? 'register' : 'login');
+      return;
+    }
+    const cfg = getGameConfig(gameId);
+    if (cfg && cfg.enabled === false) {
+      showToast(`${cfg.name || GAME_LABELS[gameId] || 'Game'} is currently disabled by Admin.`, true);
+      return;
+    }
+    state.pendingLaunchGameId = gameId;
+    if (el.playModeGameName) el.playModeGameName.textContent = GAME_LABELS[gameId] || cfg?.name || 'Arcade Arena';
+    if (el.playModeFunBal) el.playModeFunBal.textContent = fmtMoney(state.user.funBalance, 'fun');
+    if (el.playModeRealBal) el.playModeRealBal.textContent = fmtMoney(state.user.realBalance, 'real');
+    openModal('playModeSelectModal');
+  }
+
   function syncGamesLobbyUI() {
     const games = state.publicSettings.gamesConfig || [];
-    if (!el.gameLobbyBar) return;
-    el.gameLobbyBar.querySelectorAll('.game-lobby-card').forEach((card) => {
-      const gid = card.dataset.game;
-      const cfg = games.find((g) => g.id === gid);
-      const enabled = cfg ? cfg.enabled !== false : true;
-      card.classList.toggle('is-disabled', !enabled);
-      card.classList.toggle('active', state.activeGameId === gid);
-      const badge = card.querySelector(`[data-game-badge="${gid}"]`);
-      if (badge) {
-        badge.textContent = enabled ? 'LIVE' : 'OFF';
-      }
-    });
+    if (el.gameLobbyBar) {
+      el.gameLobbyBar.querySelectorAll('.game-lobby-card').forEach((card) => {
+        const gid = card.dataset.game;
+        const cfg = games.find((g) => g.id === gid);
+        const enabled = cfg ? cfg.enabled !== false : true;
+        card.classList.toggle('is-disabled', !enabled);
+        card.classList.toggle('active', state.activeGameId === gid);
+        const badge = card.querySelector(`[data-game-badge="${gid}"]`);
+        if (badge) {
+          badge.textContent = enabled ? 'LIVE' : 'OFF';
+        }
+      });
+    }
+
+    if (el.topFeaturePane) {
+      el.topFeaturePane.querySelectorAll('[data-feature-tab]').forEach((tab) => {
+        const tid = tab.dataset.featureTab;
+        if (!GAME_LABELS[tid]) return;
+        const cfg = games.find((g) => g.id === tid);
+        const enabled = cfg ? cfg.enabled !== false : true;
+        tab.disabled = !enabled;
+        tab.style.opacity = enabled ? '' : '0.45';
+      });
+    }
 
     if (state.activeGameId) {
       const activeCfg = games.find((g) => g.id === state.activeGameId);
@@ -874,8 +1081,7 @@
       openAuthModal(urlRefCode ? 'register' : 'login');
       return;
     }
-    const games = state.publicSettings.gamesConfig || [];
-    const cfg = games.find((g) => g.id === gameId);
+    const cfg = getGameConfig(gameId);
     if (cfg && cfg.enabled === false) {
       showToast(`${cfg.name} is currently disabled by Admin.`, true);
       return;
@@ -885,8 +1091,15 @@
     el.crashArenaContainer?.classList.toggle('hidden', gameId !== 'skywing-crash');
     el.plinkoArena?.classList.toggle('hidden', gameId !== 'cyber-plinko');
     el.minesArena?.classList.toggle('hidden', gameId !== 'golden-mines');
+    el.diceArena?.classList.toggle('hidden', gameId !== 'cyber-dice');
+    el.limboArena?.classList.toggle('hidden', gameId !== 'cyber-limbo');
+    el.coinflipArena?.classList.toggle('hidden', gameId !== 'neon-flip');
+    el.wheelArena?.classList.toggle('hidden', gameId !== 'lucky-wheel');
+    el.hiloArena?.classList.toggle('hidden', gameId !== 'dragon-hilo');
+    el.slotsArena?.classList.toggle('hidden', gameId !== 'emerald-slots');
 
-    // Unlock audio engine only once user enters an active game arena
+    // Enforce strict per-game SFX isolation (stops Crash turbine/ticks/explosions in other games)
+    audio.setActiveGame(gameId);
     audio.setLocked(false);
     audio.setMuted(!state.soundEnabled);
     if (state.soundEnabled) {
@@ -920,13 +1133,70 @@
         renderPlinkoBoard();
       } else if (gameId === 'golden-mines') {
         renderMinesGrid();
+      } else if (gameId === 'cyber-dice') {
+        updateDiceMetrics();
+      } else if (gameId === 'cyber-limbo') {
+        updateLimboMetrics();
+      } else if (gameId === 'neon-flip') {
+        updateCoinflipMetrics();
+      } else if (gameId === 'lucky-wheel') {
+        renderWheelCanvas(state.wheelRotation);
       }
     }
   }
 
   el.gameLobbyBar?.querySelectorAll('.game-lobby-card').forEach((card) => {
     card.addEventListener('click', () => {
-      switchActiveGame(card.dataset.game);
+      openPlayModeSelector(card.dataset.game);
+    });
+  });
+
+  el.playModeFunBtn?.addEventListener('click', () => {
+    const gid = state.pendingLaunchGameId || 'skywing-crash';
+    closeModal('playModeSelectModal');
+    setCurrencyMode('fun');
+    switchActiveGame(gid);
+  });
+
+  el.playModeRealBtn?.addEventListener('click', () => {
+    const gid = state.pendingLaunchGameId || 'skywing-crash';
+    closeModal('playModeSelectModal');
+    setCurrencyMode('real');
+    switchActiveGame(gid);
+  });
+
+  el.playModeDepositBtn?.addEventListener('click', () => {
+    closeModal('playModeSelectModal');
+    openDepositFlow();
+  });
+
+  el.topFeaturePane?.querySelectorAll('[data-feature-tab]').forEach((tabBtn) => {
+    tabBtn.addEventListener('click', () => {
+      const target = tabBtn.dataset.featureTab;
+      if (!target) return;
+      if (target === 'lobby') {
+        returnToGameLobby();
+      } else if (GAME_LABELS[target]) {
+        openPlayModeSelector(target);
+      } else if (target === 'deposit') {
+        openDepositFlow();
+      } else if (target === 'withdraw') {
+        openWithdrawFlow();
+      } else if (target === 'wallet') {
+        if (!state.activeGameId) switchActiveGame('skywing-crash');
+        setSidebarTab('wallet');
+        el.tabWalletHistory?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (target === 'rewards') {
+        openRewardsFlow();
+      } else if (target === 'profile') {
+        openModal('profileModal');
+      } else if (target === 'support') {
+        openSupportFlow();
+      } else if (target === 'fairness') {
+        inspectFairRound(null);
+      } else if (target === 'help') {
+        openHelpCenterModal();
+      }
     });
   });
 
@@ -1011,6 +1281,9 @@
   }
 
   el.depMethod?.addEventListener('change', () => {
+    // Strictly prevent any browser/user autofill on sender account inputs
+    if (el.depSenderName) el.depSenderName.value = '';
+    if (el.depSenderNumber) el.depSenderNumber.value = '';
     renderGatewaySelector(el.depGatewayCards, el.depMethod);
     scheduleDynamicQrUpdate(true);
   });
@@ -1268,12 +1541,40 @@
     return refUrl;
   }
 
+  function readRememberedCredentials() {
+    try {
+      const raw = localStorage.getItem('skywing_remember_creds');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.phone) return parsed;
+    } catch {
+      // ignore
+    }
+    return null;
+  }
+
+  function applyRememberedCredentialsToForm() {
+    const saved = readRememberedCredentials();
+    if (saved) {
+      if (el.loginPhone && !el.loginPhone.value) el.loginPhone.value = saved.phone || '';
+      if (el.loginPassword && !el.loginPassword.value) el.loginPassword.value = saved.password || '';
+      if (el.loginRememberCheck) el.loginRememberCheck.checked = true;
+    }
+  }
+
+  el.loginRememberCheck?.addEventListener('change', () => {
+    if (!el.loginRememberCheck.checked) {
+      localStorage.removeItem('skywing_remember_creds');
+    }
+  });
+
   function openAuthModal(defaultTab = 'login') {
     if (el.authErrorBox) el.authErrorBox.classList.add('hidden');
     const savedRef = localStorage.getItem('skywing_ref') || '';
     if (savedRef && el.regRefCode && !el.regRefCode.value) {
       el.regRefCode.value = savedRef;
     }
+    applyRememberedCredentialsToForm();
     if (defaultTab === 'register') {
       el.authTabRegister?.click();
     } else {
@@ -1406,6 +1707,9 @@
       }
       const data = await res.json();
       state.user = data.user;
+      if (data.refreshedToken) {
+        state.token = data.refreshedToken;
+      }
       saveSessionVault(state.token, state.user);
       if (data.publicSettings) {
         applyPublicSettingsPayload(data.publicSettings);
@@ -1525,6 +1829,36 @@
       state.token = data.token;
       state.user = data.user;
       state.activeGameId = null;
+
+      // Remember Username & Password if checked, otherwise clear saved credentials
+      if (el.loginRememberCheck?.checked) {
+        try {
+          localStorage.setItem(
+            'skywing_remember_creds',
+            JSON.stringify({
+              phone: el.loginPhone.value.trim(),
+              password: el.loginPassword.value,
+            })
+          );
+        } catch {
+          // ignore storage quota errors
+        }
+        if (window.PasswordCredential && navigator.credentials?.store) {
+          try {
+            const cred = new window.PasswordCredential({
+              id: cleanPhone,
+              password: el.loginPassword.value,
+              name: state.user.displayName || cleanPhone,
+            });
+            navigator.credentials.store(cred).catch(() => {});
+          } catch {
+            // ignore unsupported contexts
+          }
+        }
+      } else {
+        localStorage.removeItem('skywing_remember_creds');
+      }
+
       saveSessionVault(state.token, state.user);
       socket.emit('auth:identify', { token: state.token });
       closeModal('authModal');
@@ -1597,6 +1931,120 @@
     }
   });
 
+  // Online Security Verification Check for Password Reset (Turnstile or Instant SHA-256 PoW)
+  let forgotChallengeToken = '';
+  let forgotChallengeDifficulty = 3;
+  let forgotTurnstileSiteKey = '';
+  let forgotTurnstileToken = '';
+  let forgotPowSolution = '';
+  let forgotTurnstileWidgetId = null;
+
+  function setForgotSecStatus(label, isVerified = false) {
+    if (!el.forgotSecStatus) return;
+    el.forgotSecStatus.textContent = label;
+    el.forgotSecStatus.classList.toggle('verified', Boolean(isVerified));
+  }
+
+  async function solveResetPowChallenge(challengeToken, difficulty = 3) {
+    const prefix = '0'.repeat(Math.max(1, Number(difficulty || 3)));
+    if (!window.crypto?.subtle) {
+      // Fallback subtle unavailable (unlikely on localhost/HTTPS)
+      return '';
+    }
+    let nonce = 0;
+    while (nonce < 500000) {
+      const candidate = String(nonce);
+      const digest = await computeSha256HexBrowser(`${challengeToken}:${candidate}`);
+      if (digest.startsWith(prefix)) {
+        return candidate;
+      }
+      nonce += 1;
+      if (nonce % 400 === 0) {
+        await new Promise((r) => setTimeout(r, 0));
+      }
+    }
+    return '';
+  }
+
+  async function initForgotSecurityCheck() {
+    forgotChallengeToken = '';
+    forgotChallengeDifficulty = 3;
+    forgotTurnstileSiteKey = '';
+    forgotTurnstileToken = '';
+    forgotPowSolution = '';
+    if (el.forgotHumanCheck) el.forgotHumanCheck.checked = false;
+    setForgotSecStatus('Required', false);
+
+    try {
+      const res = await fetch('/api/auth/reset-challenge');
+      const data = await res.json();
+      forgotChallengeToken = String(data.challengeToken || '');
+      forgotChallengeDifficulty = Number(data.difficulty || 3);
+      forgotTurnstileSiteKey = String(data.turnstileSiteKey || '').trim();
+
+      if (forgotTurnstileSiteKey && el.forgotTurnstileMount && el.forgotHumanRow) {
+        el.forgotTurnstileMount.classList.remove('hidden');
+        el.forgotHumanRow.classList.add('hidden');
+        const mountWidget = () => {
+          if (!window.turnstile || !el.forgotTurnstileMount) return;
+          el.forgotTurnstileMount.innerHTML = '';
+          forgotTurnstileWidgetId = window.turnstile.render(el.forgotTurnstileMount, {
+            sitekey: forgotTurnstileSiteKey,
+            theme: 'dark',
+            callback: (token) => {
+              forgotTurnstileToken = token;
+              setForgotSecStatus('Verified', true);
+            },
+            'expired-callback': () => {
+              forgotTurnstileToken = '';
+              setForgotSecStatus('Expired', false);
+            },
+          });
+        };
+        if (window.turnstile) {
+          mountWidget();
+        } else {
+          const script = document.createElement('script');
+          script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+          script.async = true;
+          script.onload = mountWidget;
+          document.head.appendChild(script);
+        }
+      } else {
+        el.forgotTurnstileMount?.classList.add('hidden');
+        el.forgotHumanRow?.classList.remove('hidden');
+      }
+    } catch {
+      setForgotSecStatus('Retry Check', false);
+    }
+  }
+
+  el.forgotHumanCheck?.addEventListener('change', async () => {
+    if (!el.forgotHumanCheck.checked) {
+      forgotPowSolution = '';
+      setForgotSecStatus('Required', false);
+      return;
+    }
+    setForgotSecStatus('Checking...', false);
+    if (!forgotChallengeToken) {
+      await initForgotSecurityCheck();
+      if (el.forgotHumanCheck) el.forgotHumanCheck.checked = true;
+    }
+    if (!forgotChallengeToken) {
+      setForgotSecStatus('Offline', false);
+      return;
+    }
+    const sol = await solveResetPowChallenge(forgotChallengeToken, forgotChallengeDifficulty);
+    if (sol) {
+      forgotPowSolution = sol;
+      setForgotSecStatus('Verified', true);
+    } else {
+      forgotPowSolution = '';
+      el.forgotHumanCheck.checked = false;
+      setForgotSecStatus('Failed', false);
+    }
+  });
+
   el.openForgotResetBtn?.addEventListener('click', () => {
     if (el.forgotResetIdentifier && el.loginPhone?.value) {
       el.forgotResetIdentifier.value = el.loginPhone.value.trim();
@@ -1605,6 +2053,7 @@
     el.forgotResetSuccess?.classList.add('hidden');
     closeModal('authModal');
     openModal('forgotPasswordModal');
+    initForgotSecurityCheck();
   });
 
   el.backToLoginBtn?.addEventListener('click', () => {
@@ -1629,7 +2078,34 @@
       return;
     }
 
+    if (forgotTurnstileSiteKey) {
+      if (!forgotTurnstileToken) {
+        el.forgotResetError.textContent = 'Complete the security verification challenge first.';
+        el.forgotResetError.classList.remove('hidden');
+        return;
+      }
+    } else {
+      if (!el.forgotHumanCheck?.checked) {
+        el.forgotResetError.textContent = 'Tick the Online Security Check box to verify you are human.';
+        el.forgotResetError.classList.remove('hidden');
+        return;
+      }
+      if (!forgotChallengeToken) {
+        await initForgotSecurityCheck();
+      }
+      if (!forgotPowSolution && forgotChallengeToken) {
+        setForgotSecStatus('Checking...', false);
+        forgotPowSolution = await solveResetPowChallenge(forgotChallengeToken, forgotChallengeDifficulty);
+      }
+      if (!forgotPowSolution) {
+        el.forgotResetError.textContent = 'Security verification failed. Please tick the verification check again.';
+        el.forgotResetError.classList.remove('hidden');
+        return;
+      }
+    }
+
     const newPassword = el.forgotResetNewPass.value;
+    if (el.forgotResetSubmitBtn) el.forgotResetSubmitBtn.disabled = true;
     try {
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
@@ -1637,30 +2113,52 @@
         body: JSON.stringify({
           identifier: isCnic ? rawInput : normalizedPhone,
           newPassword,
+          turnstileToken: forgotTurnstileToken || undefined,
+          powChallengeToken: forgotChallengeToken || undefined,
+          powSolution: forgotPowSolution || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
         el.forgotResetError.textContent = data.error || 'Password reset failed.';
         el.forgotResetError.classList.remove('hidden');
+        if (window.turnstile && forgotTurnstileWidgetId !== null) {
+          try {
+            window.turnstile.reset(forgotTurnstileWidgetId);
+          } catch {
+            // ignore
+          }
+        }
+        initForgotSecurityCheck();
         return;
       }
       el.forgotResetSuccess.textContent = data.message || 'Password reset successfully! You can now log in.';
       el.forgotResetSuccess.classList.remove('hidden');
       el.forgotResetForm.reset();
+      setForgotSecStatus('Verified', true);
       showToast('Password updated! Please log in.');
     } catch {
       el.forgotResetError.textContent = 'Network error. Please try again.';
       el.forgotResetError.classList.remove('hidden');
+    } finally {
+      if (el.forgotResetSubmitBtn) el.forgotResetSubmitBtn.disabled = false;
     }
   });
 
-  function performLogout() {
+  async function performLogout() {
+    const activeToken = state.token;
+    if (activeToken) {
+      fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${activeToken}` },
+      }).catch(() => {});
+    }
     state.token = '';
     state.user = null;
     state.activeGameId = null;
     state.transactions = [];
     stopCrashRenderLoop();
+    audio.setActiveGame(null);
     audio.setLocked(true);
     clearSessionVault();
     socket.emit('auth:identify', { token: '' });
@@ -1775,14 +2273,47 @@
 
   function setQrLoadingState(message, clearRef = true) {
     if (clearRef) state.qrDepositRef = '';
+    state.lastQrDataUrl = '';
     if (el.depQrImg) {
       el.depQrImg.classList.add('hidden');
       el.depQrImg.removeAttribute('src');
     }
+    if (el.depSaveQrBtn) el.depSaveQrBtn.classList.add('hidden');
     if (el.depQrPlaceholder) el.depQrPlaceholder.classList.remove('hidden');
     if (el.depQrLoadingText) el.depQrLoadingText.textContent = message;
     if (clearRef && el.depQrRefBadge) el.depQrRefBadge.textContent = 'REF: ---';
   }
+
+  el.depSaveQrBtn?.addEventListener('click', async () => {
+    const src = state.lastQrDataUrl || el.depQrImg?.src;
+    if (!src) {
+      showToast('Generate a valid deposit QR code first.', true);
+      return;
+    }
+    const amt = Number(el.depAmount?.value || 0) || 0;
+    const filename = `SkyWing-Deposit-QR-${amt}PKR.png`;
+    try {
+      const resp = await fetch(src);
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+      showToast(`Saved ${filename} to your device!`);
+    } catch {
+      const a = document.createElement('a');
+      a.href = src;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast(`Downloading ${filename}...`);
+    }
+  });
 
   async function requestDynamicDepositQr() {
     if (!state.token || !state.user) return;
@@ -1823,9 +2354,13 @@
       }
 
       state.qrDepositRef = data.qrReference;
+      state.lastQrDataUrl = data.qrDataUrl || '';
       if (el.depQrImg) {
         el.depQrImg.src = data.qrDataUrl;
         el.depQrImg.classList.remove('hidden');
+      }
+      if (el.depSaveQrBtn && data.qrDataUrl) {
+        el.depSaveQrBtn.classList.remove('hidden');
       }
       if (el.depQrPlaceholder) el.depQrPlaceholder.classList.add('hidden');
       if (el.depQrRefBadge) el.depQrRefBadge.textContent = `REF: ${data.qrReference}`;
@@ -1880,12 +2415,10 @@
     if (el.depAmount && (!Number(el.depAmount.value) || Number(el.depAmount.value) < minDep)) {
       el.depAmount.value = String(Math.max(500, minDep));
     }
-    if (el.depSenderName && !el.depSenderName.value && state.user.displayName) {
-      el.depSenderName.value = state.user.displayName;
-    }
-    if (el.depSenderNumber && !el.depSenderNumber.value && state.user.phoneNumber) {
-      el.depSenderNumber.value = state.user.phoneNumber;
-    }
+    // Strictly NEVER auto-fill sender account name or number
+    if (el.depSenderName) el.depSenderName.value = '';
+    if (el.depSenderNumber) el.depSenderNumber.value = '';
+    if (el.depTid) el.depTid.value = '';
     renderPaymentAccounts();
     syncWithdrawalHoursUI();
     openModal('depositModal');
@@ -2029,8 +2562,8 @@
       el.depositForm.reset();
       const minDep = Number(state.publicSettings.financialLimits?.minDeposit || 50);
       if (el.depAmount) el.depAmount.value = String(Math.max(500, minDep));
-      if (el.depSenderName && state.user?.displayName) el.depSenderName.value = state.user.displayName;
-      if (el.depSenderNumber && state.user?.phoneNumber) el.depSenderNumber.value = state.user.phoneNumber;
+      if (el.depSenderName) el.depSenderName.value = '';
+      if (el.depSenderNumber) el.depSenderNumber.value = '';
       state.depositScreenshotData = '';
       el.depPreviewWrap.classList.add('hidden');
       scheduleDynamicQrUpdate(true);
@@ -2473,6 +3006,151 @@
       return;
     }
 
+    if (gid === 'cyber-dice') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Dice Rolls';
+      const items = (state.arcade.diceHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML =
+          '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Cyber Dice rolls...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const won = Boolean(item.won);
+        const mult = Number(item.multiplier || 0);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${won ? (mult >= 3 ? 'mult-high' : 'mult-med') : 'mult-low'}`;
+        chip.textContent = Number(item.roll || 0).toFixed(2);
+        chip.title = `${String(item.direction || 'under').toUpperCase()} ${item.target} · ${won ? `${mult.toFixed(2)}x` : 'Missed'}`;
+        chip.addEventListener('click', () => {
+          showToast(`Dice Roll ${Number(item.roll || 0).toFixed(2)} (${String(item.direction || 'under').toUpperCase()} ${item.target}) → ${won ? `${mult.toFixed(2)}x Win` : 'Loss'}`);
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
+    if (gid === 'cyber-limbo') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Limbo Rolls';
+      const items = (state.arcade.limboHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML =
+          '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Limbo X launches...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const won = Boolean(item.won);
+        const rolled = Number(item.rolled || 1);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${won ? (rolled >= 5 ? 'mult-high' : 'mult-med') : 'mult-low'}`;
+        chip.textContent = `${rolled.toFixed(2)}x`;
+        chip.title = `Target ${Number(item.targetMultiplier || 2).toFixed(2)}x`;
+        chip.addEventListener('click', () => {
+          showToast(`Limbo Rolled ${rolled.toFixed(2)}x vs Target ${Number(item.targetMultiplier || 2).toFixed(2)}x`);
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
+    if (gid === 'neon-flip') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Coin Flips';
+      const items = (state.arcade.coinflipHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML =
+          '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Neon Coin Flips...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const won = Boolean(item.won);
+        const side = String(item.outcome || 'heads').toUpperCase();
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${won ? 'mult-med' : 'mult-low'}`;
+        chip.textContent = side === 'HEADS' ? 'H' : 'T';
+        chip.title = `Picked ${String(item.pick || '').toUpperCase()} · Outcome ${side}`;
+        chip.addEventListener('click', () => {
+          showToast(`Coin Flip: ${side} (${won ? `Won ${Number(item.multiplier || 1.92).toFixed(2)}x` : 'Missed'})`);
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
+    if (gid === 'lucky-wheel') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Wheel Spins';
+      const items = (state.arcade.wheelHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML =
+          '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Lucky Wheel spins...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const mult = Number(item.multiplier || 0);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${mult >= 3 ? 'mult-high' : mult >= 1 ? 'mult-med' : 'mult-low'}`;
+        chip.textContent = `${mult}x`;
+        chip.addEventListener('click', () => {
+          showToast(`Lucky Wheel landed ${mult}x (${Number(item.amount || 0)} ${item.currencyMode === 'real' ? 'PKR' : 'FC'})`);
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
+    if (gid === 'dragon-hilo') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Hi-Lo Draws';
+      const items = (state.arcade.hiloHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML =
+          '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Dragon Hi-Lo draws...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const won = Boolean(item.won);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${won ? 'mult-med' : 'mult-low'}`;
+        chip.textContent = item.nextCard || '?';
+        chip.addEventListener('click', () => {
+          showToast(`Hi-Lo: Drew ${item.nextCard} on ${String(item.choice || '').toUpperCase()} (${won ? `${Number(item.multiplier || 0).toFixed(2)}x` : 'Missed'})`);
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
+    if (gid === 'emerald-slots') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Slot Spins';
+      const items = (state.arcade.slotsHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML =
+          '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Emerald 777 Slot spins...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const mult = Number(item.multiplier || 0);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${mult >= 6 ? 'mult-high' : mult > 0 ? 'mult-med' : 'mult-low'}`;
+        chip.textContent = mult > 0 ? `${mult}x` : '0x';
+        chip.title = Array.isArray(item.reels) ? item.reels.join(' ') : '';
+        chip.addEventListener('click', () => {
+          showToast(`Slots [${Array.isArray(item.reels) ? item.reels.join(' | ') : ''}] → ${mult}x`);
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
     // SkyWing Crash History
     if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Flights';
     const items = (state.game.history || []).slice(0, 15);
@@ -2503,55 +3181,77 @@
     if (state.sidebarTab === 'live') {
       el.sidebarTableHead.classList.remove('hidden');
 
-      if (gid === 'cyber-plinko') {
-        const feed = (state.arcade.plinkoHistory || []).slice(0, 25);
+      const arcadeFeedMap = {
+        'cyber-plinko': {
+          items: state.arcade.plinkoHistory || [],
+          empty: 'No Cyber Plinko drops yet. Drop a ball!',
+          label: 'Drops',
+          multFmt: (x) => `${Number(x.multiplier || 0).toFixed(1)}x`,
+        },
+        'golden-mines': {
+          items: state.arcade.minesHistory || [],
+          empty: 'No Golden Mines games yet. Reveal diamonds!',
+          label: 'Games',
+          multFmt: (x) => (x.boom ? 'Boom' : `${Number(x.multiplier || 0).toFixed(2)}x`),
+        },
+        'cyber-dice': {
+          items: state.arcade.diceHistory || [],
+          empty: 'No Cyber Dice rolls yet. Roll the dice!',
+          label: 'Rolls',
+          multFmt: (x) => (x.won ? `${Number(x.multiplier || 0).toFixed(2)}x` : `Roll ${Number(x.roll || 0).toFixed(1)}`),
+        },
+        'cyber-limbo': {
+          items: state.arcade.limboHistory || [],
+          empty: 'No Limbo X launches yet. Launch now!',
+          label: 'Launches',
+          multFmt: (x) => `${Number(x.rolled || 1).toFixed(2)}x`,
+        },
+        'neon-flip': {
+          items: state.arcade.coinflipHistory || [],
+          empty: 'No Neon Coin Flips yet. Flip a coin!',
+          label: 'Flips',
+          multFmt: (x) => `${String(x.outcome || '').toUpperCase()}`,
+        },
+        'lucky-wheel': {
+          items: state.arcade.wheelHistory || [],
+          empty: 'No Lucky Wheel spins yet. Spin the wheel!',
+          label: 'Spins',
+          multFmt: (x) => `${Number(x.multiplier || 0)}x`,
+        },
+        'dragon-hilo': {
+          items: state.arcade.hiloHistory || [],
+          empty: 'No Dragon Hi-Lo deals yet. Deal a card!',
+          label: 'Deals',
+          multFmt: (x) => `${escapeHtml(x.nextCard || '?')}`,
+        },
+        'emerald-slots': {
+          items: state.arcade.slotsHistory || [],
+          empty: 'No Emerald 777 Slots spins yet. Spin now!',
+          label: 'Spins',
+          multFmt: (x) => (Array.isArray(x.reels) ? x.reels.join('') : `${Number(x.multiplier || 0)}x`),
+        },
+      };
+
+      if (arcadeFeedMap[gid]) {
+        const meta = arcadeFeedMap[gid];
+        const feed = meta.items.slice(0, 25);
         const totalWager = feed.reduce((s, x) => s + Number(x.amount || 0), 0);
-        el.activeBetsCount.textContent = `${feed.length} Recent Drops`;
+        el.activeBetsCount.textContent = `${feed.length} Recent ${meta.label}`;
         el.totalRoundWager.textContent = `${totalWager.toFixed(0)} Vol`;
         if (!feed.length) {
-          el.sidebarBetsList.innerHTML =
-            '<div class="empty-state">No Cyber Plinko drops yet. Drop a ball!</div>';
+          el.sidebarBetsList.innerHTML = `<div class="empty-state">${meta.empty}</div>`;
           return;
         }
         el.sidebarBetsList.innerHTML = feed
           .map((item) => {
             const u = item.currencyMode === 'real' ? 'PKR' : 'FC';
-            const won = Number(item.payout || 0) >= Number(item.amount || 0);
+            const won = Number(item.payout || 0) > 0 && !item.boom;
             const winText = Number(item.payout || 0) > 0 ? `+${Number(item.payout).toFixed(2)}` : '0.00';
             return `
               <div class="bet-row ${won ? 'won' : ''}">
                 <span class="bet-player">${escapeHtml(item.player || 'Player')}</span>
                 <span class="tabular-nums">${Number(item.amount || 0).toFixed(0)} ${u}</span>
-                <span class="bet-mult tabular-nums">${Number(item.multiplier || 0).toFixed(1)}x</span>
-                <span class="bet-payout tabular-nums">${winText}</span>
-              </div>
-            `;
-          })
-          .join('');
-        return;
-      }
-
-      if (gid === 'golden-mines') {
-        const feed = (state.arcade.minesHistory || []).slice(0, 25);
-        const totalWager = feed.reduce((s, x) => s + Number(x.amount || 0), 0);
-        el.activeBetsCount.textContent = `${feed.length} Recent Games`;
-        el.totalRoundWager.textContent = `${totalWager.toFixed(0)} Vol`;
-        if (!feed.length) {
-          el.sidebarBetsList.innerHTML =
-            '<div class="empty-state">No Golden Mines games yet. Reveal diamonds!</div>';
-          return;
-        }
-        el.sidebarBetsList.innerHTML = feed
-          .map((item) => {
-            const u = item.currencyMode === 'real' ? 'PKR' : 'FC';
-            const won = !item.boom && Number(item.payout || 0) > 0;
-            const multText = item.boom ? 'Boom' : `${Number(item.multiplier || 0).toFixed(2)}x`;
-            const winText = won ? `+${Number(item.payout).toFixed(2)}` : '-';
-            return `
-              <div class="bet-row ${won ? 'won' : ''}">
-                <span class="bet-player">${escapeHtml(item.player || 'Player')}</span>
-                <span class="tabular-nums">${Number(item.amount || 0).toFixed(0)} ${u}</span>
-                <span class="bet-mult tabular-nums">${multText}</span>
+                <span class="bet-mult tabular-nums" style="font-size:0.74rem;">${meta.multFmt(item)}</span>
                 <span class="bet-payout tabular-nums">${winText}</span>
               </div>
             `;
@@ -2614,13 +3314,8 @@
         return;
       }
       if (!history.length) {
-        const emptyMsg =
-          gid === 'cyber-plinko'
-            ? 'You have not played Cyber Plinko yet.'
-            : gid === 'golden-mines'
-              ? 'You have not played Golden Mines yet.'
-              : 'You have not placed any SkyWing Crash bets yet.';
-        el.sidebarBetsList.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
+        const gName = GAME_LABELS[gid] || 'this game';
+        el.sidebarBetsList.innerHTML = `<div class="empty-state">You have not played ${gName} yet.</div>`;
         return;
       }
 
@@ -2633,10 +3328,12 @@
             multText = `${Number(h.cashoutMultiplier || 0).toFixed(1)}x`;
           } else if (gid === 'golden-mines') {
             multText = won ? `${Number(h.cashoutMultiplier || 0).toFixed(2)}x` : 'Boom';
-          } else {
+          } else if (gid === 'skywing-crash') {
             multText = h.cashoutMultiplier
               ? `${Number(h.cashoutMultiplier).toFixed(2)}x`
               : `Crash ${Number(h.crashedAt || 1).toFixed(2)}x`;
+          } else {
+            multText = won ? `${Number(h.cashoutMultiplier || 0).toFixed(2)}x` : (h.risk || '0x');
           }
           const payoutText = won
             ? `+${Number(h.payout).toFixed(2)}`
@@ -2645,7 +3342,7 @@
             <div class="bet-row ${won ? 'won' : ''}">
               <span class="bet-player">#${h.roundNumber || '-'}</span>
               <span class="tabular-nums">${Number(h.betAmount).toFixed(0)} ${u}</span>
-              <span class="bet-mult tabular-nums" style="font-size:0.72rem;">${multText}</span>
+              <span class="bet-mult tabular-nums" style="font-size:0.72rem;">${escapeHtml(multText)}</span>
               <span class="bet-payout tabular-nums" style="color:${won ? '#34d399' : '#f87171'};">${payoutText}</span>
             </div>
           `;
@@ -3366,6 +4063,12 @@
     if (Array.isArray(data.history)) state.game.history = data.history;
     if (Array.isArray(data.plinkoHistory)) state.arcade.plinkoHistory = data.plinkoHistory;
     if (Array.isArray(data.minesHistory)) state.arcade.minesHistory = data.minesHistory;
+    if (Array.isArray(data.diceHistory)) state.arcade.diceHistory = data.diceHistory;
+    if (Array.isArray(data.limboHistory)) state.arcade.limboHistory = data.limboHistory;
+    if (Array.isArray(data.coinflipHistory)) state.arcade.coinflipHistory = data.coinflipHistory;
+    if (Array.isArray(data.wheelHistory)) state.arcade.wheelHistory = data.wheelHistory;
+    if (Array.isArray(data.hiloHistory)) state.arcade.hiloHistory = data.hiloHistory;
+    if (Array.isArray(data.slotsHistory)) state.arcade.slotsHistory = data.slotsHistory;
     if (data.onlineCount !== undefined && el.onlineCount) {
       el.onlineCount.textContent = `${data.onlineCount} Online`;
     }
@@ -3620,6 +4323,33 @@
     }
   });
 
+  function pushArcadeSocketFeed(historyKey, gameId, item) {
+    if (!item || !state.arcade[historyKey]) return;
+    if (!state.arcade[historyKey].some((x) => x.id === item.id)) {
+      state.arcade[historyKey].unshift(item);
+      state.arcade[historyKey] = state.arcade[historyKey].slice(0, 25);
+      if (state.activeGameId === gameId) {
+        renderHistory();
+        if (state.sidebarTab === 'live') renderSidebar();
+      }
+    }
+  }
+
+  socket.on('arcade:dice_roll', (item) => pushArcadeSocketFeed('diceHistory', 'cyber-dice', item));
+  socket.on('arcade:limbo_play', (item) => pushArcadeSocketFeed('limboHistory', 'cyber-limbo', item));
+  socket.on('arcade:coinflip_play', (item) => pushArcadeSocketFeed('coinflipHistory', 'neon-flip', item));
+  socket.on('arcade:wheel_spin', (item) => pushArcadeSocketFeed('wheelHistory', 'lucky-wheel', item));
+  socket.on('arcade:hilo_play', (item) => pushArcadeSocketFeed('hiloHistory', 'dragon-hilo', item));
+  socket.on('arcade:slots_spin', (item) => pushArcadeSocketFeed('slotsHistory', 'emerald-slots', item));
+
+  // Periodic 60s activity heartbeat to preserve 72h rolling inactivity window while open
+  setInterval(() => {
+    if (state.token && state.user) {
+      updateLastActive();
+      if (socket.connected) socket.emit('auth:heartbeat', { token: state.token });
+    }
+  }, 60000);
+
   // ==========================================================================
   // Cyber Plinko Arcade Renderer & Controller
   // ==========================================================================
@@ -3746,7 +4476,7 @@
           renderHistory();
           renderSidebar();
           el.plinkoLastResultPill.textContent = `${data.multiplier}x (${data.profit >= 0 ? '+' : ''}${data.profit} ${unitLabel(data.currencyMode)})`;
-          if (data.multiplier >= 1.5) audio.playCashout();
+          audio.playPlinkoBucket(Number(data.multiplier || 0));
           showToast(`Plinko landed ${data.multiplier}x → Payout ${fmtMoney(data.payout, data.currencyMode)}`);
           state.plinkoBusy = false;
           el.plinkoDropBtn.disabled = false;
@@ -3755,17 +4485,18 @@
         colOffset += data.path[stepIdx] === 1 ? 0.5 : -0.5;
         const bx = w / 2 + colOffset * pegSpacing;
         const by = topY + stepIdx * rowGap + 12;
-        renderPlinkoBoard({ x: bx, y: by });
-        stepIdx += 1;
-        setTimeout(animStep, 85);
-      };
-      animStep();
-    } catch {
-      showToast('Network error in Plinko.', true);
-      state.plinkoBusy = false;
-      el.plinkoDropBtn.disabled = false;
-    }
-  });
+          renderPlinkoBoard({ x: bx, y: by });
+          audio.playPlinkoBounce();
+          stepIdx += 1;
+          setTimeout(animStep, 85);
+        };
+        animStep();
+      } catch {
+        showToast('Network error in Plinko.', true);
+        state.plinkoBusy = false;
+        el.plinkoDropBtn.disabled = false;
+      }
+    });
 
   // ==========================================================================
   // Golden Mines 5x5 Grid Controller
@@ -3829,7 +4560,7 @@
         return;
       }
       audio.ensureContext();
-      audio.playCasinoChime();
+      audio.playMinesTile();
       state.mines = {
         active: true,
         revealed: [],
@@ -3868,7 +4599,9 @@
         return;
       }
       if (data.boom) {
-        audio.playCrash();
+        if (audio.ctx && !audio.muted && !audio.locked && audio.activeGame === 'golden-mines') {
+          audio.playTone(135, 'sawtooth', audio.ctx.currentTime, 0.28, 0.14, 340);
+        }
         state.mines.active = false;
         state.mines.minesShown = data.mines || [];
         state.mines.multiplier = 0;
@@ -3888,7 +4621,8 @@
         el.minesHintText.textContent = 'BOOM! You hit a hidden mine.';
         showToast('Hit a mine! Better luck next round.', true);
       } else if (data.clearedAll) {
-        audio.playCashout();
+        audio.playMinesDiamond();
+        audio.playArcadeWin('golden-mines');
         state.mines.active = false;
         state.mines.revealed = data.revealed || [];
         state.mines.minesShown = data.mines || [];
@@ -3909,7 +4643,8 @@
         el.minesHintText.textContent = `Board cleared! Won ${fmtMoney(data.payout, state.currencyMode)}`;
         showToast(`Board Cleared! +${fmtMoney(data.payout, state.currencyMode)}`);
       } else {
-        audio.playCasinoChime();
+        audio.playMinesTile();
+        audio.playMinesDiamond();
         state.mines.revealed = data.revealed || [];
         state.mines.multiplier = data.multiplier;
         state.mines.nextMultiplier = data.nextMultiplier;
@@ -3937,7 +4672,7 @@
         showToast(data.error || 'Cashout failed.', true);
         return;
       }
-      audio.playCashout();
+      audio.playArcadeWin('golden-mines');
       state.mines.active = false;
       state.mines.minesShown = data.mines || [];
       state.mines.multiplier = data.multiplier;
@@ -3959,6 +4694,625 @@
       renderMinesGrid();
     } catch {
       showToast('Cashout error.', true);
+    }
+  });
+
+  // ==========================================================================
+  // 4) Cyber Dice Controller
+  // ==========================================================================
+  function updateDiceMetrics() {
+    const target = Math.min(98, Math.max(2, Math.round(Number(el.diceTargetSlider?.value || state.diceTarget || 50))));
+    state.diceTarget = target;
+    const dir = state.diceDirection === 'over' ? 'over' : 'under';
+    const winChance = dir === 'over' ? 100 - target : target;
+    const cfg = getGameConfig('cyber-dice');
+    const edgePct = Math.min(25, Math.max(0, Number(cfg?.houseEdgePct ?? 4)));
+    const mult = Math.max(1.01, Math.floor(((100 - edgePct) / winChance) * 100) / 100);
+    const amt = Math.max(0, Number(el.diceAmount?.value || 0));
+    const estPayout = Math.round(amt * mult * 100) / 100;
+
+    if (el.diceTargetLabel) el.diceTargetLabel.textContent = String(target);
+    if (el.diceWinChanceVal) el.diceWinChanceVal.textContent = `${winChance.toFixed(2)}%`;
+    if (el.diceMultVal) el.diceMultVal.textContent = `${mult.toFixed(2)}x`;
+    if (el.diceEstPayoutVal) el.diceEstPayoutVal.textContent = fmtMoney(estPayout, state.currencyMode);
+    if (el.diceRuleHint) {
+      el.diceRuleHint.textContent = dir === 'over' ? `Roll above ${target}.00 to win.` : `Roll below ${target}.00 to win.`;
+    }
+    if (el.diceWinZone) {
+      el.diceWinZone.style.left = dir === 'over' ? `${target}%` : '0%';
+      el.diceWinZone.style.width = `${winChance}%`;
+    }
+  }
+
+  document.querySelectorAll('.dice-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.diceAmount) {
+        el.diceAmount.value = btn.dataset.amt;
+        updateDiceMetrics();
+      }
+    });
+  });
+
+  document.querySelectorAll('.dice-dir-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.diceDirection = btn.dataset.dir === 'over' ? 'over' : 'under';
+      document.querySelectorAll('.dice-dir-btn').forEach((b) => b.classList.toggle('active', b === btn));
+      updateDiceMetrics();
+    });
+  });
+
+  el.diceTargetSlider?.addEventListener('input', updateDiceMetrics);
+  el.diceAmount?.addEventListener('input', updateDiceMetrics);
+
+  el.diceRollBtn?.addEventListener('click', async () => {
+    if (!state.user) return openAuthModal('login');
+    if (state.diceBusy) return;
+    const amount = Number(el.diceAmount?.value || 0);
+    state.diceBusy = true;
+    el.diceRollBtn.disabled = true;
+    if (el.diceStatusPill) el.diceStatusPill.textContent = 'Rolling...';
+    audio.ensureContext();
+    audio.playDiceRoll();
+
+    try {
+      const res = await fetch('/api/games/dice/play', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({
+          currencyMode: state.currencyMode,
+          direction: state.diceDirection,
+          target: state.diceTarget,
+          amount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Dice roll failed.', true);
+        if (el.diceStatusPill) el.diceStatusPill.textContent = 'Ready';
+        return;
+      }
+
+      const rollStr = Number(data.roll).toFixed(2).padStart(5, '0');
+      const [intPart, decPart] = rollStr.split('.');
+      if (el.diceDieA) el.diceDieA.textContent = intPart || '00';
+      if (el.diceDieB) el.diceDieB.textContent = decPart || '00';
+      if (el.diceRollValText) {
+        el.diceRollValText.textContent = Number(data.roll).toFixed(2);
+        el.diceRollValText.style.color = data.won ? '#34d399' : '#f87171';
+      }
+      if (el.diceRollMarker) {
+        el.diceRollMarker.style.left = `${Math.min(100, Math.max(0, Number(data.roll)))}%`;
+      }
+      if (el.diceResultSub) {
+        el.diceResultSub.textContent = data.won
+          ? `WON ${data.multiplier.toFixed(2)}x (+${fmtMoney(data.payout, data.currencyMode)})`
+          : `Rolled ${Number(data.roll).toFixed(2)} — Missed target ${data.target}`;
+      }
+      if (el.diceStatusPill) {
+        el.diceStatusPill.textContent = data.won ? `WIN +${data.multiplier.toFixed(2)}x` : 'Missed';
+      }
+      if (data.won) audio.playDiceWin();
+      if (Array.isArray(data.diceHistory)) state.arcade.diceHistory = data.diceHistory;
+      if (data.user) {
+        state.user = data.user;
+        updateUserUI();
+      }
+      renderHistory();
+      renderSidebar();
+    } catch {
+      showToast('Network error rolling dice.', true);
+    } finally {
+      state.diceBusy = false;
+      el.diceRollBtn.disabled = false;
+    }
+  });
+
+  // ==========================================================================
+  // 5) Limbo X Controller
+  // ==========================================================================
+  function updateLimboMetrics() {
+    const targetMult = Math.min(100, Math.max(1.05, Number(el.limboTargetInput?.value || 2)));
+    const amt = Math.max(0, Number(el.limboAmount?.value || 0));
+    const cfg = getGameConfig('cyber-limbo');
+    const edgePct = Math.min(25, Math.max(0, Number(cfg?.houseEdgePct ?? 4)));
+    const chance = Math.min(98, Math.max(0.5, ((100 - edgePct) / targetMult)));
+    const estPayout = Math.round(amt * targetMult * 100) / 100;
+
+    if (el.limboTargetBadge) el.limboTargetBadge.textContent = `${targetMult.toFixed(2)}x`;
+    if (el.limboChanceVal) el.limboChanceVal.textContent = `${chance.toFixed(2)}%`;
+    if (el.limboEstPayoutVal) el.limboEstPayoutVal.textContent = fmtMoney(estPayout, state.currencyMode);
+  }
+
+  document.querySelectorAll('.limbo-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.limboAmount) {
+        el.limboAmount.value = btn.dataset.amt;
+        updateLimboMetrics();
+      }
+    });
+  });
+
+  document.querySelectorAll('.limbo-target-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.limboTargetInput) {
+        el.limboTargetInput.value = btn.dataset.target;
+        updateLimboMetrics();
+      }
+    });
+  });
+
+  el.limboAmount?.addEventListener('input', updateLimboMetrics);
+  el.limboTargetInput?.addEventListener('input', updateLimboMetrics);
+
+  el.limboPlayBtn?.addEventListener('click', async () => {
+    if (!state.user) return openAuthModal('login');
+    if (state.limboBusy) return;
+    const amount = Number(el.limboAmount?.value || 0);
+    const targetMultiplier = Number(el.limboTargetInput?.value || 2);
+    state.limboBusy = true;
+    el.limboPlayBtn.disabled = true;
+    if (el.limboStatusBadge) el.limboStatusBadge.textContent = 'Launching...';
+    audio.ensureContext();
+    audio.playLimboLaunch();
+
+    try {
+      const res = await fetch('/api/games/limbo/play', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({
+          currencyMode: state.currencyMode,
+          amount,
+          targetMultiplier,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Limbo launch failed.', true);
+        if (el.limboStatusBadge) el.limboStatusBadge.textContent = 'Ready';
+        return;
+      }
+
+      if (el.limboResultValue) {
+        el.limboResultValue.textContent = `${Number(data.rolled).toFixed(2)}x`;
+        el.limboResultValue.classList.toggle('won', Boolean(data.won));
+        el.limboResultValue.classList.toggle('lost', !data.won);
+      }
+      if (el.limboResultSub) {
+        el.limboResultSub.textContent = data.won
+          ? `HIT ${Number(data.targetMultiplier).toFixed(2)}x! Won +${fmtMoney(data.payout, data.currencyMode)}`
+          : `Stopped at ${Number(data.rolled).toFixed(2)}x (Below target ${Number(data.targetMultiplier).toFixed(2)}x)`;
+      }
+      if (el.limboStatusBadge) {
+        el.limboStatusBadge.textContent = data.won ? `WON ${Number(data.multiplier).toFixed(2)}x` : 'Missed';
+      }
+      if (data.won) audio.playArcadeWin('cyber-limbo');
+      if (Array.isArray(data.limboHistory)) state.arcade.limboHistory = data.limboHistory;
+      if (data.user) {
+        state.user = data.user;
+        updateUserUI();
+      }
+      renderHistory();
+      renderSidebar();
+    } catch {
+      showToast('Network error launching Limbo.', true);
+    } finally {
+      state.limboBusy = false;
+      el.limboPlayBtn.disabled = false;
+    }
+  });
+
+  // ==========================================================================
+  // 6) Neon Coin Flip Controller
+  // ==========================================================================
+  function updateCoinflipMetrics() {
+    const amt = Math.max(0, Number(el.coinflipAmount?.value || 0));
+    const cfg = getGameConfig('neon-flip');
+    const edgePct = Math.min(25, Math.max(0, Number(cfg?.houseEdgePct ?? 4)));
+    const mult = Math.max(1.5, Math.floor(2 * (1 - edgePct / 100) * 100) / 100);
+    const estWin = Math.round(amt * mult * 100) / 100;
+    if (el.coinflipEstWinHint) {
+      el.coinflipEstWinHint.textContent = `Potential Win (${mult.toFixed(2)}x): ${fmtMoney(estWin, state.currencyMode)}`;
+    }
+  }
+
+  document.querySelectorAll('.coinflip-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.coinflipAmount) {
+        el.coinflipAmount.value = btn.dataset.amt;
+        updateCoinflipMetrics();
+      }
+    });
+  });
+
+  document.querySelectorAll('.coinflip-pick-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.coinflipPick = btn.dataset.pick === 'tails' ? 'tails' : 'heads';
+      document.querySelectorAll('.coinflip-pick-btn').forEach((b) => b.classList.toggle('active', b === btn));
+    });
+  });
+
+  el.coinflipAmount?.addEventListener('input', updateCoinflipMetrics);
+
+  el.coinflipPlayBtn?.addEventListener('click', async () => {
+    if (!state.user) return openAuthModal('login');
+    if (state.coinflipBusy) return;
+    const amount = Number(el.coinflipAmount?.value || 0);
+    state.coinflipBusy = true;
+    el.coinflipPlayBtn.disabled = true;
+    if (el.coinflipStatusBadge) el.coinflipStatusBadge.textContent = 'Flipping...';
+    el.cyberCoinEl?.classList.add('flipping');
+    audio.ensureContext();
+    audio.playCoinFlip();
+
+    try {
+      const res = await fetch('/api/games/coinflip/play', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({
+          currencyMode: state.currencyMode,
+          amount,
+          pick: state.coinflipPick,
+        }),
+      });
+      const data = await res.json();
+      setTimeout(() => el.cyberCoinEl?.classList.remove('flipping'), 280);
+      if (!res.ok) {
+        showToast(data.error || 'Coin flip failed.', true);
+        if (el.coinflipStatusBadge) el.coinflipStatusBadge.textContent = 'Ready';
+        return;
+      }
+
+      const isHeads = data.outcome === 'heads';
+      if (el.cyberCoinEl) {
+        el.cyberCoinEl.classList.toggle('heads', isHeads);
+        el.cyberCoinEl.classList.toggle('tails', !isHeads);
+      }
+      if (el.cyberCoinFace) el.cyberCoinFace.textContent = String(data.outcome || 'heads').toUpperCase();
+      if (el.coinflipResultSub) {
+        el.coinflipResultSub.textContent = data.won
+          ? `${String(data.outcome).toUpperCase()}! Won +${fmtMoney(data.payout, data.currencyMode)}`
+          : `Landed ${String(data.outcome).toUpperCase()} — Better luck next flip!`;
+      }
+      if (el.coinflipStatusBadge) {
+        el.coinflipStatusBadge.textContent = data.won ? `WIN +${data.multiplier}x` : 'Missed';
+      }
+      if (data.won) audio.playArcadeWin('neon-flip');
+      if (Array.isArray(data.coinflipHistory)) state.arcade.coinflipHistory = data.coinflipHistory;
+      if (data.user) {
+        state.user = data.user;
+        updateUserUI();
+      }
+      renderHistory();
+      renderSidebar();
+    } catch {
+      el.cyberCoinEl?.classList.remove('flipping');
+      showToast('Network error flipping coin.', true);
+    } finally {
+      state.coinflipBusy = false;
+      el.coinflipPlayBtn.disabled = false;
+    }
+  });
+
+  // ==========================================================================
+  // 7) Lucky Wheel Controller (Canvas 12-Segment Fortune Wheel)
+  // ==========================================================================
+  function renderWheelCanvas(rotRad = 0) {
+    const canvas = el.luckyWheelCanvas;
+    if (!canvas) return;
+    const wCtx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const radius = Math.min(cx, cy) - 8;
+    const segAngle = (Math.PI * 2) / WHEEL_SEGMENTS.length;
+
+    wCtx.clearRect(0, 0, w, h);
+    WHEEL_SEGMENTS.forEach((seg, i) => {
+      const start = rotRad + i * segAngle;
+      const end = start + segAngle;
+      wCtx.beginPath();
+      wCtx.moveTo(cx, cy);
+      wCtx.arc(cx, cy, radius, start, end);
+      wCtx.closePath();
+      wCtx.fillStyle = seg.color;
+      wCtx.fill();
+      wCtx.lineWidth = 2;
+      wCtx.strokeStyle = 'rgba(5, 8, 17, 0.85)';
+      wCtx.stroke();
+
+      wCtx.save();
+      wCtx.translate(cx, cy);
+      wCtx.rotate(start + segAngle / 2);
+      wCtx.textAlign = 'right';
+      wCtx.textBaseline = 'middle';
+      wCtx.fillStyle = '#ffffff';
+      wCtx.font = '800 12px "Outfit", sans-serif';
+      wCtx.fillText(seg.label, radius - 14, 0);
+      wCtx.restore();
+    });
+
+    // Center Hub
+    wCtx.beginPath();
+    wCtx.arc(cx, cy, 24, 0, Math.PI * 2);
+    wCtx.fillStyle = '#0a1020';
+    wCtx.fill();
+    wCtx.lineWidth = 3;
+    wCtx.strokeStyle = '#fbbf24';
+    wCtx.stroke();
+    wCtx.fillStyle = '#fbbf24';
+    wCtx.font = '800 11px "Outfit", sans-serif';
+    wCtx.textAlign = 'center';
+    wCtx.textBaseline = 'middle';
+    wCtx.fillText('SPIN', cx, cy);
+  }
+
+  document.querySelectorAll('.wheel-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.wheelAmount && !state.wheelBusy) el.wheelAmount.value = btn.dataset.amt;
+    });
+  });
+
+  el.wheelSpinBtn?.addEventListener('click', async () => {
+    if (!state.user) return openAuthModal('login');
+    if (state.wheelBusy) return;
+    const amount = Number(el.wheelAmount?.value || 0);
+    state.wheelBusy = true;
+    el.wheelSpinBtn.disabled = true;
+    if (el.wheelStatusBadge) el.wheelStatusBadge.textContent = 'Spinning...';
+    audio.ensureContext();
+    audio.playWheelTick();
+
+    try {
+      const res = await fetch('/api/games/wheel/play', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({ currencyMode: state.currencyMode, amount }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Wheel spin failed.', true);
+        state.wheelBusy = false;
+        el.wheelSpinBtn.disabled = false;
+        if (el.wheelStatusBadge) el.wheelStatusBadge.textContent = 'Ready';
+        return;
+      }
+
+      const segIdx = Number(data.segmentIndex ?? 0);
+      const segAngle = (Math.PI * 2) / WHEEL_SEGMENTS.length;
+      // Align segment center at top pointer (-Math.PI / 2)
+      const desiredMod = -Math.PI / 2 - (segIdx + 0.5) * segAngle;
+      const twoPi = Math.PI * 2;
+      const startRot = state.wheelRotation;
+      const baseNormalized = ((startRot % twoPi) + twoPi) % twoPi;
+      let delta = (((desiredMod % twoPi) + twoPi) % twoPi) - baseNormalized;
+      if (delta <= 0) delta += twoPi;
+      const targetRot = startRot + delta + twoPi * 4;
+
+      const durationMs = 2200;
+      const t0 = performance.now();
+      let lastSegTick = -1;
+
+      const stepWheel = (now) => {
+        const p = Math.min(1, (now - t0) / durationMs);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const curRot = startRot + (targetRot - startRot) * eased;
+        state.wheelRotation = curRot;
+        renderWheelCanvas(curRot);
+
+        const segTick = Math.floor(curRot / segAngle);
+        if (segTick !== lastSegTick) {
+          lastSegTick = segTick;
+          audio.playWheelTick();
+        }
+
+        if (p < 1) {
+          requestAnimationFrame(stepWheel);
+        } else {
+          if (el.wheelResultSub) {
+            el.wheelResultSub.textContent =
+              data.multiplier > 0
+                ? `Landed ${data.multiplier}x! Payout +${fmtMoney(data.payout, data.currencyMode)}`
+                : 'Landed 0x — Try another spin!';
+          }
+          if (el.wheelStatusBadge) el.wheelStatusBadge.textContent = `${data.multiplier}x`;
+          if (data.multiplier >= 1) audio.playArcadeWin('lucky-wheel');
+          if (Array.isArray(data.wheelHistory)) state.arcade.wheelHistory = data.wheelHistory;
+          if (data.user) {
+            state.user = data.user;
+            updateUserUI();
+          }
+          renderHistory();
+          renderSidebar();
+          state.wheelBusy = false;
+          el.wheelSpinBtn.disabled = false;
+        }
+      };
+      requestAnimationFrame(stepWheel);
+    } catch {
+      showToast('Network error spinning wheel.', true);
+      state.wheelBusy = false;
+      el.wheelSpinBtn.disabled = false;
+    }
+  });
+
+  // ==========================================================================
+  // 8) Dragon Hi-Lo Controller
+  // ==========================================================================
+  document.querySelectorAll('.hilo-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.hiloAmount && !state.hiloBusy) el.hiloAmount.value = btn.dataset.amt;
+    });
+  });
+
+  document.querySelectorAll('.hilo-choice-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!state.user) return openAuthModal('login');
+      if (state.hiloBusy) return;
+      const choice = btn.dataset.choice || 'high';
+      const amount = Number(el.hiloAmount?.value || 0);
+      state.hiloBusy = true;
+      if (el.hiloStatusBadge) el.hiloStatusBadge.textContent = 'Dealing...';
+      audio.ensureContext();
+      audio.playCardDeal();
+
+      try {
+        const res = await fetch('/api/games/hilo/play', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${state.token}`,
+          },
+          body: JSON.stringify({
+            currencyMode: state.currencyMode,
+            amount,
+            baseRankIdx: state.hiloBaseRankIdx,
+            choice,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showToast(data.error || 'Hi-Lo deal failed.', true);
+          if (el.hiloStatusBadge) el.hiloStatusBadge.textContent = 'Ready';
+          return;
+        }
+
+        const isRed = data.nextSuitIdx === 1 || data.nextSuitIdx === 2;
+        if (el.hiloNextCardEl) {
+          el.hiloNextCardEl.textContent = data.nextCard || '?';
+          el.hiloNextCardEl.classList.remove('back');
+          el.hiloNextCardEl.classList.toggle('red', isRed);
+          el.hiloNextCardEl.classList.toggle('black', !isRed);
+        }
+        if (el.hiloResultSub) {
+          el.hiloResultSub.textContent = data.won
+            ? `Drew ${data.nextCard}! Won ${data.multiplier}x (+${fmtMoney(data.payout, data.currencyMode)})`
+            : `Drew ${data.nextCard} — Prediction (${choice.toUpperCase()}) missed`;
+        }
+        if (el.hiloStatusBadge) {
+          el.hiloStatusBadge.textContent = data.won ? `WIN ${data.multiplier}x` : 'Missed';
+        }
+        if (data.won) audio.playArcadeWin('dragon-hilo');
+
+        // Advance current base card to the drawn card for sequential Hi-Lo play
+        if (typeof data.nextRankIdx === 'number') {
+          state.hiloBaseRankIdx = data.nextRankIdx;
+          if (el.hiloBaseCardEl) {
+            el.hiloBaseCardEl.textContent = data.nextCard;
+            el.hiloBaseCardEl.classList.toggle('red', isRed);
+            el.hiloBaseCardEl.classList.toggle('black', !isRed);
+          }
+        }
+        if (Array.isArray(data.hiloHistory)) state.arcade.hiloHistory = data.hiloHistory;
+        if (data.user) {
+          state.user = data.user;
+          updateUserUI();
+        }
+        renderHistory();
+        renderSidebar();
+      } catch {
+        showToast('Network error dealing card.', true);
+      } finally {
+        state.hiloBusy = false;
+      }
+    });
+  });
+
+  // ==========================================================================
+  // 9) Emerald 777 Slots Controller
+  // ==========================================================================
+  document.querySelectorAll('.slots-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.slotsAmount && !state.slotsBusy) el.slotsAmount.value = btn.dataset.amt;
+    });
+  });
+
+  el.slotsSpinBtn?.addEventListener('click', async () => {
+    if (!state.user) return openAuthModal('login');
+    if (state.slotsBusy) return;
+    const amount = Number(el.slotsAmount?.value || 0);
+    state.slotsBusy = true;
+    el.slotsSpinBtn.disabled = true;
+    if (el.slotsStatusBadge) el.slotsStatusBadge.textContent = 'Spinning...';
+    audio.ensureContext();
+
+    try {
+      const res = await fetch('/api/games/slots/play', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${state.token}`,
+        },
+        body: JSON.stringify({ currencyMode: state.currencyMode, amount }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Slots spin failed.', true);
+        state.slotsBusy = false;
+        el.slotsSpinBtn.disabled = false;
+        if (el.slotsStatusBadge) el.slotsStatusBadge.textContent = 'Ready';
+        return;
+      }
+
+      const reelEls = [el.slotReel0, el.slotReel1, el.slotReel2];
+      let step = 0;
+      const spinTimer = setInterval(() => {
+        audio.playSlotReel(step);
+        reelEls.forEach((rEl, idx) => {
+          if (rEl && step < 7 + idx * 3) {
+            rEl.textContent = SLOT_SYMBOLS[(step + idx) % SLOT_SYMBOLS.length];
+            rEl.classList.add('spinning');
+          } else if (rEl && Array.isArray(data.reels)) {
+            rEl.textContent = data.reels[idx] || '💎';
+            rEl.classList.remove('spinning');
+          }
+        });
+        step += 1;
+        if (step > 14) {
+          clearInterval(spinTimer);
+          reelEls.forEach((rEl, idx) => {
+            if (rEl && Array.isArray(data.reels)) {
+              rEl.textContent = data.reels[idx] || '💎';
+              rEl.classList.remove('spinning');
+            }
+          });
+          if (el.slotsResultSub) {
+            el.slotsResultSub.textContent =
+              data.multiplier > 0
+                ? `JACKPOT MATCH ${data.multiplier}x! Won +${fmtMoney(data.payout, data.currencyMode)}`
+                : `[${(data.reels || []).join(' | ')}] — Spin again!`;
+          }
+          if (el.slotsStatusBadge) {
+            el.slotsStatusBadge.textContent = data.multiplier > 0 ? `WIN ${data.multiplier}x` : 'No Match';
+          }
+          if (data.multiplier > 0) audio.playArcadeWin('emerald-slots');
+          if (Array.isArray(data.slotsHistory)) state.arcade.slotsHistory = data.slotsHistory;
+          if (data.user) {
+            state.user = data.user;
+            updateUserUI();
+          }
+          renderHistory();
+          renderSidebar();
+          state.slotsBusy = false;
+          el.slotsSpinBtn.disabled = false;
+        }
+      }, 65);
+    } catch {
+      showToast('Network error spinning slots.', true);
+      state.slotsBusy = false;
+      el.slotsSpinBtn.disabled = false;
     }
   });
 
@@ -4217,6 +5571,60 @@
     }
   });
 
+  function bindSupportPasteAndDrop(zoneEl, inputEl, isReply) {
+    const acceptFile = async (file) => {
+      if (!file || !file.type.startsWith('image/')) return;
+      try {
+        const compressed = await compressSupportChatImage(file);
+        if (isReply) {
+          state.pendingReplyTicketImg = compressed;
+          if (el.userChatImgPreview) el.userChatImgPreview.src = compressed;
+          el.userChatImgPreviewWrap?.classList.remove('hidden');
+        } else {
+          state.pendingNewTicketImg = compressed;
+          if (el.newTicketImgPreview) el.newTicketImgPreview.src = compressed;
+          el.newTicketImgPreviewWrap?.classList.remove('hidden');
+        }
+        showToast('Screenshot attached to message!');
+      } catch (err) {
+        showToast(err.message || 'Could not attach pasted screenshot.', true);
+      }
+    };
+
+    inputEl?.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type && item.type.startsWith('image/')) {
+          const f = item.getAsFile();
+          if (f) {
+            e.preventDefault();
+            acceptFile(f);
+            break;
+          }
+        }
+      }
+    });
+
+    if (zoneEl) {
+      zoneEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zoneEl.classList.add('drag-over');
+      });
+      zoneEl.addEventListener('dragleave', () => {
+        zoneEl.classList.remove('drag-over');
+      });
+      zoneEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zoneEl.classList.remove('drag-over');
+        const f = e.dataTransfer?.files?.[0];
+        if (f) acceptFile(f);
+      });
+    }
+  }
+  bindSupportPasteAndDrop(el.newTicketForm, el.newTicketText, false);
+  bindSupportPasteAndDrop(el.userChatReplyForm, el.userChatReplyInput, true);
+
   function renderUserSupportTickets() {
     if (!el.userTicketList) return;
     if (!state.supportTickets.length) {
@@ -4378,6 +5786,8 @@
   if (urlRefCode && el.regRefCode) {
     el.regRefCode.value = urlRefCode;
   }
+  applyRememberedCredentialsToForm();
+  updateLastActive();
   updateUserUI();
   loadPublicSettings();
   fetchCurrentUser();

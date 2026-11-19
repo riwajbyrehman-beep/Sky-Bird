@@ -76,6 +76,13 @@
                 <span class="admin-nav-badge hidden" id="navPendingBadge">0</span>
               </button>
 
+              <button type="button" class="admin-nav-link" data-target="secSync" data-title="Live Site & Round Sync">
+                <span class="admin-nav-link-inner">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                  <span>Live Site Sync</span>
+                </span>
+              </button>
+
               <div class="admin-nav-subgroup">Platform &amp; Financial Rules</div>
 
               <button type="button" class="admin-nav-link" data-target="secFinancialLimits" data-title="Financial Limits & Fees">
@@ -227,9 +234,9 @@
             <span class="kpi-value tabular-nums" style="color: #fbbf24;" id="kpiPendingTx">0 Dep / 0 Wd</span>
           </div>
           <div class="kpi-card">
-            <span class="kpi-label">Unified Profit Pool (All 3 Games)</span>
+            <span class="kpi-label">Unified Profit Pool (All 9 Games)</span>
             <span class="kpi-value tabular-nums" style="color: var(--accent-emerald);" id="kpiSurplus">0.00 PKR</span>
-            <span class="tabular-nums" style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px;" id="kpiPoolBreakdown">Crash · Plinko · Mines</span>
+            <span class="tabular-nums" style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px;" id="kpiPoolBreakdown">Crash · Plinko · Mines · Dice · +5 Arcade</span>
           </div>
           <div class="kpi-card">
             <span class="kpi-label">Today's Real Bets / Payouts</span>
@@ -278,12 +285,12 @@
         <section class="panel-card admin-section" id="secFinancialLimits">
           <div class="modal-header" style="flex-wrap: wrap;">
             <div>
-              <h2 class="panel-title">Financial Limits, Fees &amp; Unified Profit Pool (All 3 Games)</h2>
+              <h2 class="panel-title">Financial Limits, Fees &amp; Unified Profit Pool (All 9 Games)</h2>
               <span style="font-size: 0.78rem; color: var(--text-muted);">
-                Centralized Profit Pool shared dynamically across SkyWing Crash, Cyber Plinko, and Golden Mines, plus deposit/withdrawal limits &amp; fees.
+                Centralized Profit Pool shared dynamically across all 9 games, with a dedicated Save button for every setting.
               </span>
             </div>
-            <button type="button" class="btn btn-emerald" id="saveFinancialLimitsBtn">Save Financial Limits</button>
+            <button type="button" class="btn btn-emerald" id="saveFinancialLimitsBtn">Save All Limits</button>
           </div>
 
           <div class="rtp-telemetry-grid" style="margin-bottom: 12px;" id="unifiedPoolBreakdownGrid">
@@ -306,41 +313,89 @@
               <strong class="tabular-nums" style="font-size: 0.96rem; color: #c084fc;" id="poolMinesNet">0.00 PKR</strong>
               <span class="form-hint tabular-nums" id="poolMinesVol">Bets 0 / Pay 0</span>
             </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Cyber Dice (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #38bdf8;" id="poolDiceNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolDiceVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Limbo X (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #34d399;" id="poolLimboNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolLimboVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Neon Coin Flip (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #fde047;" id="poolCoinflipNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolCoinflipVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Lucky Wheel (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #f472b6;" id="poolWheelNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolWheelVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Dragon Hi-Lo (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #a78bfa;" id="poolHiloNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolHiloVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Emerald 777 Slots (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #10b981;" id="poolSlotsNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolSlotsVol">Bets 0 / Pay 0</span>
+            </div>
           </div>
 
           <div class="settings-grid">
             <div class="form-group">
               <label class="form-label" for="limMinDeposit">Minimum Deposit Limit (PKR)</label>
-              <input type="number" class="form-input" id="limMinDeposit" min="10" step="10" value="50" />
+              <div class="setting-inline-save">
+                <input type="number" class="form-input" id="limMinDeposit" min="10" step="10" value="50" />
+                <button type="button" class="btn btn-emerald btn-xs" data-save-fin>Save</button>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label" for="limMinWithdrawal">Minimum Withdrawal Limit (PKR)</label>
-              <input type="number" class="form-input" id="limMinWithdrawal" min="10" step="10" value="100" />
+              <div class="setting-inline-save">
+                <input type="number" class="form-input" id="limMinWithdrawal" min="10" step="10" value="100" />
+                <button type="button" class="btn btn-emerald btn-xs" data-save-fin>Save</button>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label" for="limWithdrawalFee">Withdrawal Fee (%)</label>
-              <input type="number" class="form-input" id="limWithdrawalFee" min="0" max="25" step="0.5" value="2" />
+              <div class="setting-inline-save">
+                <input type="number" class="form-input" id="limWithdrawalFee" min="0" max="25" step="0.5" value="2" />
+                <button type="button" class="btn btn-emerald btn-xs" data-save-fin>Save</button>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label" for="limMicroAutoApprove">Micro-Deposit Auto-Approve Limit (PKR)</label>
-              <input type="number" class="form-input" id="limMicroAutoApprove" min="0" step="50" value="1000" />
+              <div class="setting-inline-save">
+                <input type="number" class="form-input" id="limMicroAutoApprove" min="0" step="50" value="1000" />
+                <button type="button" class="btn btn-emerald btn-xs" data-save-fin>Save</button>
+              </div>
               <span class="form-hint">Set to 0 to disable instant auto-approval.</span>
             </div>
             <div class="form-group">
               <label class="form-label" for="limProfitDistPool">Unified Profit Distribution Pool (PKR)</label>
-              <input type="number" class="form-input" id="limProfitDistPool" min="0" step="100" value="10000" />
-              <span class="form-hint">Single centralized PKR reserve fueling Crash, Plinko &amp; Mines pool-aware RNG.</span>
+              <div class="setting-inline-save">
+                <input type="number" class="form-input" id="limProfitDistPool" min="0" step="100" value="10000" />
+                <button type="button" class="btn btn-emerald btn-xs" data-save-fin>Save</button>
+              </div>
+              <span class="form-hint">Single centralized PKR reserve fueling all 9 games.</span>
             </div>
             <div class="pay-config-box">
               <div class="modal-header">
                 <strong style="color: #7dd3fc;">Mask Official Merchant Numbers</strong>
-                <label class="toggle-label">
-                  <span class="switch">
-                    <input type="checkbox" id="limMaskAccounts" checked />
-                    <span class="slider"></span>
-                  </span>
-                  <span id="limMaskStateText">Masked</span>
-                </label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <label class="toggle-label">
+                    <span class="switch">
+                      <input type="checkbox" id="limMaskAccounts" checked />
+                      <span class="slider"></span>
+                    </span>
+                    <span id="limMaskStateText">Masked</span>
+                  </label>
+                  <button type="button" class="btn btn-emerald btn-xs" data-save-fin>Save</button>
+                </div>
               </div>
               <span class="form-hint">Hides middle digits of EasyPaisa / JazzCash / IBAN on player screens.</span>
             </div>
@@ -356,34 +411,46 @@
                 Restrict Real PKR withdrawals outside configured operating hours (e.g. 09:00 to 17:00) or toggle OFF for 24/7 payouts.
               </span>
             </div>
-            <button type="button" class="btn btn-primary" id="saveWithdrawalHoursBtn">Save Operating Hours</button>
+            <button type="button" class="btn btn-primary" id="saveWithdrawalHoursBtn">Save All Hours</button>
           </div>
 
           <div class="settings-grid">
             <div class="pay-config-box">
               <div class="modal-header">
                 <strong style="color: var(--accent-gold-bright);">Enforce Time Window Restriction</strong>
-                <label class="toggle-label">
-                  <span class="switch">
-                    <input type="checkbox" id="whEnabled" checked />
-                    <span class="slider"></span>
-                  </span>
-                  <span id="whStateText">Enabled</span>
-                </label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <label class="toggle-label">
+                    <span class="switch">
+                      <input type="checkbox" id="whEnabled" checked />
+                      <span class="slider"></span>
+                    </span>
+                    <span id="whStateText">Enabled</span>
+                  </label>
+                  <button type="button" class="btn btn-emerald btn-xs" data-save-hours>Save</button>
+                </div>
               </div>
               <span class="form-hint" id="whLiveServerClock">Server Time: --:--</span>
             </div>
             <div class="form-group">
               <label class="form-label" for="whOpenTime">Opening Time (24h)</label>
-              <input type="time" class="form-input" id="whOpenTime" value="09:00" />
+              <div class="setting-inline-save">
+                <input type="time" class="form-input" id="whOpenTime" value="09:00" />
+                <button type="button" class="btn btn-emerald btn-xs" data-save-hours>Save</button>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label" for="whCloseTime">Closing Time (24h)</label>
-              <input type="time" class="form-input" id="whCloseTime" value="17:00" />
+              <div class="setting-inline-save">
+                <input type="time" class="form-input" id="whCloseTime" value="17:00" />
+                <button type="button" class="btn btn-emerald btn-xs" data-save-hours>Save</button>
+              </div>
             </div>
             <div class="form-group settings-span-wide">
               <label class="form-label" for="whNoticeText">Player Banner Notice Text</label>
-              <input type="text" class="form-input" id="whNoticeText" value="Withdrawals are only open from 9:00 AM to 5:00 PM." maxlength="200" />
+              <div class="setting-inline-save">
+                <input type="text" class="form-input" id="whNoticeText" value="Withdrawals are only open from 9:00 AM to 5:00 PM." maxlength="200" />
+                <button type="button" class="btn btn-emerald btn-xs" data-save-hours>Save</button>
+              </div>
             </div>
           </div>
         </section>
@@ -448,27 +515,36 @@
           <div class="settings-grid">
             <div class="form-group">
               <label class="form-label" for="profitModeSelect">Profit Algorithm Mode</label>
-              <select class="form-input" id="profitModeSelect">
-                <option value="balanced">Balanced (Fair + Daily Profit Guard)</option>
-                <option value="house-edge">House Edge Boost (Tighter Multipliers)</option>
-                <option value="low-crash">Low Crash Guard (Frequent 1.05x–1.80x)</option>
-                <option value="generous">Generous Flight (Higher Payouts)</option>
-              </select>
+              <div class="setting-inline-save">
+                <select class="form-input" id="profitModeSelect">
+                  <option value="balanced">Balanced (Fair + Daily Profit Guard)</option>
+                  <option value="house-edge">House Edge Boost (Tighter Multipliers)</option>
+                  <option value="low-crash">Low Crash Guard (Frequent 1.05x–1.80x)</option>
+                  <option value="generous">Generous Flight (Higher Payouts)</option>
+                </select>
+                <button type="button" class="btn btn-emerald btn-xs" data-save-profit>Save</button>
+              </div>
             </div>
 
             <div class="form-group">
               <label class="form-label" for="profitHouseEdge">House Edge Boost (%)</label>
-              <input type="number" class="form-input" id="profitHouseEdge" min="0" max="25" step="0.5" value="4" />
+              <div class="setting-inline-save">
+                <input type="number" class="form-input" id="profitHouseEdge" min="0" max="25" step="0.5" value="4" />
+                <button type="button" class="btn btn-emerald btn-xs" data-save-profit>Save</button>
+              </div>
             </div>
 
             <div class="form-group">
               <label class="form-label" for="profitMaxCap">Max Multiplier Cap (x)</label>
-              <input type="number" class="form-input" id="profitMaxCap" min="1.05" max="100" step="0.5" value="100" />
+              <div class="setting-inline-save">
+                <input type="number" class="form-input" id="profitMaxCap" min="1.05" max="100" step="0.5" value="100" />
+                <button type="button" class="btn btn-emerald btn-xs" data-save-profit>Save</button>
+              </div>
             </div>
 
             <div class="form-group" style="justify-content: flex-end;">
               <button type="button" class="btn btn-primary" id="saveProfitControlBtn" style="width: 100%; padding: 11px;">
-                Save Profit Policy
+                Save All Profit Policy
               </button>
             </div>
           </div>
@@ -527,22 +603,31 @@
               <div class="pay-config-box">
                 <div class="modal-header">
                   <strong>Auto RTP Risk Adjuster</strong>
-                  <label class="toggle-label">
-                    <span class="switch">
-                      <input type="checkbox" id="rtpAutoAdjustEnabled" checked />
-                      <span class="slider"></span>
-                    </span>
-                    <span id="rtpAutoStateText">ON</span>
-                  </label>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <label class="toggle-label">
+                      <span class="switch">
+                        <input type="checkbox" id="rtpAutoAdjustEnabled" checked />
+                        <span class="slider"></span>
+                      </span>
+                      <span id="rtpAutoStateText">ON</span>
+                    </label>
+                    <button type="button" class="btn btn-emerald btn-xs" data-save-rtp>Save</button>
+                  </div>
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label" for="rtpTargetInput">Target RTP (%)</label>
-                <input type="number" class="form-input" id="rtpTargetInput" min="75" max="99" step="0.5" value="96" />
+                <div class="setting-inline-save">
+                  <input type="number" class="form-input" id="rtpTargetInput" min="75" max="99" step="0.5" value="96" />
+                  <button type="button" class="btn btn-emerald btn-xs" data-save-rtp>Save</button>
+                </div>
               </div>
               <div class="form-group">
                 <label class="form-label" for="rtpEdgeOffsetInput">Manual Edge Offset (-3% to +8%)</label>
-                <input type="number" class="form-input" id="rtpEdgeOffsetInput" min="-3" max="8" step="0.25" value="0" />
+                <div class="setting-inline-save">
+                  <input type="number" class="form-input" id="rtpEdgeOffsetInput" min="-3" max="8" step="0.25" value="0" />
+                  <button type="button" class="btn btn-emerald btn-xs" data-save-rtp>Save</button>
+                </div>
               </div>
               <div class="form-group" style="justify-content: flex-end;">
                 <button type="button" class="btn btn-emerald" id="saveRtpRiskBtn">Save RTP Risk Policy</button>
@@ -581,32 +666,41 @@
             <div class="pay-config-box">
               <div class="modal-header">
                 <strong style="color: var(--accent-gold-bright);">Background Music</strong>
-                <label class="toggle-label">
-                  <span class="switch">
-                    <input type="checkbox" id="audioBgmEnabled" checked />
-                    <span class="slider"></span>
-                  </span>
-                  <span id="audioBgmStateText">ON</span>
-                </label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <label class="toggle-label">
+                    <span class="switch">
+                      <input type="checkbox" id="audioBgmEnabled" checked />
+                      <span class="slider"></span>
+                    </span>
+                    <span id="audioBgmStateText">ON</span>
+                  </label>
+                  <button type="button" class="btn btn-emerald btn-xs" data-save-audio>Save</button>
+                </div>
               </div>
               <span class="form-hint">Players can still mute/unmute locally from the game header toggle.</span>
             </div>
 
             <div class="form-group">
               <label class="form-label" for="audioPreset">Global Sound Preset</label>
-              <select class="form-input" id="audioPreset">
-                <option value="aviator-jet">Aviator Jet &amp; Propeller (Avtix Style)</option>
-                <option value="cyber-flight">Cyber Flight Synth</option>
-                <option value="casino-chime">High-Energy Casino Chime</option>
-                <option value="turbo-arcade">Turbo Arcade Pulse</option>
-                <option value="stealth-minimal">Minimal Pro</option>
-              </select>
+              <div class="setting-inline-save">
+                <select class="form-input" id="audioPreset">
+                  <option value="aviator-jet">Aviator Jet &amp; Propeller (Avtix Style)</option>
+                  <option value="cyber-flight">Cyber Flight Synth</option>
+                  <option value="casino-chime">High-Energy Casino Chime</option>
+                  <option value="turbo-arcade">Turbo Arcade Pulse</option>
+                  <option value="stealth-minimal">Minimal Pro</option>
+                </select>
+                <button type="button" class="btn btn-emerald btn-xs" data-save-audio>Save</button>
+              </div>
             </div>
 
             <div class="form-group">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <label class="form-label" for="audioMasterVolume">Master Game Volume</label>
-                <strong class="tabular-nums" id="audioMasterVolumeVal" style="color: #38bdf8; font-size: 0.9rem;">75%</strong>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <strong class="tabular-nums" id="audioMasterVolumeVal" style="color: #38bdf8; font-size: 0.9rem;">75%</strong>
+                  <button type="button" class="btn btn-emerald btn-xs" data-save-audio>Save</button>
+                </div>
               </div>
               <input
                 type="range"
@@ -647,9 +741,12 @@
               <div class="pay-config-box">
                 <div class="modal-header">
                   <strong style="color: #34d399;">EasyPaisa Account</strong>
-                  <label class="toggle-label">
-                    <input type="checkbox" id="epEnabled" checked /> Enabled
-                  </label>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <label class="toggle-label">
+                      <input type="checkbox" id="epEnabled" checked /> Enabled
+                    </label>
+                    <button type="button" class="btn btn-emerald btn-xs" data-save-settings>Save</button>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="epTitle">Account Title</label>
@@ -665,9 +762,12 @@
               <div class="pay-config-box">
                 <div class="modal-header">
                   <strong style="color: #f87171;">JazzCash Account</strong>
-                  <label class="toggle-label">
-                    <input type="checkbox" id="jcEnabled" checked /> Enabled
-                  </label>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <label class="toggle-label">
+                      <input type="checkbox" id="jcEnabled" checked /> Enabled
+                    </label>
+                    <button type="button" class="btn btn-emerald btn-xs" data-save-settings>Save</button>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="jcTitle">Account Title</label>
@@ -683,9 +783,12 @@
               <div class="pay-config-box">
                 <div class="modal-header">
                   <strong style="color: #38bdf8;">Bank Account</strong>
-                  <label class="toggle-label">
-                    <input type="checkbox" id="bkEnabled" checked /> Enabled
-                  </label>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <label class="toggle-label">
+                      <input type="checkbox" id="bkEnabled" checked /> Enabled
+                    </label>
+                    <button type="button" class="btn btn-emerald btn-xs" data-save-settings>Save</button>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="bkName">Bank Name</label>
@@ -705,17 +808,26 @@
             <div class="settings-grid">
               <div class="form-group">
                 <label class="form-label" for="setDailyTarget">Daily Real Profit Target (PKR)</label>
-                <input type="number" class="form-input" id="setDailyTarget" min="0" step="100" required />
+                <div class="setting-inline-save">
+                  <input type="number" class="form-input" id="setDailyTarget" min="0" step="100" required />
+                  <button type="button" class="btn btn-emerald btn-xs" data-save-settings>Save</button>
+                </div>
               </div>
 
               <div class="form-group">
                 <label class="form-label" for="setVariancePct">Variance Dip Tolerance (5% – 10%)</label>
-                <input type="number" class="form-input" id="setVariancePct" min="5" max="10" step="0.5" required />
+                <div class="setting-inline-save">
+                  <input type="number" class="form-input" id="setVariancePct" min="5" max="10" step="0.5" required />
+                  <button type="button" class="btn btn-emerald btn-xs" data-save-settings>Save</button>
+                </div>
               </div>
 
               <div class="form-group">
                 <label class="form-label" for="setWelcomeBonus">New User Welcome Bonus (Fun FC)</label>
-                <input type="number" class="form-input" id="setWelcomeBonus" min="0" step="50" required />
+                <div class="setting-inline-save">
+                  <input type="number" class="form-input" id="setWelcomeBonus" min="0" step="50" required />
+                  <button type="button" class="btn btn-emerald btn-xs" data-save-settings>Save</button>
+                </div>
               </div>
             </div>
 
@@ -724,13 +836,16 @@
               <div class="pay-config-box">
                 <div class="modal-header">
                   <strong style="color: #34d399;">WhatsApp Support / Help Link</strong>
-                  <label class="toggle-label">
-                    <span class="switch">
-                      <input type="checkbox" id="setWhatsappSupportEnabled" checked />
-                      <span class="slider"></span>
-                    </span>
-                    <span id="whatsappSupportStateText" style="font-weight:700;">Available</span>
-                  </label>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <label class="toggle-label">
+                      <span class="switch">
+                        <input type="checkbox" id="setWhatsappSupportEnabled" checked />
+                        <span class="slider"></span>
+                      </span>
+                      <span id="whatsappSupportStateText" style="font-weight:700;">Available</span>
+                    </label>
+                    <button type="button" class="btn btn-emerald btn-xs" data-save-settings>Save</button>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="setSupportPhone">Support Helpline Number (923XX)</label>
@@ -742,13 +857,16 @@
               <div class="pay-config-box">
                 <div class="modal-header">
                   <strong style="color: #6ee7b7;">Official WhatsApp Channel</strong>
-                  <label class="toggle-label">
-                    <span class="switch">
-                      <input type="checkbox" id="setWhatsappChannelEnabled" checked />
-                      <span class="slider"></span>
-                    </span>
-                    <span id="whatsappChannelStateText" style="font-weight:700;">Available</span>
-                  </label>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <label class="toggle-label">
+                      <span class="switch">
+                        <input type="checkbox" id="setWhatsappChannelEnabled" checked />
+                        <span class="slider"></span>
+                      </span>
+                      <span id="whatsappChannelStateText" style="font-weight:700;">Available</span>
+                    </label>
+                    <button type="button" class="btn btn-emerald btn-xs" data-save-settings>Save</button>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="setChannelUrl">WhatsApp Channel URL</label>
@@ -760,13 +878,16 @@
               <div class="pay-config-box">
                 <div class="modal-header">
                   <strong style="color: #38bdf8;">Telegram Channel Link</strong>
-                  <label class="toggle-label">
-                    <span class="switch">
-                      <input type="checkbox" id="setTelegramEnabled" checked />
-                      <span class="slider"></span>
-                    </span>
-                    <span id="telegramStateText" style="font-weight:700;">Available</span>
-                  </label>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <label class="toggle-label">
+                      <span class="switch">
+                        <input type="checkbox" id="setTelegramEnabled" checked />
+                        <span class="slider"></span>
+                      </span>
+                      <span id="telegramStateText" style="font-weight:700;">Available</span>
+                    </label>
+                    <button type="button" class="btn btn-emerald btn-xs" data-save-settings>Save</button>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="setTelegramUrl">Telegram Channel URL</label>
@@ -1016,6 +1137,78 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <!-- Cross-Instance & Live Site Synchronization -->
+        <section class="panel-card admin-section" id="secSync">
+          <div class="modal-header" style="flex-wrap: wrap;">
+            <div>
+              <h2 class="panel-title">AI Studio &amp; Live Site Round &amp; Data Synchronization</h2>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">
+                Keep the exact same live round, timer, multiplier, history, and public settings synchronized across AI Studio and your deployed Live Site.
+              </span>
+            </div>
+            <span class="badge-pill" id="syncRoleBadge">STANDALONE MASTER</span>
+          </div>
+
+          <div class="kpi-grid" style="margin-bottom: 16px;">
+            <div class="kpi-card">
+              <div class="kpi-label">Database Connection</div>
+              <div class="kpi-val" id="syncDbModeText" style="font-size: 1rem;">Local Fallback</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Active Sync Role</div>
+              <div class="kpi-val" id="syncRoleText" style="font-size: 1rem; color: #38bdf8;">Standalone Master</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Current Synced Round</div>
+              <div class="kpi-val tabular-nums" id="syncRoundText" style="font-size: 1.05rem;">#1001 · BETTING</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Last Sync Pulse</div>
+              <div class="kpi-val tabular-nums" id="syncLastPulseText" style="font-size: 0.9rem;">Master Node</div>
+            </div>
+          </div>
+
+          <div class="info-banner" style="margin-bottom: 16px;">
+            <strong>How Full Sync Works:</strong>
+            <br />1. <strong>Same Round Engine (Instant):</strong> Enter your deployed Live Site URL below (or set <code>LIVE_SYNC_URL</code>) so this server mirrors the exact live round number, countdown, multiplier, bets, crash history, and public settings every 250ms. Or connect both servers to the same <code>MONGODB_URI</code> for automatic Distributed Lease master/follower failover.
+            <br />2. <strong>Shared User Accounts, Wallets &amp; Deposits:</strong> Set the exact same <code>MONGODB_URI</code> and <code>JWT_SECRET</code> environment variables on both AI Studio and your Live Site so registered players, PKR/FC balances, and transactions are identical everywhere.
+          </div>
+
+          <div class="settings-grid" style="margin-bottom: 14px;">
+            <div class="form-group">
+              <label class="form-label" for="syncModeSelect">Synchronization Mode</label>
+              <div class="setting-inline-save">
+                <select class="form-input" id="syncModeSelect">
+                  <option value="auto">Auto (Mirror URL if set, else MongoDB Lease / Master)</option>
+                  <option value="mirror">Remote Mirror (Follow Live Site URL)</option>
+                  <option value="standalone">Standalone Master (Host Primary Rounds)</option>
+                </select>
+                <button type="button" class="btn btn-emerald btn-xs" data-save-sync>Save</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="syncRemoteUrlInput">Remote Live Site URL (Primary Round Authority)</label>
+              <div class="setting-inline-save">
+                <input
+                  type="url"
+                  class="form-input"
+                  id="syncRemoteUrlInput"
+                  placeholder="https://your-live-site.onrender.com"
+                />
+                <button type="button" class="btn btn-emerald btn-xs" data-save-sync>Save</button>
+              </div>
+              <span class="form-hint">Leave blank on your primary Live Site. Enter the Live Site origin here in AI Studio to mirror exact rounds.</span>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+            <button type="button" class="btn btn-primary btn-sm" id="saveSyncConfigBtn">Save Sync Configuration</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="testSyncConnBtn">Test Remote Site Connection</button>
+            <span id="syncErrorHint" style="font-size: 0.78rem; color: #fca5a5;"></span>
           </div>
         </section>
       </main>
@@ -1280,13 +1473,25 @@
           const crash = byGame.crash || { bets: 0, payouts: 0, netDelta: 0 };
           const plinko = byGame.plinko || { bets: 0, payouts: 0, netDelta: 0 };
           const mines = byGame.mines || { bets: 0, payouts: 0, netDelta: 0 };
+          const dice = byGame.dice || { bets: 0, payouts: 0, netDelta: 0 };
+          const limbo = byGame.limbo || { bets: 0, payouts: 0, netDelta: 0 };
+          const coinflip = byGame.coinflip || { bets: 0, payouts: 0, netDelta: 0 };
+          const wheel = byGame.wheel || { bets: 0, payouts: 0, netDelta: 0 };
+          const hilo = byGame.hilo || { bets: 0, payouts: 0, netDelta: 0 };
+          const slots = byGame.slots || { bets: 0, payouts: 0, netDelta: 0 };
 
           const kpiSurplusEl = document.getElementById('kpiSurplus');
           if (kpiSurplusEl) kpiSurplusEl.textContent = fmtPKR(poolBal);
 
           const kpiSplitEl = document.getElementById('kpiPoolBreakdown');
           if (kpiSplitEl) {
-            kpiSplitEl.textContent = `C:${Number(crash.netDelta || 0) >= 0 ? '+' : ''}${Number(crash.netDelta || 0).toFixed(0)} · P:${Number(plinko.netDelta || 0) >= 0 ? '+' : ''}${Number(plinko.netDelta || 0).toFixed(0)} · M:${Number(mines.netDelta || 0) >= 0 ? '+' : ''}${Number(mines.netDelta || 0).toFixed(0)}`;
+            const arcadeNet =
+              Number(limbo.netDelta || 0) +
+              Number(coinflip.netDelta || 0) +
+              Number(wheel.netDelta || 0) +
+              Number(hilo.netDelta || 0) +
+              Number(slots.netDelta || 0);
+            kpiSplitEl.textContent = `C:${Number(crash.netDelta || 0) >= 0 ? '+' : ''}${Number(crash.netDelta || 0).toFixed(0)} · P:${Number(plinko.netDelta || 0) >= 0 ? '+' : ''}${Number(plinko.netDelta || 0).toFixed(0)} · M:${Number(mines.netDelta || 0) >= 0 ? '+' : ''}${Number(mines.netDelta || 0).toFixed(0)} · D:${Number(dice.netDelta || 0) >= 0 ? '+' : ''}${Number(dice.netDelta || 0).toFixed(0)} · +5:${arcadeNet >= 0 ? '+' : ''}${arcadeNet.toFixed(0)}`;
           }
 
           const poolUnifiedEl = document.getElementById('poolUnifiedVal');
@@ -1307,6 +1512,12 @@
           setGameCell('poolCrashNet', 'poolCrashVol', crash);
           setGameCell('poolPlinkoNet', 'poolPlinkoVol', plinko);
           setGameCell('poolMinesNet', 'poolMinesVol', mines);
+          setGameCell('poolDiceNet', 'poolDiceVol', dice);
+          setGameCell('poolLimboNet', 'poolLimboVol', limbo);
+          setGameCell('poolCoinflipNet', 'poolCoinflipVol', coinflip);
+          setGameCell('poolWheelNet', 'poolWheelVol', wheel);
+          setGameCell('poolHiloNet', 'poolHiloVol', hilo);
+          setGameCell('poolSlotsNet', 'poolSlotsVol', slots);
 
           if (payload.dailyNetProfit !== undefined) {
             const kpiProfitEl = document.getElementById('kpiNetProfit');
@@ -1575,9 +1786,12 @@
             <div class="pay-config-box" data-game-cfg="${escapeHtml(g.id)}">
               <div class="modal-header">
                 <strong style="color: var(--accent-gold-bright);">${escapeHtml(g.name)}</strong>
-                <label class="toggle-label">
-                  <input type="checkbox" class="game-cfg-enabled" ${g.enabled !== false ? 'checked' : ''} /> Enabled
-                </label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <label class="toggle-label">
+                    <input type="checkbox" class="game-cfg-enabled" ${g.enabled !== false ? 'checked' : ''} /> Enabled
+                  </label>
+                  <button type="button" class="btn btn-emerald btn-xs" data-save-game="${escapeHtml(g.id)}">Save</button>
+                </div>
               </div>
               <div class="form-group">
                 <label class="form-label">House Edge (%)</label>
@@ -1597,6 +1811,38 @@
           `
             )
             .join('');
+
+          grid.querySelectorAll('[data-save-game]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              const id = btn.dataset.saveGame;
+              const card = grid.querySelector(`[data-game-cfg="${id}"]`);
+              const prev = cachedGamesConfig.find((x) => x.id === id) || {};
+              const game = {
+                id,
+                name: prev.name || id,
+                tagline: prev.tagline || '',
+                enabled: card.querySelector('.game-cfg-enabled').checked,
+                houseEdgePct: Number(card.querySelector('.game-cfg-edge').value),
+                minBet: Number(card.querySelector('.game-cfg-min').value),
+                maxBet: Number(card.querySelector('.game-cfg-max').value),
+              };
+              try {
+                const res = await apiFetch('/api/admin/games-config', {
+                  method: 'PUT',
+                  body: JSON.stringify({ game }),
+                });
+                if (!res.ok) {
+                  const err = await res.json();
+                  showToast(err.error || `Failed to save ${game.name}.`, true);
+                  return;
+                }
+                showToast(`${game.name} settings saved!`);
+                loadDashboard();
+              } catch {
+                showToast(`Error saving ${game.name}.`, true);
+              }
+            });
+          });
         }
 
         function syncMaintCardsUI(mode) {
@@ -1643,6 +1889,43 @@
             if (dbModeEl) {
               dbModeEl.textContent = live.databaseMode || 'Connected';
             }
+
+            // Live Site Sync Telemetry & Controls
+            const syncSt = live.syncStatus || {};
+            const syncCfg = s.syncConfig || {};
+            const roleLabelMap = {
+              'standalone-master': 'Standalone Master',
+              'mongo-master': 'MongoDB Master (Lease Owner)',
+              'mongo-follower': 'MongoDB Follower (Synced)',
+              'remote-mirror': 'Remote Mirror (Synced)',
+            };
+            const roleStr = roleLabelMap[syncSt.role] || syncSt.role || 'Standalone Master';
+            const syncRoleBadge = document.getElementById('syncRoleBadge');
+            if (syncRoleBadge) syncRoleBadge.textContent = roleStr.toUpperCase();
+            const syncDbEl = document.getElementById('syncDbModeText');
+            if (syncDbEl) syncDbEl.textContent = live.databaseMode || 'Local Fallback';
+            const syncRoleEl = document.getElementById('syncRoleText');
+            if (syncRoleEl) syncRoleEl.textContent = roleStr;
+            const syncRoundEl = document.getElementById('syncRoundText');
+            if (syncRoundEl) syncRoundEl.textContent = `#${live.roundNumber} · ${live.phase}`;
+            const syncPulseEl = document.getElementById('syncLastPulseText');
+            if (syncPulseEl) {
+              syncPulseEl.textContent = syncSt.lastSyncAt
+                ? new Date(syncSt.lastSyncAt).toLocaleTimeString()
+                : syncSt.isFollower
+                  ? 'Waiting...'
+                  : 'Primary Master';
+            }
+            const syncModeSel = document.getElementById('syncModeSelect');
+            if (syncModeSel && document.activeElement !== syncModeSel) {
+              syncModeSel.value = syncCfg.mode || syncSt.configuredMode || 'auto';
+            }
+            const syncUrlIn = document.getElementById('syncRemoteUrlInput');
+            if (syncUrlIn && document.activeElement !== syncUrlIn) {
+              syncUrlIn.value = syncCfg.remoteLiveUrl || syncSt.configuredRemoteUrl || '';
+            }
+            const syncErrEl = document.getElementById('syncErrorHint');
+            if (syncErrEl) syncErrEl.textContent = syncSt.lastError || '';
 
             const mongoBanner = document.getElementById('mongoNoticeBanner');
             if (live.mongoNotice) {
@@ -2153,8 +2436,7 @@
           });
         });
 
-        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
-          e.preventDefault();
+        async function saveAllCoreSettings() {
           try {
             const res = await apiFetch('/api/admin/settings', {
               method: 'PUT',
@@ -2194,11 +2476,36 @@
               showToast(err.error || 'Failed to update settings', true);
               return;
             }
-            showToast('Settings & payment accounts saved to database.');
+            showToast('Setting saved to database!');
             loadDashboard();
           } catch {
-            showToast('Failed to save settings.', true);
+            showToast('Failed to save setting.', true);
           }
+        }
+
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          await saveAllCoreSettings();
+        });
+
+        document.querySelectorAll('[data-save-settings]').forEach((btn) => {
+          btn.addEventListener('click', () => saveAllCoreSettings());
+        });
+
+        document.querySelectorAll('[data-save-fin]').forEach((btn) => {
+          btn.addEventListener('click', () => document.getElementById('saveFinancialLimitsBtn')?.click());
+        });
+        document.querySelectorAll('[data-save-hours]').forEach((btn) => {
+          btn.addEventListener('click', () => document.getElementById('saveWithdrawalHoursBtn')?.click());
+        });
+        document.querySelectorAll('[data-save-profit]').forEach((btn) => {
+          btn.addEventListener('click', () => document.getElementById('saveProfitControlBtn')?.click());
+        });
+        document.querySelectorAll('[data-save-rtp]').forEach((btn) => {
+          btn.addEventListener('click', () => document.getElementById('saveRtpRiskBtn')?.click());
+        });
+        document.querySelectorAll('[data-save-audio]').forEach((btn) => {
+          btn.addEventListener('click', () => document.getElementById('saveAudioBtn')?.click());
         });
 
         document.getElementById('resetDailyBtn').addEventListener('click', async () => {
@@ -2572,6 +2879,30 @@
           }
         });
 
+        document.getElementById('adminChatReplyInput')?.addEventListener('paste', async (e) => {
+          const items = e.clipboardData?.items;
+          if (!items) return;
+          for (const item of items) {
+            if (item.type && item.type.startsWith('image/')) {
+              const file = item.getAsFile();
+              if (!file) continue;
+              e.preventDefault();
+              try {
+                const compressed = await compressSupportImage(file);
+                adminPendingReplyImg = compressed;
+                const imgEl = document.getElementById('adminChatImgPreview');
+                const wrapEl = document.getElementById('adminChatImgPreviewWrap');
+                if (imgEl) imgEl.src = compressed;
+                wrapEl?.classList.remove('hidden');
+                showToast('Screenshot pasted and ready to send.');
+              } catch (err) {
+                showToast(err.message || 'Screenshot paste failed.', true);
+              }
+              break;
+            }
+          }
+        });
+
         function renderAdminSupportTickets() {
           const listEl = document.getElementById('adminTicketList');
           const threadEl = document.getElementById('adminChatThread');
@@ -2935,6 +3266,54 @@
             showToast('Excel CSV audit exported!');
           } catch {
             showToast('Failed to export CSV.', true);
+          }
+        });
+
+        // ====================================================================
+        // Cross-Instance Live Site Sync Controls
+        // ====================================================================
+        async function saveSyncConfigAction() {
+          try {
+            const mode = document.getElementById('syncModeSelect')?.value || 'auto';
+            const remoteLiveUrl = document.getElementById('syncRemoteUrlInput')?.value.trim() || '';
+            const res = await apiFetch('/api/admin/sync-config', {
+              method: 'PUT',
+              body: JSON.stringify({ mode, remoteLiveUrl }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Failed to save Live Sync config.', true);
+              return;
+            }
+            showToast('Live Site Sync configuration saved & activated!');
+            loadDashboard();
+          } catch {
+            showToast('Sync configuration error.', true);
+          }
+        }
+
+        document.getElementById('saveSyncConfigBtn')?.addEventListener('click', saveSyncConfigAction);
+        document.querySelectorAll('[data-save-sync]').forEach((btn) => {
+          btn.addEventListener('click', saveSyncConfigAction);
+        });
+
+        document.getElementById('testSyncConnBtn')?.addEventListener('click', async () => {
+          try {
+            const remoteLiveUrl = document.getElementById('syncRemoteUrlInput')?.value.trim() || '';
+            const res = await apiFetch('/api/admin/sync-test', {
+              method: 'POST',
+              body: JSON.stringify({ remoteLiveUrl }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Remote sync connection failed.', true);
+              return;
+            }
+            showToast(
+              `Connected (${data.latencyMs}ms)! Live Round #${data.roundNumber} (${data.phase} · ${Number(data.multiplier || 1).toFixed(2)}x) · DB: ${data.remoteDatabase}`
+            );
+          } catch {
+            showToast('Remote sync test error.', true);
           }
         });
 
