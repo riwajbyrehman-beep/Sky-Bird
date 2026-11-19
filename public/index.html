@@ -1025,12 +1025,12 @@
               type="text"
               class="form-input"
               id="loginPhone"
-              placeholder="03XX-XXXXXXX"
+              placeholder="03001234567 or Username"
               maxlength="32"
               autocomplete="username"
               required
             />
-            <span class="form-hint">Enter your 11-digit 03XX mobile number (e.g. 03001234567).</span>
+            <span class="form-hint">Enter your 03XX mobile number (including +92) or your username.</span>
           </div>
           <div class="form-group">
             <label class="form-label" for="loginPassword">Password</label>
@@ -1047,8 +1047,8 @@
             <input type="checkbox" id="loginRememberCheck" checked />
             <span>Remember Username &amp; Password</span>
           </label>
-          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">
-            Log In & Play
+          <button type="submit" class="btn btn-primary" id="loginSubmitBtn" style="width: 100%; padding: 12px;">
+            Log In &amp; Play
           </button>
 
           <div style="display: flex; justify-content: center; margin-top: 2px;">
@@ -1831,16 +1831,16 @@
         <div id="forgotResetSuccess" class="alert-success hidden"></div>
         <form id="forgotResetForm" class="form-group" style="gap: 12px;">
           <div class="form-group">
-            <label class="form-label" for="forgotResetIdentifier">Registered Mobile Number or CNIC</label>
+            <label class="form-label" for="forgotResetIdentifier">Registered Mobile Number, Username, or CNIC</label>
             <input
               type="text"
               class="form-input"
               id="forgotResetIdentifier"
-              placeholder="03001234567 or 35202-1234567-1"
-              maxlength="24"
+              placeholder="03001234567, Username, or 35202-1234567-1"
+              maxlength="32"
               required
             />
-            <span class="form-hint">Enter either your 03XX mobile number or CNIC (XXXXX-XXXXXXX-X).</span>
+            <span class="form-hint">Enter your 03XX mobile number, registered username, or CNIC (XXXXX-XXXXXXX-X).</span>
           </div>
           <div class="form-group">
             <label class="form-label" for="forgotResetNewPass">New Password (Min 6 characters)</label>
@@ -1848,13 +1848,13 @@
           </div>
           <div class="forgot-sec-box" id="forgotSecBox">
             <div id="forgotTurnstileMount" class="hidden"></div>
-            <div class="forgot-sec-row" id="forgotHumanRow">
-              <label class="remember-row" for="forgotHumanCheck">
+            <label class="forgot-sec-row forgot-human-label" id="forgotHumanRow" for="forgotHumanCheck">
+              <span class="remember-row" style="flex: 1;">
                 <input type="checkbox" id="forgotHumanCheck" />
-                <span>Online Security Check (Verify Human)</span>
-              </label>
-              <span class="forgot-sec-status" id="forgotSecStatus">Required</span>
-            </div>
+                <span>I am Human — Online Security Check</span>
+              </span>
+              <span class="forgot-sec-status" id="forgotSecStatus">Tap to Verify</span>
+            </label>
           </div>
           <button type="submit" class="btn btn-emerald" id="forgotResetSubmitBtn" style="width: 100%; padding: 11px;">
             Reset Password

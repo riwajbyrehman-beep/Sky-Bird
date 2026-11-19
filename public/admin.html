@@ -36,183 +36,106 @@
       </div>
     </div>
 
-    <!-- Admin Dashboard View (Strictly Isolated Two-Column Layout with Fixed Sidebar) -->
+    <!-- Admin Dashboard View (Strictly Isolated Top-Menu Layout, Zero Sidebar) -->
     <div id="adminDashboardView" class="admin-layout hidden">
-      <div id="adminSidebarBackdrop" class="admin-sidebar-backdrop"></div>
-
-      <!-- Fixed Non-Scrolling Left Separator Sidebar -->
-      <aside id="adminSidebar" class="admin-sidebar" aria-label="Admin Navigation">
-        <div class="admin-sidebar-top">
-          <div class="admin-sidebar-brand">
-            <div>
-              <div class="admin-sidebar-brand-title">SkyWing Admin</div>
-              <div class="admin-sidebar-brand-sub">Isolated Operations Console</div>
-            </div>
-            <button
-              type="button"
-              class="admin-sidebar-close"
-              id="adminSidebarCloseBtn"
-              aria-label="Close Navigation Menu"
-            >
-              ×
-            </button>
-          </div>
-
-          <div>
-            <div class="admin-nav-subgroup">Core Operations</div>
-            <nav class="admin-nav-list">
-              <button type="button" class="admin-nav-link active" data-target="secOverview" data-title="Overview & KPIs">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>
-                  <span>Overview &amp; KPIs</span>
-                </span>
-              </button>
-
-              <button type="button" class="admin-nav-link" data-target="secTransactions" data-title="Deposits & Withdrawals">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-                  <span>Deposits &amp; Withdrawals</span>
-                </span>
-                <span class="admin-nav-badge hidden" id="navPendingBadge">0</span>
-              </button>
-
-              <button type="button" class="admin-nav-link" data-target="secSync" data-title="Live Site & Round Sync">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
-                  <span>Live Site Sync</span>
-                </span>
-              </button>
-
-              <div class="admin-nav-subgroup">Platform &amp; Financial Rules</div>
-
-              <button type="button" class="admin-nav-link" data-target="secFinancialLimits" data-title="Financial Limits & Fees">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
-                  <span>Limits, Fees &amp; Pool</span>
-                </span>
-              </button>
-
-              <button type="button" class="admin-nav-link" data-target="secOperationHours" data-title="Withdrawal Operating Hours">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  <span>Withdrawal Hours</span>
-                </span>
-              </button>
-
-              <button type="button" class="admin-nav-link" data-target="secMaintenance" data-title="Maintenance & Status">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-                  <span>Maintenance Switch</span>
-                </span>
-              </button>
-
-              <button type="button" class="admin-nav-link" data-target="secSettings" data-title="Accounts & Social Links">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.02 1.4 1.13H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-                  <span>Payment Accounts</span>
-                </span>
-              </button>
-
-              <div class="admin-nav-subgroup">Games, RTP &amp; Audio</div>
-
-              <button type="button" class="admin-nav-link" data-target="secProfitControl" data-title="Profit & RTP Risk Engine">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>
-                  <span>Profit &amp; RTP Risk</span>
-                </span>
-              </button>
-
-              <button type="button" class="admin-nav-link" data-target="secGamesHub" data-title="Multi-Game Management Hub">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4M15 13h.01M18 11h.01"/></svg>
-                  <span>Multi-Game Hub</span>
-                </span>
-              </button>
-
-              <button type="button" class="admin-nav-link" data-target="audioControlSection" data-title="Game Audio & Sound">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /></svg>
-                  <span>Game Audio &amp; Sound</span>
-                </span>
-              </button>
-
-              <div class="admin-nav-subgroup">Members, Support &amp; Audit</div>
-
-              <button type="button" class="admin-nav-link" data-target="secSupport" data-title="Live Support Tickets">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  <span>Live Support Desk</span>
-                </span>
-                <span class="admin-nav-badge hidden" id="navSupportBadge">0</span>
-              </button>
-
-              <button type="button" class="admin-nav-link" data-target="secMembers" data-title="Member Management">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
-                  <span>Member Management</span>
-                </span>
-              </button>
-
-              <button type="button" class="admin-nav-link" data-target="secSecurity" data-title="Security & 2FA Console">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                  <span>Security &amp; 2FA Wall</span>
-                </span>
-              </button>
-
-              <button type="button" class="admin-nav-link" data-target="secReports" data-title="Telegram & CSV Reports">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  <span>Telegram &amp; CSV Reports</span>
-                </span>
-              </button>
-
-              <button type="button" class="admin-nav-link" data-target="secRounds" data-title="Rounds Audit Log">
-                <span class="admin-nav-link-inner">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
-                  <span>Rounds Audit Log</span>
-                </span>
-              </button>
-            </nav>
-          </div>
-        </div>
-
-        <div class="admin-sidebar-footer">
-          <div class="admin-status-box">
-            <span style="font-size: 0.76rem; color: #34d399; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-              <span class="live-dot"></span> Real-Time Alerts Active
-            </span>
-            <span style="font-size: 0.72rem; color: var(--text-muted);" id="sidebarDbMode">Connecting...</span>
-          </div>
-          <button type="button" class="btn btn-secondary" id="sidebarRefreshBtn" style="width: 100%;">Refresh Data</button>
-          <button type="button" class="btn btn-danger" id="sidebarLogoutBtn" style="width: 100%;">Log Out</button>
-        </div>
-      </aside>
-
-      <!-- Scrollable Right Main Workspace -->
       <div id="adminWorkspace" class="admin-workspace">
-        <header class="admin-topbar">
-          <div class="admin-topbar-left">
-            <button
-              type="button"
-              class="admin-menu-btn"
-              id="adminMenuToggleBtn"
-              aria-label="Open Navigation Menu"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            </button>
-            <h1 class="admin-topbar-title" id="adminTopbarTitle">Overview &amp; KPIs</h1>
-            <span class="isolated-badge">Isolated Operations</span>
+        <header class="admin-header-stack" id="adminHeaderStack">
+          <div class="admin-topbar">
+            <div class="admin-topbar-left">
+              <div class="admin-brand-chip">SkyWing Admin</div>
+              <h1 class="admin-topbar-title" id="adminTopbarTitle">Overview &amp; KPIs</h1>
+              <span class="isolated-badge">Isolated Operations</span>
+              <span class="admin-db-pill">
+                <span class="live-dot"></span>
+                <span id="sidebarDbMode">Connecting...</span>
+              </span>
+            </div>
+
+            <div class="header-actions">
+              <button type="button" class="btn btn-secondary" id="refreshDashBtn">Refresh Data</button>
+              <button type="button" class="btn btn-danger" id="adminLogoutBtn">Log Out</button>
+            </div>
           </div>
 
-          <div class="header-actions">
-            <button type="button" class="btn btn-secondary" id="refreshDashBtn">Refresh Data</button>
-            <button type="button" class="btn btn-danger" id="adminLogoutBtn">Log Out</button>
-          </div>
+          <!-- Always-Visible Top-of-Screen Non-Scrolling Admin Navigation Menu -->
+          <nav id="adminTopMenuBar" class="admin-top-menu" aria-label="Admin Top Menu">
+            <button type="button" class="admin-nav-link active" data-target="secOverview" data-title="Overview & KPIs">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>
+              <span>Overview</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secTransactions" data-title="Deposits & Withdrawals">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+              <span>Deposits &amp; Withdrawals</span>
+              <span class="admin-nav-badge hidden" id="navPendingBadge">0</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secSync" data-title="Live Site & Round Sync">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+              <span>Live Sync</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secFinancialLimits" data-title="Financial Limits & Fees">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
+              <span>Limits &amp; Pool</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secOperationHours" data-title="Withdrawal Operating Hours">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Withdraw Hours</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secMaintenance" data-title="Maintenance & Status">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+              <span>Maintenance</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secSettings" data-title="Accounts & Social Links">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.02 1.4 1.13H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+              <span>Payment &amp; Links</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secProfitControl" data-title="Profit & RTP Risk Engine">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>
+              <span>Profit &amp; RTP</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secGamesHub" data-title="Multi-Game Management Hub">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4M15 13h.01M18 11h.01"/></svg>
+              <span>Games Hub</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="audioControlSection" data-title="Game Audio & Sound">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /></svg>
+              <span>Audio</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secSupport" data-title="Live Support Tickets">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>Support</span>
+              <span class="admin-nav-badge hidden" id="navSupportBadge">0</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secMembers" data-title="Member Management">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+              <span>Members</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secSecurity" data-title="Security & 2FA Console">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>Security &amp; 2FA</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secReports" data-title="Telegram & CSV Reports">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span>Reports &amp; Bot</span>
+            </button>
+
+            <button type="button" class="admin-nav-link" data-target="secRounds" data-title="Rounds Audit Log">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+              <span>Rounds Log</span>
+            </button>
+          </nav>
         </header>
 
         <main class="admin-shell">
@@ -1429,19 +1352,19 @@
             playAlertBell();
             openDepositAlertPopup(tx);
             loadTransactions();
-            loadDashboard();
+            loadDashboard({ kpisOnly: true });
           });
 
           adminSocket.on('admin:withdrawal_alert', (tx) => {
             playAlertBell();
             showToast(`New Withdrawal Request: ${Number(tx.amount).toLocaleString()} PKR (${tx.phoneNumber})`);
             loadTransactions();
-            loadDashboard();
+            loadDashboard({ kpisOnly: true });
           });
 
           adminSocket.on('admin:transaction_resolved', () => {
             loadTransactions();
-            loadDashboard();
+            loadDashboard({ kpisOnly: true });
             loadUsers(document.getElementById('userSearchInput').value);
           });
 
@@ -1642,20 +1565,47 @@
           openRejectModal(activeAlertTx.id);
         });
 
-        const sidebarEl = document.getElementById('adminSidebar');
-        const sidebarBackdrop = document.getElementById('adminSidebarBackdrop');
         const workspaceEl = document.getElementById('adminWorkspace');
+        const headerStackEl = document.getElementById('adminHeaderStack');
         const topbarTitleEl = document.getElementById('adminTopbarTitle');
-        const navLinks = Array.from(document.querySelectorAll('.admin-nav-link[data-target]'));
+        const navLinks = Array.from(document.querySelectorAll('#adminTopMenuBar .admin-nav-link[data-target]'));
+        const dirtyFields = new Set();
 
-        function setSidebarOpen(open) {
-          sidebarEl?.classList.toggle('open', open);
-          sidebarBackdrop?.classList.toggle('open', open);
+        dashView?.addEventListener('input', (e) => {
+          const target = e.target;
+          if (target && target.id) dirtyFields.add(target.id);
+        });
+        dashView?.addEventListener('change', (e) => {
+          const target = e.target;
+          if (target && target.id) dirtyFields.add(target.id);
+        });
+
+        function clearDirtyIds(ids = []) {
+          ids.forEach((id) => dirtyFields.delete(id));
         }
 
-        document.getElementById('adminMenuToggleBtn')?.addEventListener('click', () => setSidebarOpen(true));
-        document.getElementById('adminSidebarCloseBtn')?.addEventListener('click', () => setSidebarOpen(false));
-        sidebarBackdrop?.addEventListener('click', () => setSidebarOpen(false));
+        function setFieldSafe(id, value, force = false) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (!force && (document.activeElement === el || dirtyFields.has(id))) return;
+          el.value = value;
+        }
+
+        function setCheckSafe(id, checked, force = false) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (!force && (document.activeElement === el || dirtyFields.has(id))) return;
+          el.checked = Boolean(checked);
+        }
+
+        function updateStickyScrollMargin() {
+          const headerH = headerStackEl ? headerStackEl.getBoundingClientRect().height : 120;
+          const margin = `${Math.round(headerH + 14)}px`;
+          document.querySelectorAll('.admin-section').forEach((sec) => {
+            sec.style.scrollMarginTop = margin;
+          });
+        }
+        window.addEventListener('resize', updateStickyScrollMargin);
 
         function setActiveNavLink(targetId) {
           navLinks.forEach((btn) => {
@@ -1669,12 +1619,12 @@
 
         navLinks.forEach((btn) => {
           btn.addEventListener('click', () => {
+            updateStickyScrollMargin();
             const target = document.getElementById(btn.dataset.target);
             if (target) {
               target.scrollIntoView({ behavior: 'smooth', block: 'start' });
               setActiveNavLink(btn.dataset.target);
             }
-            setSidebarOpen(false);
           });
         });
 
@@ -1683,7 +1633,8 @@
             .map((btn) => document.getElementById(btn.dataset.target))
             .filter(Boolean);
           if (!sections.length) return;
-          const threshold = window.innerWidth <= 960 ? 120 : 140;
+          const headerH = headerStackEl ? headerStackEl.getBoundingClientRect().height : 120;
+          const threshold = headerH + 28;
           let activeId = sections[0].id;
           for (const sec of sections) {
             const rect = sec.getBoundingClientRect();
@@ -1700,7 +1651,6 @@
         function showLogin() {
           adminAudio?.stopBGM();
           adminAudio?.stopTension();
-          setSidebarOpen(false);
           loginView.classList.remove('hidden');
           dashView.classList.add('hidden');
         }
@@ -1708,8 +1658,9 @@
         function showDashboard() {
           loginView.classList.add('hidden');
           dashView.classList.remove('hidden');
+          requestAnimationFrame(updateStickyScrollMargin);
           connectAdminSocket();
-          loadDashboard();
+          loadDashboard({ force: true });
           loadTransactions();
           loadUsers('');
           loadAdminSecurityOverview();
@@ -1761,7 +1712,8 @@
         }
 
         function performAdminRefresh() {
-          loadDashboard();
+          dirtyFields.clear();
+          loadDashboard({ force: true });
           loadTransactions();
           loadUsers(document.getElementById('userSearchInput').value);
           loadAdminSecurityOverview();
@@ -1769,17 +1721,15 @@
         }
 
         document.getElementById('adminLogoutBtn').addEventListener('click', performAdminLogout);
-        document.getElementById('sidebarLogoutBtn')?.addEventListener('click', performAdminLogout);
         document.getElementById('refreshDashBtn').addEventListener('click', performAdminRefresh);
-        document.getElementById('sidebarRefreshBtn')?.addEventListener('click', () => {
-          performAdminRefresh();
-          setSidebarOpen(false);
-        });
 
-        function renderGamesHubCards(games) {
+        function renderGamesHubCards(games, force = false) {
           cachedGamesConfig = games || [];
           const grid = document.getElementById('gamesHubGrid');
           if (!grid) return;
+          if (!force && grid.children.length > 0 && grid.contains(document.activeElement)) {
+            return;
+          }
           grid.innerHTML = cachedGamesConfig
             .map(
               (g) => `
@@ -1837,7 +1787,7 @@
                   return;
                 }
                 showToast(`${game.name} settings saved!`);
-                loadDashboard();
+                loadDashboard({ kpisOnly: true });
               } catch {
                 showToast(`Error saving ${game.name}.`, true);
               }
@@ -1853,10 +1803,13 @@
         }
 
         document.querySelectorAll('.status-mode-card[data-maint-mode]').forEach((card) => {
-          card.addEventListener('click', () => syncMaintCardsUI(card.dataset.maintMode));
+          card.addEventListener('click', () => {
+            dirtyFields.add('maintModeSelection');
+            syncMaintCardsUI(card.dataset.maintMode);
+          });
         });
 
-        async function loadDashboard() {
+        async function loadDashboard({ force = false, kpisOnly = false } = {}) {
           try {
             const res = await apiFetch('/api/admin/dashboard');
             const data = await res.json();
@@ -1916,14 +1869,6 @@
                   ? 'Waiting...'
                   : 'Primary Master';
             }
-            const syncModeSel = document.getElementById('syncModeSelect');
-            if (syncModeSel && document.activeElement !== syncModeSel) {
-              syncModeSel.value = syncCfg.mode || syncSt.configuredMode || 'auto';
-            }
-            const syncUrlIn = document.getElementById('syncRemoteUrlInput');
-            if (syncUrlIn && document.activeElement !== syncUrlIn) {
-              syncUrlIn.value = syncCfg.remoteLiveUrl || syncSt.configuredRemoteUrl || '';
-            }
             const syncErrEl = document.getElementById('syncErrorHint');
             if (syncErrEl) syncErrEl.textContent = syncSt.lastError || '';
 
@@ -1935,100 +1880,9 @@
               mongoBanner.classList.add('hidden');
             }
 
-            // Financial Limits & Unified Pool
-            const fl = s.financialLimits || {};
-            document.getElementById('limMinDeposit').value = Number(fl.minDeposit ?? 50);
-            document.getElementById('limMinWithdrawal').value = Number(fl.minWithdrawal ?? 100);
-            document.getElementById('limWithdrawalFee').value = Number(fl.withdrawalFeePct ?? 2);
-            document.getElementById('limMicroAutoApprove').value = Number(fl.microDepositAutoApproveLimit ?? 1000);
-            document.getElementById('limProfitDistPool').value = Number(s.profitDistributionPool ?? s.carryForwardPool ?? 10000);
-            const maskOn = s.maskMasterAccounts !== false;
-            document.getElementById('limMaskAccounts').checked = maskOn;
-            document.getElementById('limMaskStateText').textContent = maskOn ? 'Masked' : 'Unmasked';
-
-            // Withdrawal Hours
-            const wh = s.withdrawalHours || {};
-            document.getElementById('whEnabled').checked = wh.enabled !== false;
-            document.getElementById('whStateText').textContent = wh.enabled !== false ? 'Enabled' : 'Disabled (24/7)';
-            document.getElementById('whOpenTime').value = wh.openTime || '09:00';
-            document.getElementById('whCloseTime').value = wh.closeTime || '17:00';
-            document.getElementById('whNoticeText').value = wh.noticeText || 'Withdrawals are only open from 9:00 AM to 5:00 PM.';
-            const nowClock = new Date().toTimeString().slice(0, 5);
-            document.getElementById('whLiveServerClock').textContent = `Server Time: ${nowClock}`;
-
-            // Maintenance Switch
-            const ps = s.platformStatus || { mode: 'active', message: '' };
-            syncMaintCardsUI(ps.mode || 'active');
-            document.getElementById('maintMessageInput').value = ps.message || '';
-            document.getElementById('maintCurrentBadge').textContent = String(ps.mode || 'active').toUpperCase();
-
-            // RTP Risk Telemetry
-            const rtp = s.rtpRiskConfig || {};
-            document.getElementById('rtpAutoAdjustEnabled').checked = rtp.autoAdjustEnabled !== false;
-            document.getElementById('rtpAutoStateText').textContent = rtp.autoAdjustEnabled !== false ? 'ON' : 'OFF';
-            document.getElementById('rtpTargetInput').value = Number(rtp.targetRtpPct ?? 96);
-            document.getElementById('rtpEdgeOffsetInput').value = Number(rtp.dynamicEdgeOffset ?? 0);
             renderRtpTelemetryUI(data.telemetry);
             drawRtpChart(s.recentRounds);
-
-            // Multi-Game Hub
-            renderGamesHubCards(s.gamesConfig || []);
-
-            // Telegram Bot
-            const tgBot = s.telegramBot || {};
-            document.getElementById('tgBotEnabled').checked = Boolean(tgBot.enabled);
-            document.getElementById('tgBotStateText').textContent = tgBot.enabled ? 'Enabled' : 'Disabled';
-            document.getElementById('tgBotToken').value = tgBot.botToken || '';
-            document.getElementById('tgAdminChatId').value = tgBot.adminChatId || '';
-
-            document.getElementById('setDailyTarget').value = s.dailyProfitTarget;
-            document.getElementById('setVariancePct').value = s.varianceTolerancePct;
-            document.getElementById('setWelcomeBonus').value = s.welcomeBonusCredits;
-
-            const waSuppOn = s.whatsappSupportEnabled !== false;
-            document.getElementById('setWhatsappSupportEnabled').checked = waSuppOn;
-            document.getElementById('whatsappSupportStateText').textContent = waSuppOn ? 'Available' : 'Not Available';
-            document.getElementById('setSupportPhone').value = s.whatsappSupportNumber || '';
-
-            const waChanOn = s.whatsappChannelEnabled !== false;
-            document.getElementById('setWhatsappChannelEnabled').checked = waChanOn;
-            document.getElementById('whatsappChannelStateText').textContent = waChanOn ? 'Available' : 'Not Available';
-            document.getElementById('setChannelUrl').value = s.whatsappChannelUrl || '';
-
-            const tgOn = s.telegramChannelEnabled !== false;
-            document.getElementById('setTelegramEnabled').checked = tgOn;
-            document.getElementById('telegramStateText').textContent = tgOn ? 'Available' : 'Not Available';
-            document.getElementById('setTelegramUrl').value = s.telegramChannelUrl || 'https://t.me/SkyWingOfficial';
-
-            const pa = s.paymentAccounts || {};
-            document.getElementById('epEnabled').checked = pa.easypaisa?.enabled !== false;
-            document.getElementById('epTitle').value = pa.easypaisa?.accountTitle || '';
-            document.getElementById('epNumber').value = pa.easypaisa?.accountNumber || '';
-
-            document.getElementById('jcEnabled').checked = pa.jazzcash?.enabled !== false;
-            document.getElementById('jcTitle').value = pa.jazzcash?.accountTitle || '';
-            document.getElementById('jcNumber').value = pa.jazzcash?.accountNumber || '';
-
-            document.getElementById('bkEnabled').checked = pa.bank?.enabled !== false;
-            document.getElementById('bkName').value = pa.bank?.bankName || '';
-            document.getElementById('bkTitle').value = pa.bank?.accountTitle || '';
-            document.getElementById('bkNumber').value = pa.bank?.accountNumber || '';
-
-            const pc = s.profitControl || { mode: 'balanced', houseEdgePct: 4, maxCrashCap: 100 };
-            document.getElementById('profitModeSelect').value = pc.mode || 'balanced';
-            document.getElementById('profitHouseEdge').value = Number(pc.houseEdgePct ?? 4);
-            document.getElementById('profitMaxCap').value = Number(pc.maxCrashCap ?? 100);
             updateArmedOverrideUI(live.nextRoundForcedCrash);
-
-            const ac = s.audioConfig || { bgmEnabled: true, soundPreset: 'aviator-jet', masterVolume: 75 };
-            document.getElementById('audioBgmEnabled').checked = ac.bgmEnabled !== false;
-            document.getElementById('audioBgmStateText').textContent = ac.bgmEnabled !== false ? 'ON' : 'OFF';
-            document.getElementById('audioPreset').value = ac.soundPreset || 'aviator-jet';
-            document.getElementById('audioMasterVolume').value = Number(ac.masterVolume ?? 75);
-            document.getElementById('audioMasterVolumeVal').textContent = `${Number(ac.masterVolume ?? 75)}%`;
-            if (adminAudio) {
-              adminAudio.setConfig(ac, false);
-            }
 
             const roundsBody = document.getElementById('roundsTableBody');
             if (!s.recentRounds || !s.recentRounds.length) {
@@ -2048,6 +1902,125 @@
                 `
                 )
                 .join('');
+            }
+
+            if (kpisOnly) {
+              return;
+            }
+
+            setFieldSafe('syncModeSelect', syncCfg.mode || syncSt.configuredMode || 'auto', force);
+            setFieldSafe('syncRemoteUrlInput', syncCfg.remoteLiveUrl || syncSt.configuredRemoteUrl || '', force);
+
+            // Financial Limits & Unified Pool
+            const fl = s.financialLimits || {};
+            setFieldSafe('limMinDeposit', Number(fl.minDeposit ?? 50), force);
+            setFieldSafe('limMinWithdrawal', Number(fl.minWithdrawal ?? 100), force);
+            setFieldSafe('limWithdrawalFee', Number(fl.withdrawalFeePct ?? 2), force);
+            setFieldSafe('limMicroAutoApprove', Number(fl.microDepositAutoApproveLimit ?? 1000), force);
+            setFieldSafe('limProfitDistPool', Number(s.profitDistributionPool ?? s.carryForwardPool ?? 10000), force);
+            const maskOn = s.maskMasterAccounts !== false;
+            setCheckSafe('limMaskAccounts', maskOn, force);
+            if (!dirtyFields.has('limMaskAccounts') || force) {
+              document.getElementById('limMaskStateText').textContent = maskOn ? 'Masked' : 'Unmasked';
+            }
+
+            // Withdrawal Hours
+            const wh = s.withdrawalHours || {};
+            setCheckSafe('whEnabled', wh.enabled !== false, force);
+            if (!dirtyFields.has('whEnabled') || force) {
+              document.getElementById('whStateText').textContent = wh.enabled !== false ? 'Enabled' : 'Disabled (24/7)';
+            }
+            setFieldSafe('whOpenTime', wh.openTime || '09:00', force);
+            setFieldSafe('whCloseTime', wh.closeTime || '17:00', force);
+            setFieldSafe('whNoticeText', wh.noticeText || 'Withdrawals are only open from 9:00 AM to 5:00 PM.', force);
+            const nowClock = new Date().toTimeString().slice(0, 5);
+            document.getElementById('whLiveServerClock').textContent = `Server Time: ${nowClock}`;
+
+            // Maintenance Switch
+            const ps = s.platformStatus || { mode: 'active', message: '' };
+            if (force || !dirtyFields.has('maintModeSelection')) {
+              syncMaintCardsUI(ps.mode || 'active');
+            }
+            setFieldSafe('maintMessageInput', ps.message || '', force);
+            document.getElementById('maintCurrentBadge').textContent = String(ps.mode || 'active').toUpperCase();
+
+            // RTP Risk Config
+            const rtp = s.rtpRiskConfig || {};
+            setCheckSafe('rtpAutoAdjustEnabled', rtp.autoAdjustEnabled !== false, force);
+            if (!dirtyFields.has('rtpAutoAdjustEnabled') || force) {
+              document.getElementById('rtpAutoStateText').textContent = rtp.autoAdjustEnabled !== false ? 'ON' : 'OFF';
+            }
+            setFieldSafe('rtpTargetInput', Number(rtp.targetRtpPct ?? 96), force);
+            setFieldSafe('rtpEdgeOffsetInput', Number(rtp.dynamicEdgeOffset ?? 0), force);
+
+            // Multi-Game Hub
+            renderGamesHubCards(s.gamesConfig || [], force);
+
+            // Telegram Bot
+            const tgBot = s.telegramBot || {};
+            setCheckSafe('tgBotEnabled', Boolean(tgBot.enabled), force);
+            if (!dirtyFields.has('tgBotEnabled') || force) {
+              document.getElementById('tgBotStateText').textContent = tgBot.enabled ? 'Enabled' : 'Disabled';
+            }
+            setFieldSafe('tgBotToken', tgBot.botToken || '', force);
+            setFieldSafe('tgAdminChatId', tgBot.adminChatId || '', force);
+
+            setFieldSafe('setDailyTarget', s.dailyProfitTarget, force);
+            setFieldSafe('setVariancePct', s.varianceTolerancePct, force);
+            setFieldSafe('setWelcomeBonus', s.welcomeBonusCredits, force);
+
+            const waSuppOn = s.whatsappSupportEnabled !== false;
+            setCheckSafe('setWhatsappSupportEnabled', waSuppOn, force);
+            if (!dirtyFields.has('setWhatsappSupportEnabled') || force) {
+              document.getElementById('whatsappSupportStateText').textContent = waSuppOn ? 'Available' : 'Not Available';
+            }
+            setFieldSafe('setSupportPhone', s.whatsappSupportNumber || '', force);
+
+            const waChanOn = s.whatsappChannelEnabled !== false;
+            setCheckSafe('setWhatsappChannelEnabled', waChanOn, force);
+            if (!dirtyFields.has('setWhatsappChannelEnabled') || force) {
+              document.getElementById('whatsappChannelStateText').textContent = waChanOn ? 'Available' : 'Not Available';
+            }
+            setFieldSafe('setChannelUrl', s.whatsappChannelUrl || '', force);
+
+            const tgOn = s.telegramChannelEnabled !== false;
+            setCheckSafe('setTelegramEnabled', tgOn, force);
+            if (!dirtyFields.has('setTelegramEnabled') || force) {
+              document.getElementById('telegramStateText').textContent = tgOn ? 'Available' : 'Not Available';
+            }
+            setFieldSafe('setTelegramUrl', s.telegramChannelUrl || 'https://t.me/SkyWingOfficial', force);
+
+            const pa = s.paymentAccounts || {};
+            setCheckSafe('epEnabled', pa.easypaisa?.enabled !== false, force);
+            setFieldSafe('epTitle', pa.easypaisa?.accountTitle || '', force);
+            setFieldSafe('epNumber', pa.easypaisa?.accountNumber || '', force);
+
+            setCheckSafe('jcEnabled', pa.jazzcash?.enabled !== false, force);
+            setFieldSafe('jcTitle', pa.jazzcash?.accountTitle || '', force);
+            setFieldSafe('jcNumber', pa.jazzcash?.accountNumber || '', force);
+
+            setCheckSafe('bkEnabled', pa.bank?.enabled !== false, force);
+            setFieldSafe('bkName', pa.bank?.bankName || '', force);
+            setFieldSafe('bkTitle', pa.bank?.accountTitle || '', force);
+            setFieldSafe('bkNumber', pa.bank?.accountNumber || '', force);
+
+            const pc = s.profitControl || { mode: 'balanced', houseEdgePct: 4, maxCrashCap: 100 };
+            setFieldSafe('profitModeSelect', pc.mode || 'balanced', force);
+            setFieldSafe('profitHouseEdge', Number(pc.houseEdgePct ?? 4), force);
+            setFieldSafe('profitMaxCap', Number(pc.maxCrashCap ?? 100), force);
+
+            const ac = s.audioConfig || { bgmEnabled: true, soundPreset: 'aviator-jet', masterVolume: 75 };
+            setCheckSafe('audioBgmEnabled', ac.bgmEnabled !== false, force);
+            if (!dirtyFields.has('audioBgmEnabled') || force) {
+              document.getElementById('audioBgmStateText').textContent = ac.bgmEnabled !== false ? 'ON' : 'OFF';
+            }
+            setFieldSafe('audioPreset', ac.soundPreset || 'aviator-jet', force);
+            setFieldSafe('audioMasterVolume', Number(ac.masterVolume ?? 75), force);
+            if (!dirtyFields.has('audioMasterVolume') || force) {
+              document.getElementById('audioMasterVolumeVal').textContent = `${Number(ac.masterVolume ?? 75)}%`;
+            }
+            if (adminAudio) {
+              adminAudio.setConfig(ac, false);
             }
           } catch (err) {
             console.error(err);
@@ -2265,8 +2238,9 @@
               showToast(data.error || 'Failed to update profit policy.', true);
               return;
             }
+            clearDirtyIds(['profitModeSelect', 'profitHouseEdge', 'profitMaxCap']);
             showToast('Profit & multiplier policy saved!');
-            loadDashboard();
+            loadDashboard({ kpisOnly: true });
           } catch {
             showToast('Failed to update profit policy.', true);
           }
@@ -2416,8 +2390,9 @@
               showToast(err.error || 'Failed to save audio settings.', true);
               return;
             }
+            clearDirtyIds(['audioBgmEnabled', 'audioPreset', 'audioMasterVolume']);
             showToast('Global audio settings saved & synced to all players!');
-            loadDashboard();
+            loadDashboard({ kpisOnly: true });
           } catch {
             showToast('Failed to save audio settings.', true);
           }
@@ -2476,8 +2451,17 @@
               showToast(err.error || 'Failed to update settings', true);
               return;
             }
+            clearDirtyIds([
+              'setDailyTarget', 'setVariancePct', 'setWelcomeBonus',
+              'setWhatsappSupportEnabled', 'setSupportPhone',
+              'setWhatsappChannelEnabled', 'setChannelUrl',
+              'setTelegramEnabled', 'setTelegramUrl',
+              'epEnabled', 'epTitle', 'epNumber',
+              'jcEnabled', 'jcTitle', 'jcNumber',
+              'bkEnabled', 'bkName', 'bkTitle', 'bkNumber',
+            ]);
             showToast('Setting saved to database!');
-            loadDashboard();
+            loadDashboard({ kpisOnly: true });
           } catch {
             showToast('Failed to save setting.', true);
           }
@@ -2704,8 +2688,9 @@
               showToast(err.error || 'Failed to save financial limits.', true);
               return;
             }
+            clearDirtyIds(['limMinDeposit', 'limMinWithdrawal', 'limWithdrawalFee', 'limMicroAutoApprove', 'limProfitDistPool', 'limMaskAccounts']);
             showToast('Financial limits, fees & pool saved & synced!');
-            loadDashboard();
+            loadDashboard({ kpisOnly: true });
           } catch {
             showToast('Network error saving financial limits.', true);
           }
@@ -2727,8 +2712,9 @@
               showToast(err.error || 'Failed to save withdrawal hours.', true);
               return;
             }
+            clearDirtyIds(['whEnabled', 'whOpenTime', 'whCloseTime', 'whNoticeText']);
             showToast('Withdrawal operating hours updated!');
-            loadDashboard();
+            loadDashboard({ kpisOnly: true });
           } catch {
             showToast('Network error saving operating hours.', true);
           }
@@ -2750,8 +2736,9 @@
               return;
             }
             document.getElementById('maintMasterPw').value = '';
+            clearDirtyIds(['maintModeSelection', 'maintMessageInput']);
             showToast(`Platform status switched to: ${String(data.platformStatus.mode).toUpperCase()}`);
-            loadDashboard();
+            loadDashboard({ force: true });
             loadAdminSecurityOverview();
           } catch {
             showToast('Error updating platform status.', true);
@@ -3285,8 +3272,9 @@
               showToast(data.error || 'Failed to save Live Sync config.', true);
               return;
             }
+            clearDirtyIds(['syncModeSelect', 'syncRemoteUrlInput']);
             showToast('Live Site Sync configuration saved & activated!');
-            loadDashboard();
+            loadDashboard({ kpisOnly: true });
           } catch {
             showToast('Sync configuration error.', true);
           }

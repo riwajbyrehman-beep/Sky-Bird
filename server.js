@@ -669,6 +669,45 @@ const db = {
     return found ? { ...found } : null;
   },
 
+  async findUsersByIdentifier(identifier) {
+    const raw = String(identifier || '').trim();
+    if (!raw) return [];
+    const normalizedPhone = normalizePakistaniPhone(raw);
+    const out = [];
+    const seenIds = new Set();
+    const pushUnique = (u) => {
+      if (!u) return;
+      const id = String(u._id || u.phoneNumber);
+      if (!seenIds.has(id)) {
+        seenIds.add(id);
+        out.push(u);
+      }
+    };
+
+    if (normalizedPhone) {
+      pushUnique(await this.findUserByPhone(normalizedPhone));
+    }
+    if (raw !== normalizedPhone) {
+      pushUnique(await this.findUserByPhone(raw));
+    }
+
+    if (isMongoReady()) {
+      const exactCi = new RegExp(`^${escapeRegex(raw)}$`, 'i');
+      const docs = await User.find({ displayName: exactCi }).limit(10);
+      for (const d of docs) {
+        pushUnique(d.toObject());
+      }
+    } else {
+      const lower = raw.toLowerCase();
+      for (const u of localStore.users) {
+        if (String(u.displayName || '').trim().toLowerCase() === lower) {
+          pushUnique({ ...u });
+        }
+      }
+    }
+    return out;
+  },
+
   async findUserByCnic(cnic) {
     const clean = String(cnic || '').trim();
     if (!clean) return null;
@@ -1192,10 +1231,24 @@ const db = {
 // ============================================================================
 // Helpers
 // ============================================================================
+function escapeRegex(str) {
+  return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function normalizePakistaniPhone(input) {
-  return String(input || '')
-    .replace(/[\s\-()]/g, '')
+  let cleaned = String(input || '')
+    .replace(/[\s\-()]+/g, '')
     .trim();
+  if (/^\+923[0-9]{9}$/.test(cleaned)) {
+    cleaned = `0${cleaned.slice(3)}`;
+  } else if (/^00923[0-9]{9}$/.test(cleaned)) {
+    cleaned = `0${cleaned.slice(4)}`;
+  } else if (/^923[0-9]{9}$/.test(cleaned)) {
+    cleaned = `0${cleaned.slice(2)}`;
+  } else if (/^3[0-9]{9}$/.test(cleaned)) {
+    cleaned = `0${cleaned}`;
+  }
+  return cleaned;
 }
 
 function isValidPakistaniPhone(phone) {
@@ -1633,7 +1686,15 @@ app.use((req, res, next) => {
 });
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '6mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(
+  express.static(path.join(__dirname, 'public'), {
+    setHeaders(res, filePath) {
+      if (/\.(html|js|css|json)$/i.test(filePath) || filePath.endsWith('sw.js')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
+    },
+  })
+);
 
 function createRateLimiter(maxHits, windowMs, bucketName) {
   const store = new Map();
@@ -1826,10 +1887,10 @@ app.post('/api/auth/register', registerRateLimit, async (req, res) => {
   }
 });
 
-// User & Admin Flexible Login (with IP/Device fraud check)
+// User & Admin Flexible Login (Mobile Number OR Username + IP/Device fraud check)
 app.post('/api/auth/login', loginRateLimit, async (req, res) => {
   try {
-    const rawIdentifier = String(req.body.phoneNumber || '').trim();
+    const rawIdentifier = String(req.body.phoneNumber || req.body.identifier || '').trim();
     const phoneNumber = normalizePakistaniPhone(rawIdentifier);
     const password = String(req.body.password || '');
     const deviceFingerprint = String(req.body.deviceFingerprint || req.headers['x-device-fingerprint'] || '')
@@ -1837,7 +1898,7 @@ app.post('/api/auth/login', loginRateLimit, async (req, res) => {
       .slice(0, 128);
     const clientIp = getClientIp(req);
 
-    if (!phoneNumber && !rawIdentifier) {
+    if (!rawIdentifier) {
       return res.status(400).json({
         error: 'Mobile number or username is required.',
       });
@@ -1865,21 +1926,25 @@ app.post('/api/auth/login', loginRateLimit, async (req, res) => {
       });
     }
 
-    const user =
-      (await db.findUserByPhone(phoneNumber)) ||
-      (rawIdentifier !== phoneNumber ? await db.findUserByPhone(rawIdentifier) : null);
+    const candidates = await db.findUsersByIdentifier(rawIdentifier);
+    if (!candidates.length) {
+      return res.status(401).json({ error: 'Invalid mobile number/username or password.' });
+    }
+
+    let user = null;
+    for (const cand of candidates) {
+      if (cand.passwordHash && (await bcrypt.compare(password, cand.passwordHash))) {
+        user = cand;
+        break;
+      }
+    }
     if (!user) {
-      return res.status(401).json({ error: 'Invalid mobile number or password.' });
+      return res.status(401).json({ error: 'Invalid mobile number/username or password.' });
     }
     if (user.isBanned) {
       return res.status(403).json({
         error: 'Your account has been suspended. Please contact Admin Support.',
       });
-    }
-
-    const matches = await bcrypt.compare(password, user.passwordHash);
-    if (!matches) {
-      return res.status(401).json({ error: 'Invalid mobile number or password.' });
     }
 
     const dupMatches = await db.findUsersByIpOrFingerprint({
@@ -1937,7 +2002,7 @@ function verifyResetPowChallenge(challengeToken, solution) {
   if (parts.length !== 3) return false;
   const [tsStr, nonce, sig] = parts;
   const ts = Number(tsStr);
-  if (!Number.isFinite(ts) || Date.now() - ts > 5 * 60 * 1000) return false;
+  if (!Number.isFinite(ts) || Date.now() - ts > 10 * 60 * 1000) return false;
   const expectedSig = crypto
     .createHmac('sha256', RESET_CHALLENGE_SECRET)
     .update(`${tsStr}.${nonce}`)
@@ -1949,7 +2014,7 @@ function verifyResetPowChallenge(challengeToken, solution) {
     .createHash('sha256')
     .update(`${challengeToken}:${solStr}`)
     .digest('hex');
-  return hash.startsWith('000');
+  return hash.startsWith('00');
 }
 
 async function verifyTurnstileToken(token, remoteIp) {
@@ -1974,12 +2039,12 @@ app.get('/api/auth/reset-challenge', (req, res) => {
   const challengeToken = issueResetChallenge();
   res.json({
     challengeToken,
-    difficulty: 3,
+    difficulty: 2,
     turnstileSiteKey: TURNSTILE_SITE_KEY || '',
   });
 });
 
-// Self-Service Password Reset (Accepts Registered Mobile Number OR CNIC + Security Check)
+// Self-Service Password Reset (Accepts Registered Mobile Number, Username OR CNIC + Security Check)
 app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const rawIdentifier = String(req.body.identifier || '').trim();
@@ -1991,18 +2056,18 @@ app.post('/api/auth/reset-password', async (req, res) => {
     const powSolution = String(req.body.powSolution || '').trim();
     const clientIp = getClientIp(req);
 
-    // Rate limit per IP (max 5 attempts per 10 min)
+    // Rate limit per IP (max 12 attempts per 10 min)
     const nowMs = Date.now();
     const recentHits = (resetRateMap.get(clientIp) || []).filter((t) => nowMs - t < 10 * 60 * 1000);
-    if (recentHits.length >= 5) {
+    if (recentHits.length >= 12) {
       await logSecurityEvent(
         'Password Reset Rate Limited',
         'warning',
-        `IP ${clientIp} exceeded 5 password reset requests in 10 minutes`,
+        `IP ${clientIp} exceeded 12 password reset requests in 10 minutes`,
         clientIp
       );
       return res.status(429).json({
-        error: 'Too many password reset attempts. Please wait 10 minutes and try again.',
+        error: 'Too many password reset attempts. Please wait a few minutes and try again.',
       });
     }
     recentHits.push(nowMs);
@@ -2040,13 +2105,24 @@ app.post('/api/auth/reset-password', async (req, res) => {
         verifiedVia = `CNIC ${rawIdentifier}`;
       } else {
         const normalized = normalizePakistaniPhone(rawIdentifier);
-        if (!isValidPakistaniPhone(normalized)) {
-          return res.status(400).json({
-            error: 'Enter a valid 11-digit 03XX mobile number or Pakistani CNIC (XXXXX-XXXXXXX-X).',
-          });
+        if (isValidPakistaniPhone(normalized)) {
+          user = await db.findUserByPhone(normalized);
+          verifiedVia = `Mobile ${normalized}`;
+        } else {
+          const matches = await db.findUsersByIdentifier(rawIdentifier);
+          if (matches.length === 1) {
+            user = matches[0];
+            verifiedVia = `Username ${user.displayName}`;
+          } else if (matches.length > 1) {
+            return res.status(400).json({
+              error: 'Multiple accounts share that username. Enter your registered 03XX mobile number or CNIC.',
+            });
+          } else {
+            return res.status(404).json({
+              error: 'No registered account found matching that Mobile Number, Username, or CNIC.',
+            });
+          }
         }
-        user = await db.findUserByPhone(normalized);
-        verifiedVia = `Mobile ${normalized}`;
       }
       if (!user) {
         await logSecurityEvent(
@@ -2055,7 +2131,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
           `No account matched recovery input "${rawIdentifier}"`,
           clientIp
         );
-        return res.status(404).json({ error: 'No registered account found matching that Number or CNIC.' });
+        return res.status(404).json({ error: 'No registered account found matching that Number, Username, or CNIC.' });
       }
     } else if (rawPhone && rawCnic) {
       if (!isValidPakistaniPhone(rawPhone)) {
@@ -6007,11 +6083,30 @@ async function applySyncCoordinator(forceRestart = false, skipRemote = false) {
       }
       return;
     }
-    stopAllRoundAndSyncTimers();
+    const alreadyActiveMaster =
+      runtimeSyncState.role === 'mongo-master' && !runtimeSyncState.isFollower && Boolean(tickTimer || phaseTimer);
     runtimeSyncState.role = 'mongo-master';
     runtimeSyncState.isFollower = false;
     runtimeSyncState.remoteUrl = '';
     runtimeSyncState.lastError = '';
+    if (!leaseRenewTimer) {
+      leaseRenewTimer = setInterval(async () => {
+        if (runtimeSyncState.role !== 'mongo-master') return;
+        if (!isMongoReady()) {
+          await applySyncCoordinator(true);
+          return;
+        }
+        const renewed = await db.tryAcquireOrRenewMasterLease(INSTANCE_ID, 4500);
+        if (!renewed) {
+          console.warn('[Sync] Lost MongoDB master lease -> switching to Follower');
+          startMongoFollowerLoop();
+        }
+      }, 1500);
+    }
+    if (alreadyActiveMaster) {
+      return;
+    }
+    stopAllRoundAndSyncTimers();
     leaseRenewTimer = setInterval(async () => {
       if (runtimeSyncState.role !== 'mongo-master') return;
       if (!isMongoReady()) {
@@ -6029,11 +6124,18 @@ async function applySyncCoordinator(forceRestart = false, skipRemote = false) {
     return;
   }
 
-  stopAllRoundAndSyncTimers();
+  const alreadyStandaloneMaster =
+    runtimeSyncState.role === 'standalone-master' &&
+    !runtimeSyncState.isFollower &&
+    Boolean(tickTimer || phaseTimer);
   runtimeSyncState.role = 'standalone-master';
   runtimeSyncState.isFollower = false;
   runtimeSyncState.remoteUrl = '';
   runtimeSyncState.lastError = '';
+  if (alreadyStandaloneMaster) {
+    return;
+  }
+  stopAllRoundAndSyncTimers();
   console.log(`[Sync] Running as Standalone Master (instance ${INSTANCE_ID})`);
   await startBettingPhase();
 }

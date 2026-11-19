@@ -699,9 +699,19 @@
   }
 
   function normalizePakPhone(raw) {
-    return String(raw || '')
-      .replace(/[\s\-()]/g, '')
+    let cleaned = String(raw || '')
+      .replace(/[\s\-()]+/g, '')
       .trim();
+    if (/^\+923[0-9]{9}$/.test(cleaned)) {
+      cleaned = `0${cleaned.slice(3)}`;
+    } else if (/^00923[0-9]{9}$/.test(cleaned)) {
+      cleaned = `0${cleaned.slice(4)}`;
+    } else if (/^923[0-9]{9}$/.test(cleaned)) {
+      cleaned = `0${cleaned.slice(2)}`;
+    } else if (/^3[0-9]{9}$/.test(cleaned)) {
+      cleaned = `0${cleaned}`;
+    }
+    return cleaned;
   }
 
   function escapeHtml(str) {
@@ -1382,12 +1392,71 @@
   // ==========================================================================
   let activeFairHash = '';
 
+  // Compact pure-JS synchronous SHA-256 (guaranteed to work across HTTP, HTTPS, iframes & WebViews)
+  const SHA256_K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ];
+
+  function sha256HexSync(text) {
+    const utf8 = unescape(encodeURIComponent(String(text || '')));
+    const words = [];
+    for (let i = 0; i < utf8.length; i += 1) {
+      words[i >> 2] |= (utf8.charCodeAt(i) & 0xff) << (24 - (i % 4) * 8);
+    }
+    const bitLen = utf8.length * 8;
+    words[bitLen >> 5] |= 0x80 << (24 - (bitLen % 32));
+    words[(((bitLen + 64) >> 9) << 4) + 15] = bitLen;
+
+    const H = [
+      0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+      0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+    ];
+    const w = new Array(64);
+    for (let i = 0; i < words.length; i += 16) {
+      let [a, b, c, d, e, f, g, h] = H;
+      for (let t = 0; t < 64; t += 1) {
+        if (t < 16) {
+          w[t] = words[i + t] | 0;
+        } else {
+          const s0 = ((w[t - 15] >>> 7) | (w[t - 15] << 25)) ^ ((w[t - 15] >>> 18) | (w[t - 15] << 14)) ^ (w[t - 15] >>> 3);
+          const s1 = ((w[t - 2] >>> 17) | (w[t - 2] << 15)) ^ ((w[t - 2] >>> 19) | (w[t - 2] << 13)) ^ (w[t - 2] >>> 10);
+          w[t] = (w[t - 16] + s0 + w[t - 7] + s1) | 0;
+        }
+        const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+        const ch = (e & f) ^ (~e & g);
+        const temp1 = (h + S1 + ch + SHA256_K[t] + w[t]) | 0;
+        const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+        const maj = (a & b) ^ (a & c) ^ (b & c);
+        const temp2 = (S0 + maj) | 0;
+        h = g; g = f; f = e; e = (d + temp1) | 0;
+        d = c; c = b; b = a; a = (temp1 + temp2) | 0;
+      }
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+      H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+    }
+    return H.map((v) => (v >>> 0).toString(16).padStart(8, '0')).join('');
+  }
+
   async function computeSha256HexBrowser(text) {
-    const enc = new TextEncoder();
-    const digest = await crypto.subtle.digest('SHA-256', enc.encode(text));
-    return Array.from(new Uint8Array(digest))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
+    if (window.crypto?.subtle) {
+      try {
+        const enc = new TextEncoder();
+        const digest = await window.crypto.subtle.digest('SHA-256', enc.encode(text));
+        return Array.from(new Uint8Array(digest))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('');
+      } catch {
+        // fallback below
+      }
+    }
+    return sha256HexSync(text);
   }
 
   async function computeHmacCrashPointBrowser(serverSeed, clientSeed, nonce) {
@@ -1784,10 +1853,21 @@
   el.loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     el.authErrorBox.classList.add('hidden');
-    const cleanPhone = normalizePakPhone(el.loginPhone.value);
-    if (!cleanPhone) {
+    const rawIdentifier = String(el.loginPhone.value || '').trim();
+    const password = String(el.loginPassword.value || '');
+    if (!rawIdentifier) {
       showAuthError('Enter your mobile number or username.');
       return;
+    }
+    if (!password) {
+      showAuthError('Enter your password.');
+      return;
+    }
+    const submitBtn = document.getElementById('loginSubmitBtn') || el.loginForm.querySelector('button[type="submit"]');
+    const origLabel = submitBtn ? submitBtn.textContent : 'Log In & Play';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Logging in...';
     }
     try {
       const res = await fetch('/api/auth/login', {
@@ -1797,14 +1877,21 @@
           'x-device-fingerprint': DEVICE_FINGERPRINT,
         },
         body: JSON.stringify({
-          phoneNumber: cleanPhone,
-          password: el.loginPassword.value,
+          phoneNumber: rawIdentifier,
+          identifier: rawIdentifier,
+          password,
           deviceFingerprint: DEVICE_FINGERPRINT,
         }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
       if (!res.ok) {
-        showAuthError(data.error || 'Login failed.');
+        showAuthError(data.error || 'Invalid mobile number/username or password.');
         return;
       }
       if (data.isAdmin) {
@@ -1836,8 +1923,8 @@
           localStorage.setItem(
             'skywing_remember_creds',
             JSON.stringify({
-              phone: el.loginPhone.value.trim(),
-              password: el.loginPassword.value,
+              phone: rawIdentifier,
+              password,
             })
           );
         } catch {
@@ -1846,9 +1933,9 @@
         if (window.PasswordCredential && navigator.credentials?.store) {
           try {
             const cred = new window.PasswordCredential({
-              id: cleanPhone,
-              password: el.loginPassword.value,
-              name: state.user.displayName || cleanPhone,
+              id: rawIdentifier,
+              password,
+              name: state.user.displayName || rawIdentifier,
             });
             navigator.credentials.store(cred).catch(() => {});
           } catch {
@@ -1868,7 +1955,12 @@
       fetchMyTransactions();
       showToast(`Welcome back, ${state.user.displayName}!`);
     } catch {
-      showAuthError('Network error. Please try again.');
+      showAuthError('Network error. Please check your connection and try again.');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = origLabel;
+      }
     }
   });
 
@@ -1931,13 +2023,14 @@
     }
   });
 
-  // Online Security Verification Check for Password Reset (Turnstile or Instant SHA-256 PoW)
+  // Online Security Verification Check for Password Reset (Turnstile or Instant Sync SHA-256 PoW)
   let forgotChallengeToken = '';
-  let forgotChallengeDifficulty = 3;
+  let forgotChallengeDifficulty = 2;
   let forgotTurnstileSiteKey = '';
   let forgotTurnstileToken = '';
   let forgotPowSolution = '';
   let forgotTurnstileWidgetId = null;
+  let forgotChallengePromise = null;
 
   function setForgotSecStatus(label, isVerified = false) {
     if (!el.forgotSecStatus) return;
@@ -1945,105 +2038,148 @@
     el.forgotSecStatus.classList.toggle('verified', Boolean(isVerified));
   }
 
-  async function solveResetPowChallenge(challengeToken, difficulty = 3) {
-    const prefix = '0'.repeat(Math.max(1, Number(difficulty || 3)));
-    if (!window.crypto?.subtle) {
-      // Fallback subtle unavailable (unlikely on localhost/HTTPS)
-      return '';
-    }
-    let nonce = 0;
-    while (nonce < 500000) {
+  function solveResetPowChallenge(challengeToken, difficulty = 2) {
+    if (!challengeToken) return '';
+    const prefix = '0'.repeat(Math.max(1, Math.min(4, Number(difficulty || 2))));
+    for (let nonce = 0; nonce < 250000; nonce += 1) {
       const candidate = String(nonce);
-      const digest = await computeSha256HexBrowser(`${challengeToken}:${candidate}`);
+      const digest = sha256HexSync(`${challengeToken}:${candidate}`);
       if (digest.startsWith(prefix)) {
         return candidate;
-      }
-      nonce += 1;
-      if (nonce % 400 === 0) {
-        await new Promise((r) => setTimeout(r, 0));
       }
     }
     return '';
   }
 
-  async function initForgotSecurityCheck() {
-    forgotChallengeToken = '';
-    forgotChallengeDifficulty = 3;
+  function showForgotPowFallbackBox() {
     forgotTurnstileSiteKey = '';
     forgotTurnstileToken = '';
-    forgotPowSolution = '';
-    if (el.forgotHumanCheck) el.forgotHumanCheck.checked = false;
-    setForgotSecStatus('Required', false);
-
-    try {
-      const res = await fetch('/api/auth/reset-challenge');
-      const data = await res.json();
-      forgotChallengeToken = String(data.challengeToken || '');
-      forgotChallengeDifficulty = Number(data.difficulty || 3);
-      forgotTurnstileSiteKey = String(data.turnstileSiteKey || '').trim();
-
-      if (forgotTurnstileSiteKey && el.forgotTurnstileMount && el.forgotHumanRow) {
-        el.forgotTurnstileMount.classList.remove('hidden');
-        el.forgotHumanRow.classList.add('hidden');
-        const mountWidget = () => {
-          if (!window.turnstile || !el.forgotTurnstileMount) return;
-          el.forgotTurnstileMount.innerHTML = '';
-          forgotTurnstileWidgetId = window.turnstile.render(el.forgotTurnstileMount, {
-            sitekey: forgotTurnstileSiteKey,
-            theme: 'dark',
-            callback: (token) => {
-              forgotTurnstileToken = token;
-              setForgotSecStatus('Verified', true);
-            },
-            'expired-callback': () => {
-              forgotTurnstileToken = '';
-              setForgotSecStatus('Expired', false);
-            },
-          });
-        };
-        if (window.turnstile) {
-          mountWidget();
-        } else {
-          const script = document.createElement('script');
-          script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-          script.async = true;
-          script.onload = mountWidget;
-          document.head.appendChild(script);
-        }
-      } else {
-        el.forgotTurnstileMount?.classList.add('hidden');
-        el.forgotHumanRow?.classList.remove('hidden');
-      }
-    } catch {
-      setForgotSecStatus('Retry Check', false);
-    }
+    el.forgotTurnstileMount?.classList.add('hidden');
+    el.forgotHumanRow?.classList.remove('hidden');
   }
 
-  el.forgotHumanCheck?.addEventListener('change', async () => {
+  async function initForgotSecurityCheck(preserveCheckbox = false) {
+    if (forgotChallengePromise && preserveCheckbox) {
+      return forgotChallengePromise;
+    }
+    if (!preserveCheckbox) {
+      forgotChallengeToken = '';
+      forgotChallengeDifficulty = 2;
+      forgotTurnstileSiteKey = '';
+      forgotTurnstileToken = '';
+      forgotPowSolution = '';
+      if (el.forgotHumanCheck) el.forgotHumanCheck.checked = false;
+      setForgotSecStatus('Tap to Verify', false);
+    }
+
+    forgotChallengePromise = (async () => {
+      try {
+        const res = await fetch('/api/auth/reset-challenge');
+        const data = await res.json();
+        forgotChallengeToken = String(data.challengeToken || '');
+        forgotChallengeDifficulty = Number(data.difficulty || 2);
+        const siteKey = String(data.turnstileSiteKey || '').trim();
+
+        if (!preserveCheckbox && siteKey && el.forgotTurnstileMount && el.forgotHumanRow) {
+          forgotTurnstileSiteKey = siteKey;
+          el.forgotTurnstileMount.classList.remove('hidden');
+          el.forgotHumanRow.classList.add('hidden');
+          let rendered = false;
+          const fallbackTimer = setTimeout(() => {
+            if (!rendered && !forgotTurnstileToken) {
+              showForgotPowFallbackBox();
+            }
+          }, 2200);
+
+          const mountWidget = () => {
+            if (!window.turnstile || !el.forgotTurnstileMount) return;
+            try {
+              el.forgotTurnstileMount.innerHTML = '';
+              forgotTurnstileWidgetId = window.turnstile.render(el.forgotTurnstileMount, {
+                sitekey: siteKey,
+                theme: 'dark',
+                callback: (token) => {
+                  rendered = true;
+                  clearTimeout(fallbackTimer);
+                  forgotTurnstileToken = token;
+                  setForgotSecStatus('Verified', true);
+                },
+                'error-callback': () => {
+                  clearTimeout(fallbackTimer);
+                  showForgotPowFallbackBox();
+                },
+                'expired-callback': () => {
+                  forgotTurnstileToken = '';
+                  setForgotSecStatus('Expired', false);
+                },
+              });
+              rendered = true;
+              clearTimeout(fallbackTimer);
+            } catch {
+              clearTimeout(fallbackTimer);
+              showForgotPowFallbackBox();
+            }
+          };
+
+          if (window.turnstile) {
+            mountWidget();
+          } else {
+            const script = document.createElement('script');
+            script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+            script.async = true;
+            script.onload = mountWidget;
+            script.onerror = () => {
+              clearTimeout(fallbackTimer);
+              showForgotPowFallbackBox();
+            };
+            document.head.appendChild(script);
+          }
+        } else {
+          showForgotPowFallbackBox();
+        }
+      } catch {
+        showForgotPowFallbackBox();
+        if (!preserveCheckbox) {
+          setForgotSecStatus('Tap to Verify', false);
+        }
+      } finally {
+        forgotChallengePromise = null;
+      }
+    })();
+
+    return forgotChallengePromise;
+  }
+
+  async function verifyHumanCheckboxAction() {
+    if (!el.forgotHumanCheck) return;
     if (!el.forgotHumanCheck.checked) {
       forgotPowSolution = '';
-      setForgotSecStatus('Required', false);
+      setForgotSecStatus('Tap to Verify', false);
       return;
     }
-    setForgotSecStatus('Checking...', false);
+    setForgotSecStatus('Verifying...', false);
     if (!forgotChallengeToken) {
-      await initForgotSecurityCheck();
-      if (el.forgotHumanCheck) el.forgotHumanCheck.checked = true;
+      await initForgotSecurityCheck(true);
     }
     if (!forgotChallengeToken) {
-      setForgotSecStatus('Offline', false);
+      forgotPowSolution = '';
+      el.forgotHumanCheck.checked = false;
+      setForgotSecStatus('Retry Check', false);
       return;
     }
-    const sol = await solveResetPowChallenge(forgotChallengeToken, forgotChallengeDifficulty);
+    const sol = solveResetPowChallenge(forgotChallengeToken, forgotChallengeDifficulty);
     if (sol) {
       forgotPowSolution = sol;
+      el.forgotHumanCheck.checked = true;
       setForgotSecStatus('Verified', true);
     } else {
       forgotPowSolution = '';
       el.forgotHumanCheck.checked = false;
-      setForgotSecStatus('Failed', false);
+      setForgotSecStatus('Retry Check', false);
     }
-  });
+  }
+
+  el.forgotHumanCheck?.addEventListener('change', verifyHumanCheckboxAction);
 
   el.openForgotResetBtn?.addEventListener('click', () => {
     if (el.forgotResetIdentifier && el.loginPhone?.value) {
@@ -2053,7 +2189,7 @@
     el.forgotResetSuccess?.classList.add('hidden');
     closeModal('authModal');
     openModal('forgotPasswordModal');
-    initForgotSecurityCheck();
+    initForgotSecurityCheck(false);
   });
 
   el.backToLoginBtn?.addEventListener('click', () => {
@@ -2071,14 +2207,14 @@
     const normalizedPhone = normalizePakPhone(rawInput);
     const isPhone = PK_PHONE_REGEX.test(normalizedPhone);
 
-    if (!isCnic && !isPhone) {
+    if (!rawInput) {
       el.forgotResetError.textContent =
-        'Enter a valid 11-digit 03XX mobile number or Pakistani CNIC (XXXXX-XXXXXXX-X).';
+        'Enter your 03XX mobile number, registered username, or CNIC (XXXXX-XXXXXXX-X).';
       el.forgotResetError.classList.remove('hidden');
       return;
     }
 
-    if (forgotTurnstileSiteKey) {
+    if (forgotTurnstileSiteKey && !el.forgotTurnstileMount?.classList.contains('hidden')) {
       if (!forgotTurnstileToken) {
         el.forgotResetError.textContent = 'Complete the security verification challenge first.';
         el.forgotResetError.classList.remove('hidden');
@@ -2091,11 +2227,11 @@
         return;
       }
       if (!forgotChallengeToken) {
-        await initForgotSecurityCheck();
+        await initForgotSecurityCheck(true);
       }
       if (!forgotPowSolution && forgotChallengeToken) {
-        setForgotSecStatus('Checking...', false);
-        forgotPowSolution = await solveResetPowChallenge(forgotChallengeToken, forgotChallengeDifficulty);
+        setForgotSecStatus('Verifying...', false);
+        forgotPowSolution = solveResetPowChallenge(forgotChallengeToken, forgotChallengeDifficulty);
       }
       if (!forgotPowSolution) {
         el.forgotResetError.textContent = 'Security verification failed. Please tick the verification check again.';
@@ -2111,14 +2247,20 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          identifier: isCnic ? rawInput : normalizedPhone,
+          identifier: isCnic ? rawInput : isPhone ? normalizedPhone : rawInput,
           newPassword,
           turnstileToken: forgotTurnstileToken || undefined,
           powChallengeToken: forgotChallengeToken || undefined,
           powSolution: forgotPowSolution || undefined,
         }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
       if (!res.ok) {
         el.forgotResetError.textContent = data.error || 'Password reset failed.';
         el.forgotResetError.classList.remove('hidden');
@@ -2129,12 +2271,13 @@
             // ignore
           }
         }
-        initForgotSecurityCheck();
+        initForgotSecurityCheck(false);
         return;
       }
       el.forgotResetSuccess.textContent = data.message || 'Password reset successfully! You can now log in.';
       el.forgotResetSuccess.classList.remove('hidden');
       el.forgotResetForm.reset();
+      forgotPowSolution = '';
       setForgotSecStatus('Verified', true);
       showToast('Password updated! Please log in.');
     } catch {
