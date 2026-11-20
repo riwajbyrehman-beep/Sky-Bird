@@ -22,7 +22,23 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="adminPass">Admin Password</label>
-            <input type="password" class="form-input" id="adminPass" placeholder="Enter admin password" required />
+            <div class="password-input-wrap">
+              <input type="password" class="form-input" id="adminPass" placeholder="Enter admin password" required />
+              <button
+                type="button"
+                class="password-toggle-btn"
+                data-toggle-pw="adminPass"
+                aria-label="Show password"
+                aria-pressed="false"
+                title="Show / Hide Password"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <span class="pw-toggle-label">Show</span>
+              </button>
+            </div>
           </div>
           <div class="form-group hidden" id="adminTotpGroup">
             <label class="form-label" for="adminTotpCode" style="color: #fde047;">Google Authenticator 2FA Code</label>
@@ -265,6 +281,36 @@
               <span class="kpi-label">Emerald 777 Slots (Net)</span>
               <strong class="tabular-nums" style="font-size: 0.96rem; color: #10b981;" id="poolSlotsNet">0.00 PKR</strong>
               <span class="form-hint tabular-nums" id="poolSlotsVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Crystal Keno (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #38bdf8;" id="poolKenoNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolKenoVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Sky Tower (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #fbbf24;" id="poolTowerNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolTowerVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Dragon Tiger (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #fb923c;" id="poolDragontigerNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolDragontigerVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Neon Baccarat (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #818cf8;" id="poolBaccaratNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolBaccaratVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Royal Roulette (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #f87171;" id="poolRouletteNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolRouletteVol">Bets 0 / Pay 0</span>
+            </div>
+            <div class="pay-config-box">
+              <span class="kpi-label">Golden Scratch (Net)</span>
+              <strong class="tabular-nums" style="font-size: 0.96rem; color: #facc15;" id="poolScratchNet">0.00 PKR</strong>
+              <span class="form-hint tabular-nums" id="poolScratchVol">Bets 0 / Pay 0</span>
             </div>
           </div>
 
@@ -680,9 +726,17 @@
                   <input type="text" class="form-input" id="epNumber" placeholder="03XX-XXXXXXX" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label" for="epIban">EasyPaisa IBAN (Any Bank → EasyPaisa QR)</label>
-                  <input type="text" class="form-input" id="epIban" placeholder="PKxxTMFB... (Recommended for All-Bank QR)" />
-                  <span class="form-hint">Find in EasyPaisa App → Account Details. Lets ANY Pakistani bank scan &amp; pay directly.</span>
+                  <label class="form-label" for="epIban">EasyPaisa IBAN (All Banks Raast)</label>
+                  <input type="text" class="form-input" id="epIban" placeholder="PKxxTMFB... (Recommended)" />
+                  <span class="form-hint">Shown openly to players for Direct Bank/Wallet transfer.</span>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="epQrFile">Official EasyPaisa / Raast QR Image (Optional)</label>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="file" class="form-input" id="epQrFile" accept="image/*" style="padding:6px; font-size:0.75rem;" />
+                    <button type="button" class="btn btn-danger btn-xs hidden" id="epQrClearBtn">Clear</button>
+                  </div>
+                  <span class="form-hint" id="epQrStatusHint">Optional: Upload screenshot of your EasyPaisa QR so players scanning get zero errors.</span>
                 </div>
               </div>
 
@@ -706,8 +760,16 @@
                   <input type="text" class="form-input" id="jcNumber" placeholder="03XX-XXXXXXX" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label" for="jcIban">JazzCash IBAN (Any Bank → JazzCash QR)</label>
-                  <input type="text" class="form-input" id="jcIban" placeholder="PKxxJCMA... (Optional for All-Bank QR)" />
+                  <label class="form-label" for="jcIban">JazzCash IBAN (All Banks Raast)</label>
+                  <input type="text" class="form-input" id="jcIban" placeholder="PKxxJCMA... (Optional)" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="jcQrFile">Official JazzCash / Raast QR Image (Optional)</label>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="file" class="form-input" id="jcQrFile" accept="image/*" style="padding:6px; font-size:0.75rem;" />
+                    <button type="button" class="btn btn-danger btn-xs hidden" id="jcQrClearBtn">Clear</button>
+                  </div>
+                  <span class="form-hint" id="jcQrStatusHint">Optional: Upload your real JazzCash QR screenshot.</span>
                 </div>
               </div>
 
@@ -733,6 +795,14 @@
                 <div class="form-group">
                   <label class="form-label" for="bkNumber">Account / IBAN Number</label>
                   <input type="text" class="form-input" id="bkNumber" placeholder="PK..." />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="bkQrFile">Official Bank Raast QR Image (Optional)</label>
+                  <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="file" class="form-input" id="bkQrFile" accept="image/*" style="padding:6px; font-size:0.75rem;" />
+                    <button type="button" class="btn btn-danger btn-xs hidden" id="bkQrClearBtn">Clear</button>
+                  </div>
+                  <span class="form-hint" id="bkQrStatusHint">Optional: Upload your bank app Raast QR image.</span>
                 </div>
               </div>
             </div>
@@ -1123,23 +1193,41 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="syncRemoteUrlInput">Remote Live Site URL (Primary Round Authority)</label>
+              <label class="form-label" for="syncRemoteUrlInput">Remote Live Site URL (Railway / Primary Authority)</label>
               <div class="setting-inline-save">
                 <input
                   type="url"
                   class="form-input"
                   id="syncRemoteUrlInput"
-                  placeholder="https://your-live-site.onrender.com"
+                  placeholder="https://your-app.up.railway.app"
                 />
                 <button type="button" class="btn btn-emerald btn-xs" data-save-sync>Save</button>
               </div>
-              <span class="form-hint">Leave blank on your primary Live Site. Enter the Live Site origin here in AI Studio to mirror exact rounds.</span>
+              <span class="form-hint">Enter your Railway URL (e.g. https://your-app.up.railway.app) here on AI Studio to lock onto Railway's exact round number. Leave blank on Railway itself.</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="syncManualRoundInput">Align Current Round # (Optional)</label>
+              <div class="setting-inline-save">
+                <input
+                  type="number"
+                  min="1001"
+                  max="99999999"
+                  step="1"
+                  class="form-input tabular-nums"
+                  id="syncManualRoundInput"
+                  placeholder="e.g. 3910"
+                />
+                <button type="button" class="btn btn-emerald btn-xs" id="syncRoundAlignBtn">Set #</button>
+              </div>
+              <span class="form-hint">Matches this server's active round counter to your target round number immediately without resetting any saved settings.</span>
             </div>
           </div>
 
           <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
             <button type="button" class="btn btn-primary btn-sm" id="saveSyncConfigBtn">Save Sync Configuration</button>
             <button type="button" class="btn btn-secondary btn-sm" id="testSyncConnBtn">Test Remote Site Connection</button>
+            <button type="button" class="btn btn-emerald btn-sm" id="pullRemoteSyncBtn">Pull Round &amp; Settings From Railway</button>
             <span id="syncErrorHint" style="font-size: 0.78rem; color: #fca5a5;"></span>
           </div>
         </section>
@@ -1411,6 +1499,12 @@
           const wheel = byGame.wheel || { bets: 0, payouts: 0, netDelta: 0 };
           const hilo = byGame.hilo || { bets: 0, payouts: 0, netDelta: 0 };
           const slots = byGame.slots || { bets: 0, payouts: 0, netDelta: 0 };
+          const keno = byGame.keno || { bets: 0, payouts: 0, netDelta: 0 };
+          const tower = byGame.tower || { bets: 0, payouts: 0, netDelta: 0 };
+          const dragontiger = byGame.dragontiger || { bets: 0, payouts: 0, netDelta: 0 };
+          const baccarat = byGame.baccarat || { bets: 0, payouts: 0, netDelta: 0 };
+          const roulette = byGame.roulette || { bets: 0, payouts: 0, netDelta: 0 };
+          const scratch = byGame.scratch || { bets: 0, payouts: 0, netDelta: 0 };
 
           const kpiSurplusEl = document.getElementById('kpiSurplus');
           if (kpiSurplusEl) kpiSurplusEl.textContent = fmtPKR(poolBal);
@@ -1422,8 +1516,14 @@
               Number(coinflip.netDelta || 0) +
               Number(wheel.netDelta || 0) +
               Number(hilo.netDelta || 0) +
-              Number(slots.netDelta || 0);
-            kpiSplitEl.textContent = `C:${Number(crash.netDelta || 0) >= 0 ? '+' : ''}${Number(crash.netDelta || 0).toFixed(0)} · P:${Number(plinko.netDelta || 0) >= 0 ? '+' : ''}${Number(plinko.netDelta || 0).toFixed(0)} · M:${Number(mines.netDelta || 0) >= 0 ? '+' : ''}${Number(mines.netDelta || 0).toFixed(0)} · D:${Number(dice.netDelta || 0) >= 0 ? '+' : ''}${Number(dice.netDelta || 0).toFixed(0)} · +5:${arcadeNet >= 0 ? '+' : ''}${arcadeNet.toFixed(0)}`;
+              Number(slots.netDelta || 0) +
+              Number(keno.netDelta || 0) +
+              Number(tower.netDelta || 0) +
+              Number(dragontiger.netDelta || 0) +
+              Number(baccarat.netDelta || 0) +
+              Number(roulette.netDelta || 0) +
+              Number(scratch.netDelta || 0);
+            kpiSplitEl.textContent = `C:${Number(crash.netDelta || 0) >= 0 ? '+' : ''}${Number(crash.netDelta || 0).toFixed(0)} · P:${Number(plinko.netDelta || 0) >= 0 ? '+' : ''}${Number(plinko.netDelta || 0).toFixed(0)} · M:${Number(mines.netDelta || 0) >= 0 ? '+' : ''}${Number(mines.netDelta || 0).toFixed(0)} · D:${Number(dice.netDelta || 0) >= 0 ? '+' : ''}${Number(dice.netDelta || 0).toFixed(0)} · +11:${arcadeNet >= 0 ? '+' : ''}${arcadeNet.toFixed(0)}`;
           }
 
           const poolUnifiedEl = document.getElementById('poolUnifiedVal');
@@ -1450,6 +1550,12 @@
           setGameCell('poolWheelNet', 'poolWheelVol', wheel);
           setGameCell('poolHiloNet', 'poolHiloVol', hilo);
           setGameCell('poolSlotsNet', 'poolSlotsVol', slots);
+          setGameCell('poolKenoNet', 'poolKenoVol', keno);
+          setGameCell('poolTowerNet', 'poolTowerVol', tower);
+          setGameCell('poolDragontigerNet', 'poolDragontigerVol', dragontiger);
+          setGameCell('poolBaccaratNet', 'poolBaccaratVol', baccarat);
+          setGameCell('poolRouletteNet', 'poolRouletteVol', roulette);
+          setGameCell('poolScratchNet', 'poolScratchVol', scratch);
 
           if (payload.dailyNetProfit !== undefined) {
             const kpiProfitEl = document.getElementById('kpiNetProfit');
@@ -1689,6 +1795,21 @@
           loadAdminSecurityOverview();
           loadAdminSupportTickets();
         }
+
+        document.querySelectorAll('[data-toggle-pw]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-toggle-pw');
+            const input = targetId ? document.getElementById(targetId) : null;
+            if (!input) return;
+            const willShow = input.type === 'password';
+            input.type = willShow ? 'text' : 'password';
+            btn.classList.toggle('is-visible', willShow);
+            btn.setAttribute('aria-pressed', String(willShow));
+            btn.setAttribute('aria-label', willShow ? 'Hide password' : 'Show password');
+            const label = btn.querySelector('.pw-toggle-label');
+            if (label) label.textContent = willShow ? 'Hide' : 'Show';
+          });
+        });
 
         document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
           e.preventDefault();
@@ -1933,6 +2054,7 @@
 
             setFieldSafe('syncModeSelect', syncCfg.mode || syncSt.configuredMode || 'auto', force);
             setFieldSafe('syncRemoteUrlInput', syncCfg.remoteLiveUrl || syncSt.configuredRemoteUrl || '', force);
+            setFieldSafe('syncManualRoundInput', Number(live.roundNumber || s.roundCounter || 1001), force);
 
             // Financial Limits & Unified Pool
             const fl = s.financialLimits || {};
@@ -2028,6 +2150,12 @@
             setFieldSafe('bkName', pa.bank?.bankName || '', force);
             setFieldSafe('bkTitle', pa.bank?.accountTitle || '', force);
             setFieldSafe('bkNumber', pa.bank?.accountNumber || '', force);
+
+            if (force) {
+              syncAdminGatewayQrState('ep', pa.easypaisa?.customQrImage || '');
+              syncAdminGatewayQrState('jc', pa.jazzcash?.customQrImage || '');
+              syncAdminGatewayQrState('bk', pa.bank?.customQrImage || '');
+            }
 
             const pc = s.profitControl || { mode: 'balanced', houseEdgePct: 4, maxCrashCap: 100 };
             setFieldSafe('profitModeSelect', pc.mode || 'balanced', force);
@@ -2436,6 +2564,59 @@
           });
         });
 
+        const adminGatewayQrUploads = { ep: undefined, jc: undefined, bk: undefined };
+
+        function syncAdminGatewayQrState(key, dataUrl) {
+          const hintEl = document.getElementById(`${key}QrStatusHint`);
+          const clearBtn = document.getElementById(`${key}QrClearBtn`);
+          const hasImg = Boolean(dataUrl && String(dataUrl).startsWith('data:image/'));
+          if (clearBtn) clearBtn.classList.toggle('hidden', !hasImg);
+          if (hintEl) {
+            hintEl.textContent = hasImg
+              ? 'Official App QR uploaded! Click Save to publish (or Clear to use auto Raast).'
+              : 'Optional: Upload your real EasyPaisa/JazzCash/Bank QR screenshot.';
+            hintEl.style.color = hasImg ? '#34d399' : '';
+          }
+        }
+
+        ['ep', 'jc', 'bk'].forEach((key) => {
+          const fileEl = document.getElementById(`${key}QrFile`);
+          const clearBtn = document.getElementById(`${key}QrClearBtn`);
+          fileEl?.addEventListener('change', () => {
+            const file = fileEl.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              const img = new Image();
+              img.onload = () => {
+                const maxDim = 640;
+                let { width, height } = img;
+                if (width > maxDim || height > maxDim) {
+                  const s = maxDim / Math.max(width, height);
+                  width = Math.round(width * s);
+                  height = Math.round(height * s);
+                }
+                const c = document.createElement('canvas');
+                c.width = width;
+                c.height = height;
+                c.getContext('2d').drawImage(img, 0, 0, width, height);
+                const compressed = c.toDataURL('image/png');
+                adminGatewayQrUploads[key] = compressed;
+                syncAdminGatewayQrState(key, compressed);
+                showToast('QR image ready! Click Save on the gateway box to apply.');
+              };
+              img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+          });
+          clearBtn?.addEventListener('click', () => {
+            adminGatewayQrUploads[key] = '';
+            if (fileEl) fileEl.value = '';
+            syncAdminGatewayQrState(key, '');
+            showToast('Custom QR cleared. Click Save to apply.');
+          });
+        });
+
         async function saveAllCoreSettings() {
           try {
             const res = await apiFetch('/api/admin/settings', {
@@ -2457,18 +2638,21 @@
                     accountTitle: document.getElementById('epTitle').value.trim(),
                     accountNumber: document.getElementById('epNumber').value.trim(),
                     iban: document.getElementById('epIban').value.trim().toUpperCase(),
+                    ...(adminGatewayQrUploads.ep !== undefined ? { customQrImage: adminGatewayQrUploads.ep } : {}),
                   },
                   jazzcash: {
                     enabled: document.getElementById('jcEnabled').checked,
                     accountTitle: document.getElementById('jcTitle').value.trim(),
                     accountNumber: document.getElementById('jcNumber').value.trim(),
                     iban: document.getElementById('jcIban').value.trim().toUpperCase(),
+                    ...(adminGatewayQrUploads.jc !== undefined ? { customQrImage: adminGatewayQrUploads.jc } : {}),
                   },
                   bank: {
                     enabled: document.getElementById('bkEnabled').checked,
                     bankName: document.getElementById('bkName').value.trim(),
                     accountTitle: document.getElementById('bkTitle').value.trim(),
                     accountNumber: document.getElementById('bkNumber').value.trim(),
+                    ...(adminGatewayQrUploads.bk !== undefined ? { customQrImage: adminGatewayQrUploads.bk } : {}),
                   },
                 },
               }),
@@ -3299,8 +3483,15 @@
               showToast(data.error || 'Failed to save Live Sync config.', true);
               return;
             }
+            if (data.syncConfig?.remoteLiveUrl !== undefined) {
+              setFieldSafe('syncRemoteUrlInput', data.syncConfig.remoteLiveUrl, true);
+            }
             clearDirtyIds(['syncModeSelect', 'syncRemoteUrlInput']);
-            showToast('Live Site Sync configuration saved & activated!');
+            showToast(
+              data.syncedRoundNumber
+                ? `Live Sync saved! Synced to Round #${data.syncedRoundNumber}`
+                : 'Live Site Sync configuration saved & activated!'
+            );
             loadDashboard({ kpisOnly: true });
           } catch {
             showToast('Sync configuration error.', true);
@@ -3310,6 +3501,49 @@
         document.getElementById('saveSyncConfigBtn')?.addEventListener('click', saveSyncConfigAction);
         document.querySelectorAll('[data-save-sync]').forEach((btn) => {
           btn.addEventListener('click', saveSyncConfigAction);
+        });
+
+        document.getElementById('syncRoundAlignBtn')?.addEventListener('click', async () => {
+          try {
+            const roundNumber = Number(document.getElementById('syncManualRoundInput')?.value || 0);
+            if (!Number.isFinite(roundNumber) || roundNumber < 1001) {
+              showToast('Enter a valid Round # (>= 1001).', true);
+              return;
+            }
+            const res = await apiFetch('/api/admin/sync-round', {
+              method: 'POST',
+              body: JSON.stringify({ roundNumber }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Failed to align round number.', true);
+              return;
+            }
+            clearDirtyIds(['syncManualRoundInput']);
+            showToast(`Round counter aligned to #${data.roundNumber}!`);
+            loadDashboard({ kpisOnly: true });
+          } catch {
+            showToast('Failed to align round number.', true);
+          }
+        });
+
+        document.getElementById('pullRemoteSyncBtn')?.addEventListener('click', async () => {
+          try {
+            const remoteLiveUrl = document.getElementById('syncRemoteUrlInput')?.value.trim() || '';
+            const res = await apiFetch('/api/admin/sync-pull', {
+              method: 'POST',
+              body: JSON.stringify({ remoteLiveUrl }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              showToast(data.error || 'Failed to pull from remote site.', true);
+              return;
+            }
+            showToast(`Pulled Round #${data.roundNumber} & public settings from ${data.remoteOrigin}!`);
+            loadDashboard({ force: true });
+          } catch {
+            showToast('Failed to pull remote sync data.', true);
+          }
         });
 
         document.getElementById('testSyncConnBtn')?.addEventListener('click', async () => {
@@ -3323,6 +3557,9 @@
             if (!res.ok) {
               showToast(data.error || 'Remote sync connection failed.', true);
               return;
+            }
+            if (data.remoteOrigin) {
+              setFieldSafe('syncRemoteUrlInput', data.remoteOrigin, true);
             }
             showToast(
               `Connected (${data.latencyMs}ms)! Live Round #${data.roundNumber} (${data.phase} · ${Number(data.multiplier || 1).toFixed(2)}x) · DB: ${data.remoteDatabase}`

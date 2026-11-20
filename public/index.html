@@ -46,6 +46,15 @@
 
       <div class="header-actions">
         <div id="headerGameControls" class="header-game-controls hidden">
+          <button
+            type="button"
+            class="btn btn-secondary header-compact-btn in-game-only-ctrl hidden"
+            id="headerBackHomeBtn"
+            title="Back to Games Menu"
+          >
+            ← Back
+          </button>
+
           <div class="wallet-box" title="Active Wallet Balance">
             <span class="wallet-balance tabular-nums" id="walletBalanceDisplay">0.00 FC</span>
             <span class="wallet-label" id="walletModeLabel">Fun Credits</span>
@@ -53,32 +62,46 @@
 
           <button
             type="button"
-            class="btn btn-emerald header-compact-btn"
+            class="btn btn-secondary header-compact-btn in-game-only-ctrl hidden"
+            id="fullscreenToggleBtn"
+            title="Toggle Fullscreen Mode"
+            aria-pressed="false"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="15 3 21 3 21 9" />
+              <polyline points="9 21 3 21 3 15" />
+              <line x1="21" y1="3" x2="14" y2="10" />
+              <line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
+            <span id="fullscreenBtnLabel">Fullscreen</span>
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-emerald header-compact-btn home-only-ctrl"
             id="headerDepositBtn"
             title="Deposit Real Money (PKR)"
           >
             + Deposit
           </button>
 
-          <button
-            type="button"
-            class="btn btn-share-compact header-compact-btn"
+          <a
+            href="https://wa.me/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn-whatsapp-header header-compact-btn home-only-ctrl"
             id="shareHeaderBtn"
-            title="Share Referral Link &amp; Earn Up to 15% Commission"
+            title="Share on WhatsApp &amp; Earn 15% Commission"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="18" cy="5" r="3" />
-              <circle cx="6" cy="12" r="3" />
-              <circle cx="18" cy="19" r="3" />
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm5.8 14.12c-.24.68-1.41 1.3-1.95 1.38-.5.08-1.13.11-1.82-.11-.42-.13-.96-.31-1.66-.61-2.92-1.26-4.82-4.21-4.96-4.4-.14-.2-1.18-1.57-1.18-3 0-1.43.75-2.13 1.01-2.42.26-.29.58-.36.77-.36.2 0 .39 0 .56.01.18.01.42-.07.66.5.24.59.82 2.01.89 2.16.07.15.12.32.02.52-.1.2-.15.32-.3.5-.15.18-.31.4-.44.54-.15.15-.3.32-.13.62.18.29.78 1.29 1.67 2.09 1.15 1.03 2.12 1.35 2.42 1.5.3.15.47.12.64-.08.18-.2.74-.86.94-1.15.2-.29.39-.24.66-.14.27.1 1.71.81 2 .95.3.15.49.22.56.34.07.12.07.7-.17 1.38Z" />
             </svg>
-            <span>Share (15%)</span>
-          </button>
+            <span>Share</span>
+          </a>
 
           <button
             type="button"
-            class="btn btn-secondary header-compact-btn"
+            class="btn btn-secondary header-compact-btn home-only-ctrl"
             id="headerHelpBtn"
             title="Help, Rules &amp; Live Support"
           >
@@ -86,13 +109,13 @@
           </button>
         </div>
 
-        <button type="button" class="btn btn-primary header-user-btn" id="authTriggerBtn" title="Account Profile &amp; Settings">
+        <button type="button" class="btn btn-primary header-user-btn home-only-ctrl" id="authTriggerBtn" title="Account Profile &amp; Settings">
           Log In / Join
         </button>
 
         <button
           type="button"
-          class="btn btn-logout-ghost hidden"
+          class="btn btn-logout-ghost hidden home-only-ctrl"
           id="headerLogoutBtn"
           title="Log Out"
           aria-label="Log Out"
@@ -179,157 +202,327 @@
         </div>
       </div>
 
-      <!-- Top-of-Screen Sticky Separated Navigation Pane (Stays Pinned on Scroll) -->
+      <!-- Top-of-Screen Sticky Navigation Pane (Shown ONLY on Home Screen, hidden during active gameplay) -->
       <nav class="top-feature-pane" id="topFeaturePane" aria-label="Quick Feature Navigation">
-        <button type="button" class="feature-pane-tab active" data-feature-tab="lobby">Lobby</button>
-        <span class="feature-pane-divider" aria-hidden="true"></span>
-        <button type="button" class="feature-pane-tab" data-feature-tab="skywing-crash">SkyWing Crash</button>
-        <button type="button" class="feature-pane-tab" data-feature-tab="cyber-plinko">Cyber Plinko</button>
-        <button type="button" class="feature-pane-tab" data-feature-tab="golden-mines">Golden Mines</button>
-        <button type="button" class="feature-pane-tab is-new" data-feature-tab="cyber-dice">Cyber Dice</button>
-        <button type="button" class="feature-pane-tab is-new" data-feature-tab="cyber-limbo">Limbo X</button>
-        <button type="button" class="feature-pane-tab is-new" data-feature-tab="neon-flip">Coin Flip</button>
-        <button type="button" class="feature-pane-tab is-new" data-feature-tab="lucky-wheel">Lucky Wheel</button>
-        <button type="button" class="feature-pane-tab is-new" data-feature-tab="dragon-hilo">Dragon Hi-Lo</button>
-        <button type="button" class="feature-pane-tab is-new" data-feature-tab="emerald-slots">777 Slots</button>
+        <button type="button" class="feature-pane-tab active" data-feature-tab="lobby">Home Games</button>
         <span class="feature-pane-divider" aria-hidden="true"></span>
         <button type="button" class="feature-pane-tab is-utility" data-feature-tab="deposit">Deposit / QR</button>
         <button type="button" class="feature-pane-tab is-utility" data-feature-tab="withdraw">Withdraw</button>
         <button type="button" class="feature-pane-tab is-utility" data-feature-tab="wallet">Wallet History</button>
-        <button type="button" class="feature-pane-tab is-utility" data-feature-tab="rewards">VIP Rewards</button>
+        <button type="button" class="feature-pane-tab is-utility" data-feature-tab="rewards">VIP &amp; Streak</button>
         <button type="button" class="feature-pane-tab is-utility" data-feature-tab="profile">Profile</button>
         <button type="button" class="feature-pane-tab is-utility" data-feature-tab="support">Live Support</button>
         <button type="button" class="feature-pane-tab is-utility" data-feature-tab="fairness">Fairness</button>
         <button type="button" class="feature-pane-tab is-utility" data-feature-tab="help">Help &amp; Rules</button>
       </nav>
 
-      <!-- Post-Login Visual Game Lobby (Click Card to Launch Arena) -->
+      <!-- Post-Login Professional Home Screen (All 15 Games + Hero Wallet Summary + WhatsApp Share) -->
       <section class="game-lobby-section" id="gameLobbySection" aria-label="Game Lobby">
+        <div class="lobby-hero-banner">
+          <div class="lobby-hero-left">
+            <span class="lobby-hero-eyebrow">15 PROVABLY FAIR ARCADES · INSTANT PKR &amp; FUN CREDITS</span>
+            <h1 class="lobby-heading">SkyWing Arena Lobby</h1>
+            <p class="lobby-subheading">Choose Fun Mode (FC) to practice free or switch to Real Money (PKR) for instant cashouts.</p>
+            <div class="lobby-hero-actions">
+              <button type="button" class="btn btn-emerald btn-xs" id="homeQuickDepositBtn">+ Deposit PKR (QR)</button>
+              <button type="button" class="btn btn-primary btn-xs" id="homeQuickRewardsBtn">Daily Streak &amp; VIP</button>
+              <a
+                href="https://wa.me/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-whatsapp-header btn-xs"
+                id="homeWhatsappShareBtn"
+                title="Share Invite Link on WhatsApp &amp; Earn 15% Commission"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm5.8 14.12c-.24.68-1.41 1.3-1.95 1.38-.5.08-1.13.11-1.82-.11-.42-.13-.96-.31-1.66-.61-2.92-1.26-4.82-4.21-4.96-4.4-.14-.2-1.18-1.57-1.18-3 0-1.43.75-2.13 1.01-2.42.26-.29.58-.36.77-.36.2 0 .39 0 .56.01.18.01.42-.07.66.5.24.59.82 2.01.89 2.16.07.15.12.32.02.52-.1.2-.15.32-.3.5-.15.18-.31.4-.44.54-.15.15-.3.32-.13.62.18.29.78 1.29 1.67 2.09 1.15 1.03 2.12 1.35 2.42 1.5.3.15.47.12.64-.08.18-.2.74-.86.94-1.15.2-.29.39-.24.66-.14.27.1 1.71.81 2 .95.3.15.49.22.56.34.07.12.07.7-.17 1.38Z" />
+                </svg>
+                <span>Invite on WhatsApp (15%)</span>
+              </a>
+            </div>
+          </div>
+          <div class="lobby-hero-stats tabular-nums">
+            <div class="lobby-stat-tile">
+              <span class="lobby-stat-label">Fun Credits</span>
+              <strong class="lobby-stat-val" style="color: #fde047;" id="homeFunBalStat">0.00 FC</strong>
+            </div>
+            <div class="lobby-stat-tile">
+              <span class="lobby-stat-label">Real Money</span>
+              <strong class="lobby-stat-val" style="color: #34d399;" id="homeRealBalStat">0.00 PKR</strong>
+            </div>
+            <div class="lobby-stat-tile">
+              <span class="lobby-stat-label">VIP Status</span>
+              <strong class="lobby-stat-val" style="color: #7dd3fc;" id="homeVipStat">Bronze VIP</strong>
+            </div>
+            <div class="lobby-stat-tile">
+              <span class="lobby-stat-label">Live Arenas</span>
+              <strong class="lobby-stat-val" style="color: #f8fafc;">15 / 15 Online</strong>
+            </div>
+          </div>
+        </div>
+
         <div class="lobby-section-head">
-          <div>
-            <h1 class="lobby-heading">Game Lobby</h1>
-            <p class="lobby-subheading">Select an arcade arena below to start playing</p>
+          <div class="lobby-category-bar" id="lobbyCategoryFilters" role="tablist" aria-label="Game Categories">
+            <button type="button" class="lobby-cat-btn active" data-lobby-cat="all">All Games (15)</button>
+            <button type="button" class="lobby-cat-btn" data-lobby-cat="crash">Crash &amp; Instant</button>
+            <button type="button" class="lobby-cat-btn" data-lobby-cat="cards">Cards &amp; Table</button>
+            <button type="button" class="lobby-cat-btn" data-lobby-cat="fortune">Fortune &amp; Slots</button>
           </div>
         </div>
 
         <div class="game-lobby-grid" id="gameLobbyBar">
-          <button type="button" class="game-lobby-card" data-game="skywing-crash">
+          <button type="button" class="game-lobby-card" data-game="skywing-crash" data-category="crash">
             <div class="lobby-art-wrap">
               <img src="/images/crash-cover.jpg" class="lobby-card-art" alt="SkyWing Crash Artwork" />
               <span class="game-lobby-badge" data-game-badge="skywing-crash">LIVE</span>
             </div>
             <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">Crash &amp; Live</span>
+                <span class="lobby-card-max tabular-nums">Up to 1000x</span>
+              </div>
               <div class="game-lobby-title">SkyWing Crash</div>
               <div class="game-lobby-sub">Multiplayer multiplier flight with dual cashout panels.</div>
-              <span class="lobby-play-cta">Launch Arena →</span>
+              <span class="lobby-play-cta">Play Now →</span>
             </div>
           </button>
 
-          <button type="button" class="game-lobby-card" data-game="cyber-plinko">
+          <button type="button" class="game-lobby-card" data-game="cyber-plinko" data-category="crash">
             <div class="lobby-art-wrap">
               <img src="/images/plinko-cover.jpg" class="lobby-card-art" alt="Cyber Plinko Artwork" />
               <span class="game-lobby-badge" data-game-badge="cyber-plinko">LIVE</span>
             </div>
             <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">Arcade Drop</span>
+                <span class="lobby-card-max tabular-nums">Max 29.0x</span>
+              </div>
               <div class="game-lobby-title">Cyber Plinko</div>
               <div class="game-lobby-sub">8-row cryptographic peg drop with up to 29x pockets.</div>
-              <span class="lobby-play-cta">Launch Arena →</span>
+              <span class="lobby-play-cta">Play Now →</span>
             </div>
           </button>
 
-          <button type="button" class="game-lobby-card" data-game="golden-mines">
+          <button type="button" class="game-lobby-card" data-game="golden-mines" data-category="crash">
             <div class="lobby-art-wrap">
               <img src="/images/mines-cover.jpg" class="lobby-card-art" alt="Golden Mines Artwork" />
               <span class="game-lobby-badge" data-game-badge="golden-mines">LIVE</span>
             </div>
             <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">Strategy Grid</span>
+                <span class="lobby-card-max tabular-nums">Cashout Anytime</span>
+              </div>
               <div class="game-lobby-title">Golden Mines</div>
               <div class="game-lobby-sub">5x5 diamond vault grid with instant cashout control.</div>
-              <span class="lobby-play-cta">Launch Arena →</span>
+              <span class="lobby-play-cta">Play Now →</span>
             </div>
           </button>
 
-          <button type="button" class="game-lobby-card" data-game="cyber-dice">
+          <button type="button" class="game-lobby-card" data-game="cyber-dice" data-category="crash">
             <div class="lobby-art-wrap">
               <img src="/images/dice-cover.jpg" class="lobby-card-art" alt="Cyber Dice Artwork" />
               <span class="game-lobby-badge" data-game-badge="cyber-dice">LIVE</span>
             </div>
             <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">Instant Roll</span>
+                <span class="lobby-card-max tabular-nums">Up to 48.0x</span>
+              </div>
               <div class="game-lobby-title">Cyber Dice</div>
               <div class="game-lobby-sub">Adjustable Roll Over / Under target with instant crypto payouts.</div>
-              <span class="lobby-play-cta">Launch Arena →</span>
+              <span class="lobby-play-cta">Play Now →</span>
             </div>
           </button>
 
-          <button type="button" class="game-lobby-card" data-game="cyber-limbo">
+          <button type="button" class="game-lobby-card" data-game="cyber-limbo" data-category="crash">
             <div class="lobby-art-wrap">
               <img src="/images/limbo-cover.jpg" class="lobby-card-art" alt="Limbo X Artwork" />
               <span class="game-lobby-badge" data-game-badge="cyber-limbo">LIVE</span>
             </div>
             <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">High Altitude</span>
+                <span class="lobby-card-max tabular-nums">Max 100x</span>
+              </div>
               <div class="game-lobby-title">Limbo X</div>
               <div class="game-lobby-sub">Set any target multiplier up to 100x for instant payouts.</div>
-              <span class="lobby-play-cta">Launch Arena →</span>
+              <span class="lobby-play-cta">Play Now →</span>
             </div>
           </button>
 
-          <button type="button" class="game-lobby-card" data-game="neon-flip">
+          <button type="button" class="game-lobby-card" data-game="neon-flip" data-category="fortune">
             <div class="lobby-art-wrap">
               <img src="/images/coinflip-cover.jpg" class="lobby-card-art" alt="Neon Coin Flip Artwork" />
               <span class="game-lobby-badge" data-game-badge="neon-flip">LIVE</span>
             </div>
             <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">50/50 Duel</span>
+                <span class="lobby-card-max tabular-nums">1.92x Instant</span>
+              </div>
               <div class="game-lobby-title">Neon Coin Flip</div>
               <div class="game-lobby-sub">Pick Heads or Tails for fast 1.92x instant cyber vault flips.</div>
-              <span class="lobby-play-cta">Launch Arena →</span>
+              <span class="lobby-play-cta">Play Now →</span>
             </div>
           </button>
 
-          <button type="button" class="game-lobby-card" data-game="lucky-wheel">
+          <button type="button" class="game-lobby-card" data-game="lucky-wheel" data-category="fortune">
             <div class="lobby-art-wrap">
               <img src="/images/wheel-cover.jpg" class="lobby-card-art" alt="Lucky Wheel Artwork" />
               <span class="game-lobby-badge" data-game-badge="lucky-wheel">LIVE</span>
             </div>
             <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">Prize Wheel</span>
+                <span class="lobby-card-max tabular-nums">Max 10.0x</span>
+              </div>
               <div class="game-lobby-title">Lucky Wheel</div>
               <div class="game-lobby-sub">Spin the 12-segment neon fortune wheel for up to 10x prizes.</div>
-              <span class="lobby-play-cta">Launch Arena →</span>
+              <span class="lobby-play-cta">Play Now →</span>
             </div>
           </button>
 
-          <button type="button" class="game-lobby-card" data-game="dragon-hilo">
+          <button type="button" class="game-lobby-card" data-game="dragon-hilo" data-category="cards">
             <div class="lobby-art-wrap">
               <img src="/images/hilo-cover.jpg" class="lobby-card-art" alt="Dragon Hi-Lo Artwork" />
               <span class="game-lobby-badge" data-game-badge="dragon-hilo">LIVE</span>
             </div>
             <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">Card Table</span>
+                <span class="lobby-card-max tabular-nums">Up to 12.0x</span>
+              </div>
               <div class="game-lobby-title">Dragon Hi-Lo</div>
               <div class="game-lobby-sub">Predict Higher, Lower, Red or Black cards against the dealer deck.</div>
-              <span class="lobby-play-cta">Launch Arena →</span>
+              <span class="lobby-play-cta">Play Now →</span>
             </div>
           </button>
 
-          <button type="button" class="game-lobby-card" data-game="emerald-slots">
+          <button type="button" class="game-lobby-card" data-game="emerald-slots" data-category="fortune">
             <div class="lobby-art-wrap">
               <img src="/images/slots-cover.jpg" class="lobby-card-art" alt="Emerald 777 Slots Artwork" />
               <span class="game-lobby-badge" data-game-badge="emerald-slots">LIVE</span>
             </div>
             <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">3-Reel Slots</span>
+                <span class="lobby-card-max tabular-nums">Jackpot 25x</span>
+              </div>
               <div class="game-lobby-title">Emerald 777 Slots</div>
               <div class="game-lobby-sub">3-reel cyber gem slot machine with up to 25x triple-7 jackpot.</div>
-              <span class="lobby-play-cta">Launch Arena →</span>
+              <span class="lobby-play-cta">Play Now →</span>
+            </div>
+          </button>
+
+          <button type="button" class="game-lobby-card" data-game="crystal-keno" data-category="fortune">
+            <div class="lobby-art-wrap">
+              <img src="/images/keno-cover.jpg" class="lobby-card-art" alt="Crystal Keno Artwork" />
+              <span class="game-lobby-badge" data-game-badge="crystal-keno">LIVE</span>
+            </div>
+            <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">Number Draw</span>
+                <span class="lobby-card-max tabular-nums">Max 65.0x</span>
+              </div>
+              <div class="game-lobby-title">Crystal Keno</div>
+              <div class="game-lobby-sub">Select 1–5 crystal numbers on a 40-tile board for up to 65x payouts.</div>
+              <span class="lobby-play-cta">Play Now →</span>
+            </div>
+          </button>
+
+          <button type="button" class="game-lobby-card" data-game="tower-climb" data-category="crash">
+            <div class="lobby-art-wrap">
+              <img src="/images/tower-cover.jpg" class="lobby-card-art" alt="Sky Tower Artwork" />
+              <span class="game-lobby-badge" data-game-badge="tower-climb">LIVE</span>
+            </div>
+            <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">Vault Climb</span>
+                <span class="lobby-card-max tabular-nums">8 Floors · 24.6x</span>
+              </div>
+              <div class="game-lobby-title">Sky Tower</div>
+              <div class="game-lobby-sub">Climb 8 illuminated vault floors avoiding traps and cash out anytime.</div>
+              <span class="lobby-play-cta">Play Now →</span>
+            </div>
+          </button>
+
+          <button type="button" class="game-lobby-card" data-game="dragon-tiger" data-category="cards">
+            <div class="lobby-art-wrap">
+              <img src="/images/dragontiger-cover.jpg" class="lobby-card-art" alt="Dragon Tiger Artwork" />
+              <span class="game-lobby-badge" data-game-badge="dragon-tiger">LIVE</span>
+            </div>
+            <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">Casino Duel</span>
+                <span class="lobby-card-max tabular-nums">Tie 8.0x</span>
+              </div>
+              <div class="game-lobby-title">Dragon Tiger</div>
+              <div class="game-lobby-sub">Fast high-card casino duel: Dragon, Tiger, or 8x Tie jackpot.</div>
+              <span class="lobby-play-cta">Play Now →</span>
+            </div>
+          </button>
+
+          <button type="button" class="game-lobby-card" data-game="neon-baccarat" data-category="cards">
+            <div class="lobby-art-wrap">
+              <img src="/images/baccarat-cover.jpg" class="lobby-card-art" alt="Neon Baccarat Artwork" />
+              <span class="game-lobby-badge" data-game-badge="neon-baccarat">LIVE</span>
+            </div>
+            <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">Punto Banco</span>
+                <span class="lobby-card-max tabular-nums">Tie 8.0x</span>
+              </div>
+              <div class="game-lobby-title">Neon Baccarat</div>
+              <div class="game-lobby-sub">Classic Punto Banco modulo-10 table with Player, Banker &amp; Tie.</div>
+              <span class="lobby-play-cta">Play Now →</span>
+            </div>
+          </button>
+
+          <button type="button" class="game-lobby-card" data-game="triple-roulette" data-category="cards">
+            <div class="lobby-art-wrap">
+              <img src="/images/roulette-cover.jpg" class="lobby-card-art" alt="Royal Roulette Artwork" />
+              <span class="game-lobby-badge" data-game-badge="triple-roulette">LIVE</span>
+            </div>
+            <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">European Wheel</span>
+                <span class="lobby-card-max tabular-nums">Straight 35x</span>
+              </div>
+              <div class="game-lobby-title">Royal Roulette</div>
+              <div class="game-lobby-sub">European single-zero wheel with Red/Black, Dozens &amp; 35x Straight bets.</div>
+              <span class="lobby-play-cta">Play Now →</span>
+            </div>
+          </button>
+
+          <button type="button" class="game-lobby-card" data-game="lucky-scratch" data-category="fortune">
+            <div class="lobby-art-wrap">
+              <img src="/images/scratch-cover.jpg" class="lobby-card-art" alt="Golden Scratch Artwork" />
+              <span class="game-lobby-badge" data-game-badge="lucky-scratch">LIVE</span>
+            </div>
+            <div class="lobby-card-body">
+              <div class="lobby-card-meta">
+                <span class="lobby-card-cat">Instant Card</span>
+                <span class="lobby-card-max tabular-nums">Match 20x</span>
+              </div>
+              <div class="game-lobby-title">Golden Scratch</div>
+              <div class="game-lobby-sub">Scratch 3×3 brushed-gold vault panels to match 3 icons up to 20x.</div>
+              <span class="lobby-play-cta">Play Now →</span>
             </div>
           </button>
         </div>
       </section>
 
-      <!-- Active Selected Game Workspace (Revealed Only Upon Clicking a Game Card) -->
+      <!-- Active Selected Game Workspace (Focus Mode: No Other Game Menus Shown Until Back to Home) -->
       <div id="activeGameWorkspace" class="active-game-workspace hidden">
         <div class="arena-nav-bar" id="arenaNavBar">
           <button type="button" class="btn btn-secondary back-lobby-btn" id="backToLobbyBtn">
-            ← Back to Games Lobby
+            ← Back to Home (All Games)
           </button>
           <span class="active-arena-title" id="activeArenaTitle">SkyWing Crash</span>
+          <button type="button" class="btn btn-secondary back-lobby-btn" id="arenaFullscreenBtn" title="Toggle Fullscreen">
+            ⛶ Fullscreen
+          </button>
         </div>
 
         <!-- Last 15 Round Multiplier History (Isolated Per Active Game) -->
@@ -1010,6 +1203,321 @@
                 </div>
               </div>
             </div>
+
+            <!-- 10th Unified-Pool Game: Crystal Keno (1–40 Board) -->
+            <div id="kenoArena" class="arcade-panel-card hidden">
+              <div class="arcade-header-row">
+                <div>
+                  <h2 style="margin: 0; font-family: var(--font-display); font-size: 1.12rem;">Crystal Keno</h2>
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">Select 1–5 numbers (1–40) · 10 Balls Drawn</span>
+                </div>
+                <span class="badge-pill" id="kenoStatusBadge">Pick 1–5 Numbers</span>
+              </div>
+
+              <div class="keno-stage">
+                <div class="keno-toolbar">
+                  <span class="tabular-nums" style="font-size: 0.8rem; color: var(--text-secondary);" id="kenoPickCountText">Selected: 0 / 5</span>
+                  <div style="display: flex; gap: 6px;">
+                    <button type="button" class="btn btn-secondary btn-xs" id="kenoQuickPickBtn">Quick Pick (3)</button>
+                    <button type="button" class="btn btn-secondary btn-xs" id="kenoClearBtn">Clear</button>
+                  </div>
+                </div>
+                <div class="keno-grid" id="kenoGrid"></div>
+                <div class="slots-paytable tabular-nums" id="kenoPaytableStrip"></div>
+                <div class="dice-roll-sub" id="kenoResultSub">Pick up to 5 crystal tiles and draw 10 glowing spheres!</div>
+              </div>
+
+              <div class="arcade-bottom-controls">
+                <div class="form-group" style="grid-column: span 2;">
+                  <label class="form-label" for="kenoAmount">Bet Amount</label>
+                  <input type="number" class="form-input" id="kenoAmount" value="50" min="10" max="50000" step="1" />
+                  <div class="preset-chips" style="margin-top: 4px;">
+                    <button type="button" class="preset-btn keno-chip" data-amt="10">10</button>
+                    <button type="button" class="preset-btn keno-chip" data-amt="50">50</button>
+                    <button type="button" class="preset-btn keno-chip" data-amt="100">100</button>
+                    <button type="button" class="preset-btn keno-chip" data-amt="500">500</button>
+                  </div>
+                </div>
+                <div class="arcade-cta-cell">
+                  <button type="button" class="btn btn-emerald" id="kenoPlayBtn" style="width: 100%; padding: 13px 16px;">
+                    DRAW CRYSTALS
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 11th Unified-Pool Game: Sky Tower (8-Floor Climb) -->
+            <div id="towerArena" class="arcade-panel-card hidden">
+              <div class="arcade-header-row">
+                <div>
+                  <h2 style="margin: 0; font-family: var(--font-display); font-size: 1.12rem;">Sky Tower</h2>
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">Climb 8 Vault Floors (2 Safe / 1 Trap per row)</span>
+                </div>
+                <span class="badge-pill tabular-nums" id="towerMultBadge">1.00x</span>
+              </div>
+
+              <div class="tower-stage">
+                <div class="tower-rows" id="towerRowsContainer"></div>
+                <div class="dice-roll-sub" id="towerResultSub">Press Start Climb, then choose a safe vault tile on Floor 1!</div>
+              </div>
+
+              <div class="arcade-bottom-controls">
+                <div class="form-group">
+                  <label class="form-label" for="towerAmount">Climb Bet</label>
+                  <input type="number" class="form-input" id="towerAmount" value="50" min="10" max="50000" step="1" />
+                  <div class="preset-chips" style="margin-top: 4px;">
+                    <button type="button" class="preset-btn tower-chip" data-amt="10">10</button>
+                    <button type="button" class="preset-btn tower-chip" data-amt="50">50</button>
+                    <button type="button" class="preset-btn tower-chip" data-amt="100">100</button>
+                    <button type="button" class="preset-btn tower-chip" data-amt="500">500</button>
+                  </div>
+                </div>
+                <div class="form-group" style="justify-content: center;">
+                  <span class="form-label">Current Cashout</span>
+                  <strong class="tabular-nums" style="color: #34d399; font-size: 1.05rem;" id="towerCashoutVal">0.00 FC</strong>
+                  <span class="form-hint tabular-nums" id="towerNextFloorText">Next Floor: 1.44x</span>
+                </div>
+                <div class="arcade-cta-cell" style="display: flex; gap: 8px;">
+                  <button type="button" class="btn btn-primary" id="towerStartBtn" style="flex: 1; padding: 13px 12px;">
+                    START CLIMB
+                  </button>
+                  <button type="button" class="btn btn-emerald hidden" id="towerCashoutBtn" style="flex: 1; padding: 13px 12px;">
+                    CASH OUT
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 12th Unified-Pool Game: Dragon Tiger -->
+            <div id="dragonTigerArena" class="arcade-panel-card hidden">
+              <div class="arcade-header-row">
+                <div>
+                  <h2 style="margin: 0; font-family: var(--font-display); font-size: 1.12rem;">Dragon Tiger</h2>
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">High-Card Showdown · Ace Low, King High · Tie refunds 50%</span>
+                </div>
+                <span class="badge-pill" id="dtStatusBadge">Ready</span>
+              </div>
+
+              <div class="dt-stage">
+                <div class="dt-duel-row">
+                  <div class="dt-side-box dragon">
+                    <span class="dt-side-title">DRAGON</span>
+                    <div class="playing-card-tile back" id="dtDragonCard">
+                      <span class="card-corner-top">?</span>
+                      <span class="card-center-pip">🐉</span>
+                      <span class="card-corner-bot">?</span>
+                    </div>
+                  </div>
+                  <div class="dt-vs-emblem">VS</div>
+                  <div class="dt-side-box tiger">
+                    <span class="dt-side-title">TIGER</span>
+                    <div class="playing-card-tile back" id="dtTigerCard">
+                      <span class="card-corner-top">?</span>
+                      <span class="card-center-pip">🐯</span>
+                      <span class="card-corner-bot">?</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="dt-choice-grid" id="dtChoiceGroup">
+                  <button type="button" class="btn btn-secondary dt-choice-btn active" data-dt-choice="dragon">
+                    <strong>DRAGON</strong>
+                    <small>1.92x</small>
+                  </button>
+                  <button type="button" class="btn btn-secondary dt-choice-btn" data-dt-choice="tie">
+                    <strong>TIE</strong>
+                    <small>8.00x</small>
+                  </button>
+                  <button type="button" class="btn btn-secondary dt-choice-btn" data-dt-choice="tiger">
+                    <strong>TIGER</strong>
+                    <small>1.92x</small>
+                  </button>
+                </div>
+                <div class="dice-roll-sub" id="dtResultSub">Choose Dragon, Tiger, or Tie and deal!</div>
+              </div>
+
+              <div class="arcade-bottom-controls">
+                <div class="form-group" style="grid-column: span 2;">
+                  <label class="form-label" for="dtAmount">Bet Amount</label>
+                  <input type="number" class="form-input" id="dtAmount" value="50" min="10" max="50000" step="1" />
+                  <div class="preset-chips" style="margin-top: 4px;">
+                    <button type="button" class="preset-btn dt-chip" data-amt="10">10</button>
+                    <button type="button" class="preset-btn dt-chip" data-amt="50">50</button>
+                    <button type="button" class="preset-btn dt-chip" data-amt="100">100</button>
+                    <button type="button" class="preset-btn dt-chip" data-amt="500">500</button>
+                  </div>
+                </div>
+                <div class="arcade-cta-cell">
+                  <button type="button" class="btn btn-emerald" id="dtDealBtn" style="width: 100%; padding: 13px 16px;">
+                    DEAL SHOWDOWN
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 13th Unified-Pool Game: Neon Baccarat -->
+            <div id="baccaratArena" class="arcade-panel-card hidden">
+              <div class="arcade-header-row">
+                <div>
+                  <h2 style="margin: 0; font-family: var(--font-display); font-size: 1.12rem;">Neon Baccarat</h2>
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">Punto Banco Modulo-10 · Closest Hand to 9 Wins</span>
+                </div>
+                <span class="badge-pill" id="bacStatusBadge">Ready</span>
+              </div>
+
+              <div class="bac-stage">
+                <div class="bac-table-row">
+                  <div class="bac-hand-box">
+                    <div class="bac-hand-head">
+                      <span>PLAYER HAND</span>
+                      <strong class="bac-score-chip tabular-nums" id="bacPlayerScore">-</strong>
+                    </div>
+                    <div class="bac-cards-fan" id="bacPlayerCards">
+                      <div class="mini-card back">?</div>
+                      <div class="mini-card back">?</div>
+                    </div>
+                  </div>
+                  <div class="bac-hand-box">
+                    <div class="bac-hand-head">
+                      <span>BANKER HAND</span>
+                      <strong class="bac-score-chip tabular-nums" id="bacBankerScore">-</strong>
+                    </div>
+                    <div class="bac-cards-fan" id="bacBankerCards">
+                      <div class="mini-card back">?</div>
+                      <div class="mini-card back">?</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="dt-choice-grid" id="bacChoiceGroup">
+                  <button type="button" class="btn btn-secondary bac-choice-btn active" data-bac-choice="player">
+                    <strong>PLAYER</strong>
+                    <small>1.92x</small>
+                  </button>
+                  <button type="button" class="btn btn-secondary bac-choice-btn" data-bac-choice="tie">
+                    <strong>TIE</strong>
+                    <small>8.00x</small>
+                  </button>
+                  <button type="button" class="btn btn-secondary bac-choice-btn" data-bac-choice="banker">
+                    <strong>BANKER</strong>
+                    <small>1.87x</small>
+                  </button>
+                </div>
+                <div class="dice-roll-sub" id="bacResultSub">Select Player, Banker, or Tie to deal the Punto Banco shoe!</div>
+              </div>
+
+              <div class="arcade-bottom-controls">
+                <div class="form-group" style="grid-column: span 2;">
+                  <label class="form-label" for="bacAmount">Bet Amount</label>
+                  <input type="number" class="form-input" id="bacAmount" value="50" min="10" max="50000" step="1" />
+                  <div class="preset-chips" style="margin-top: 4px;">
+                    <button type="button" class="preset-btn bac-chip" data-amt="10">10</button>
+                    <button type="button" class="preset-btn bac-chip" data-amt="50">50</button>
+                    <button type="button" class="preset-btn bac-chip" data-amt="100">100</button>
+                    <button type="button" class="preset-btn bac-chip" data-amt="500">500</button>
+                  </div>
+                </div>
+                <div class="arcade-cta-cell">
+                  <button type="button" class="btn btn-emerald" id="bacDealBtn" style="width: 100%; padding: 13px 16px;">
+                    DEAL BACCARAT
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 14th Unified-Pool Game: Royal Roulette -->
+            <div id="rouletteArena" class="arcade-panel-card hidden">
+              <div class="arcade-header-row">
+                <div>
+                  <h2 style="margin: 0; font-family: var(--font-display); font-size: 1.12rem;">Royal Roulette</h2>
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">European 0–36 Single-Zero Wheel · Straight Pays 35x</span>
+                </div>
+                <span class="badge-pill" id="roulStatusBadge">Ready</span>
+              </div>
+
+              <div class="roul-stage">
+                <div class="roul-wheel-wrap">
+                  <div class="roul-wheel-ring" id="roulWheelDisc">
+                    <div class="roul-pocket-hub tabular-nums" id="roulPocketOrb">0</div>
+                  </div>
+                </div>
+                <div class="roul-bet-board" id="roulBetBoard">
+                  <button type="button" class="btn btn-secondary roul-bet-btn active" data-roul-type="red">Red (1.92x)</button>
+                  <button type="button" class="btn btn-secondary roul-bet-btn" data-roul-type="black">Black (1.92x)</button>
+                  <button type="button" class="btn btn-secondary roul-bet-btn" data-roul-type="even">Even (1.92x)</button>
+                  <button type="button" class="btn btn-secondary roul-bet-btn" data-roul-type="odd">Odd (1.92x)</button>
+                  <button type="button" class="btn btn-secondary roul-bet-btn" data-roul-type="dozen1">1–12 (2.88x)</button>
+                  <button type="button" class="btn btn-secondary roul-bet-btn" data-roul-type="dozen2">13–24 (2.88x)</button>
+                  <button type="button" class="btn btn-secondary roul-bet-btn" data-roul-type="dozen3">25–36 (2.88x)</button>
+                  <button type="button" class="btn btn-secondary roul-bet-btn" data-roul-type="number">Straight # (35x)</button>
+                </div>
+                <div class="roul-number-row hidden" id="roulStraightRow">
+                  <label class="form-label" for="roulStraightInput" style="margin: 0;">Pick Number (0–36):</label>
+                  <input type="number" class="form-input tabular-nums" id="roulStraightInput" min="0" max="36" value="7" style="width: 90px;" />
+                </div>
+                <div class="dice-roll-sub" id="roulResultSub">Place your chips on Color, Dozen, Even/Odd, or Straight Number!</div>
+              </div>
+
+              <div class="arcade-bottom-controls">
+                <div class="form-group" style="grid-column: span 2;">
+                  <label class="form-label" for="roulAmount">Spin Bet</label>
+                  <input type="number" class="form-input" id="roulAmount" value="50" min="10" max="50000" step="1" />
+                  <div class="preset-chips" style="margin-top: 4px;">
+                    <button type="button" class="preset-btn roul-chip" data-amt="10">10</button>
+                    <button type="button" class="preset-btn roul-chip" data-amt="50">50</button>
+                    <button type="button" class="preset-btn roul-chip" data-amt="100">100</button>
+                    <button type="button" class="preset-btn roul-chip" data-amt="500">500</button>
+                  </div>
+                </div>
+                <div class="arcade-cta-cell">
+                  <button type="button" class="btn btn-emerald" id="roulSpinBtn" style="width: 100%; padding: 13px 16px;">
+                    SPIN ROULETTE
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 15th Unified-Pool Game: Golden Scratch -->
+            <div id="scratchArena" class="arcade-panel-card hidden">
+              <div class="arcade-header-row">
+                <div>
+                  <h2 style="margin: 0; font-family: var(--font-display); font-size: 1.12rem;">Golden Scratch</h2>
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">3×3 Brushed Gold Foil · Match 3 Symbols to Win Up To 20x</span>
+                </div>
+                <span class="badge-pill" id="scratchStatusBadge">Ready</span>
+              </div>
+
+              <div class="scratch-stage">
+                <div class="scratch-grid" id="scratchGrid"></div>
+                <div class="slots-paytable tabular-nums">
+                  <span class="slots-pay-pill" style="color:#7dd3fc;">💎×3 = 20x</span>
+                  <span class="slots-pay-pill" style="color:#fde047;">👑×3 = 10x</span>
+                  <span class="slots-pay-pill" style="color:#fbbf24;">777×3 = 6x</span>
+                  <span class="slots-pay-pill" style="color:#34d399;">🍀×3 = 3x</span>
+                  <span class="slots-pay-pill">⭐×3 = 1.8x</span>
+                </div>
+                <div class="dice-roll-sub" id="scratchResultSub">Buy a card, then tap foil tiles to scratch or press Reveal All!</div>
+              </div>
+
+              <div class="arcade-bottom-controls">
+                <div class="form-group" style="grid-column: span 2;">
+                  <label class="form-label" for="scratchAmount">Card Price</label>
+                  <input type="number" class="form-input" id="scratchAmount" value="50" min="10" max="50000" step="1" />
+                  <div class="preset-chips" style="margin-top: 4px;">
+                    <button type="button" class="preset-btn scratch-chip" data-amt="10">10</button>
+                    <button type="button" class="preset-btn scratch-chip" data-amt="50">50</button>
+                    <button type="button" class="preset-btn scratch-chip" data-amt="100">100</button>
+                    <button type="button" class="preset-btn scratch-chip" data-amt="500">500</button>
+                  </div>
+                </div>
+                <div class="arcade-cta-cell" style="display: flex; gap: 8px;">
+                  <button type="button" class="btn btn-primary" id="scratchBuyBtn" style="flex: 1; padding: 13px 12px;">
+                    BUY &amp; SCRATCH
+                  </button>
+                  <button type="button" class="btn btn-emerald hidden" id="scratchRevealAllBtn" style="flex: 1; padding: 13px 12px;">
+                    REVEAL ALL
+                  </button>
+                </div>
+              </div>
+            </div>
         </div>
 
         <!-- Live Players & Wallet History Sidebar -->
@@ -1098,14 +1606,30 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="loginPassword">Password</label>
-            <input
-              type="password"
-              class="form-input"
-              id="loginPassword"
-              placeholder="Minimum 6 characters"
-              autocomplete="current-password"
-              required
-            />
+            <div class="password-input-wrap">
+              <input
+                type="password"
+                class="form-input"
+                id="loginPassword"
+                placeholder="Minimum 6 characters"
+                autocomplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                class="password-toggle-btn"
+                data-toggle-pw="loginPassword"
+                aria-label="Show password"
+                aria-pressed="false"
+                title="Show / Hide Password"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <span class="pw-toggle-label">Show</span>
+              </button>
+            </div>
           </div>
           <label class="remember-row" for="loginRememberCheck">
             <input type="checkbox" id="loginRememberCheck" checked />
@@ -1164,14 +1688,30 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="regPassword">Password (Min 6 characters)</label>
-            <input
-              type="password"
-              class="form-input"
-              id="regPassword"
-              placeholder="At least 6 characters"
-              minlength="6"
-              required
-            />
+            <div class="password-input-wrap">
+              <input
+                type="password"
+                class="form-input"
+                id="regPassword"
+                placeholder="At least 6 characters"
+                minlength="6"
+                required
+              />
+              <button
+                type="button"
+                class="password-toggle-btn"
+                data-toggle-pw="regPassword"
+                aria-label="Show password"
+                aria-pressed="false"
+                title="Show / Hide Password"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <span class="pw-toggle-label">Show</span>
+              </button>
+            </div>
           </div>
 
           <label class="terms-check-row" for="regAgeAgreement">
@@ -1260,9 +1800,19 @@
               <button type="button" class="btn btn-emerald btn-xs" id="profileCopyRefBtn">Copy Link</button>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-              <button type="button" class="btn btn-share-compact" id="drawerShareBtn" style="font-size: 0.78rem; padding: 8px 10px;">
-                Share (15%)
-              </button>
+              <a
+                href="https://wa.me/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-whatsapp-header"
+                id="drawerShareBtn"
+                style="font-size: 0.78rem; padding: 8px 10px; justify-content: center;"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm5.8 14.12c-.24.68-1.41 1.3-1.95 1.38-.5.08-1.13.11-1.82-.11-.42-.13-.96-.31-1.66-.61-2.92-1.26-4.82-4.21-4.96-4.4-.14-.2-1.18-1.57-1.18-3 0-1.43.75-2.13 1.01-2.42.26-.29.58-.36.77-.36.2 0 .39 0 .56.01.18.01.42-.07.66.5.24.59.82 2.01.89 2.16.07.15.12.32.02.52-.1.2-.15.32-.3.5-.15.18-.31.4-.44.54-.15.15-.3.32-.13.62.18.29.78 1.29 1.67 2.09 1.15 1.03 2.12 1.35 2.42 1.5.3.15.47.12.64-.08.18-.2.74-.86.94-1.15.2-.29.39-.24.66-.14.27.1 1.71.81 2 .95.3.15.49.22.56.34.07.12.07.7-.17 1.38Z" />
+                </svg>
+                <span>WhatsApp (15%)</span>
+              </a>
               <button type="button" class="btn btn-secondary" id="profileRewardsBtn">VIP &amp; Bonuses</button>
             </div>
           </section>
@@ -1359,7 +1909,7 @@
     <div class="modal-backdrop" id="depositModal" role="dialog" aria-modal="true">
       <div class="modal-card wide">
         <div class="modal-header">
-          <h2 class="modal-title">Deposit Real Money (PKR) — Dynamic QR Gateway</h2>
+          <h2 class="modal-title">Deposit Real Money (PKR) — Easy Direct Transfer &amp; QR</h2>
           <button type="button" class="modal-close" data-close="depositModal" aria-label="Close">×</button>
         </div>
 
@@ -1408,27 +1958,81 @@
             <button type="button" class="preset-btn dep-amt-chip" data-amt="5000">5,000 PKR</button>
           </div>
 
-          <!-- Dynamic Live QR Code Card (SBP Raast Universal QR · No Merchant Numbers Exposed) -->
+          <!-- Easy Direct Account Transfer (Primary) + Optional QR Code Tab -->
           <div id="depLiveQrCard" class="qr-live-card">
             <div class="qr-meta-row">
-              <span class="masked-pill" id="depQrGatewayBadge">EasyPaisa · Raast QR</span>
+              <span class="masked-pill" id="depQrGatewayBadge">EasyPaisa · Direct Transfer</span>
               <span class="masked-pill tabular-nums" id="depQrAmountBadge" style="color: #34d399; border-color: rgba(52,211,153,0.4);">500 PKR</span>
               <span class="masked-pill tabular-nums" id="depQrRefBadge">REF: ---</span>
             </div>
 
-            <div class="qr-img-box">
-              <img id="depQrImg" class="hidden" alt="Dynamic Deposit QR Code" />
-              <div id="depQrPlaceholder" class="qr-placeholder-box">
-                <span id="depQrLoadingText">Enter a valid PKR amount to generate your live QR code...</span>
+            <div class="dep-pay-mode-tabs" role="tablist" aria-label="Deposit transfer view">
+              <button type="button" class="dep-pay-mode-btn active" id="depTabDirectBtn" data-dep-tab="direct">
+                ⚡ Direct Number / IBAN (Easy &amp; Instant)
+              </button>
+              <button type="button" class="dep-pay-mode-btn" id="depTabQrBtn" data-dep-tab="qr">
+                📱 QR Code
+              </button>
+            </div>
+
+            <!-- Panel 1: Direct Number / IBAN Copy-to-Pay (100% Compatible with All Pakistani Apps) -->
+            <div id="depDirectPanel" class="dep-direct-panel">
+              <div class="dep-direct-row">
+                <span class="dep-direct-lbl">Bank / Wallet</span>
+                <strong class="dep-direct-val" id="depDirectBank">EasyPaisa / Telenor Microfinance Bank</strong>
+              </div>
+              <div class="dep-direct-row">
+                <span class="dep-direct-lbl">Account Title</span>
+                <div class="dep-direct-copy-wrap">
+                  <strong class="dep-direct-val" id="depDirectTitle">Loading...</strong>
+                  <button type="button" class="btn btn-secondary btn-xs dep-copy-btn" data-copy-target="depDirectTitle">Copy</button>
+                </div>
+              </div>
+              <div class="dep-direct-row dep-direct-highlight">
+                <span class="dep-direct-lbl">Account / Mobile #</span>
+                <div class="dep-direct-copy-wrap">
+                  <strong class="dep-direct-val tabular-nums" id="depDirectNumber" style="color:#34d399; font-size:1.06rem;">Loading...</strong>
+                  <button type="button" class="btn btn-emerald btn-xs dep-copy-btn" data-copy-target="depDirectNumber">Copy #</button>
+                </div>
+              </div>
+              <div class="dep-direct-row hidden" id="depDirectIbanRow">
+                <span class="dep-direct-lbl">IBAN / Raast ID</span>
+                <div class="dep-direct-copy-wrap">
+                  <strong class="dep-direct-val tabular-nums" id="depDirectIban" style="font-size:0.84rem; word-break:break-all;">---</strong>
+                  <button type="button" class="btn btn-secondary btn-xs dep-copy-btn" data-copy-target="depDirectIban">Copy IBAN</button>
+                </div>
+              </div>
+              <div class="dep-direct-row">
+                <span class="dep-direct-lbl">Send Exact Amount</span>
+                <div class="dep-direct-copy-wrap">
+                  <strong class="dep-direct-val tabular-nums" id="depDirectAmount" style="color:#fbbf24;">500 PKR</strong>
+                  <button type="button" class="btn btn-secondary btn-xs dep-copy-btn" data-copy-target="depDirectAmount" data-copy-raw="amount">Copy Amt</button>
+                </div>
+              </div>
+              <div class="dep-direct-steps">
+                <span>1. Copy Account # or IBAN above</span>
+                <span>2. Send exact PKR from EasyPaisa, JazzCash, SadaPay, NayaPay or any Bank App</span>
+                <span>3. Submit your TID / Screenshot below for instant or fast credit</span>
               </div>
             </div>
 
-            <div id="depQrScanHint" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
-              Scan via <strong>EasyPaisa, JazzCash, SadaPay, NayaPay, Meezan, HBL, UBL</strong> or any Pakistani Bank Raast scanner, then submit your TID / screenshot below.
+            <!-- Panel 2: Optional QR Code View -->
+            <div id="depQrPanel" class="dep-qr-panel hidden">
+              <div class="qr-img-box">
+                <img id="depQrImg" class="hidden" alt="Deposit QR Code" />
+                <div id="depQrPlaceholder" class="qr-placeholder-box">
+                  <span id="depQrLoadingText">Enter a valid PKR amount to generate QR...</span>
+                </div>
+              </div>
+
+              <div id="depQrScanHint" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+                Tip: If your banking app does not recognize a generated QR, switch to <strong>Direct Number / IBAN</strong> above — works on 100% of Pakistani banks &amp; wallets.
+              </div>
+              <button type="button" class="btn btn-secondary btn-xs hidden" id="depSaveQrBtn">
+                Download QR PNG
+              </button>
             </div>
-            <button type="button" class="btn btn-secondary btn-xs hidden" id="depSaveQrBtn">
-              Save / Download QR PNG
-            </button>
+
             <span class="form-hint" id="depMicroHint" style="color: #34d399;"></span>
           </div>
 
@@ -1731,8 +2335,8 @@
 
         <div style="display: flex; flex-direction: column; gap: 12px; color: var(--text-secondary); font-size: 0.88rem; line-height: 1.5;">
           <div>
-            <strong style="color: var(--text-primary);">1. Game Lobby &amp; 9 Arcade Arenas</strong>
-            <p style="margin: 4px 0 0;">Launch <strong>SkyWing Crash</strong>, <strong>Cyber Plinko</strong>, <strong>Golden Mines</strong>, <strong>Cyber Dice</strong>, <strong>Limbo X</strong>, <strong>Neon Coin Flip</strong>, <strong>Lucky Wheel</strong>, <strong>Dragon Hi-Lo</strong>, or <strong>Emerald 777 Slots</strong> directly from your Game Lobby or Sticky Top Navigation Pane. Choose Fun Credits (FC) or Real Money (PKR) before entering any arena.</p>
+            <strong style="color: var(--text-primary);">1. Game Lobby &amp; 15 Arcade Arenas</strong>
+            <p style="margin: 4px 0 0;">Launch <strong>SkyWing Crash</strong>, <strong>Cyber Plinko</strong>, <strong>Golden Mines</strong>, <strong>Cyber Dice</strong>, <strong>Limbo X</strong>, <strong>Neon Coin Flip</strong>, <strong>Lucky Wheel</strong>, <strong>Dragon Hi-Lo</strong>, <strong>Emerald 777 Slots</strong>, <strong>Crystal Keno</strong>, <strong>Sky Tower</strong>, <strong>Dragon Tiger</strong>, <strong>Neon Baccarat</strong>, <strong>Royal Roulette</strong>, or <strong>Golden Scratch</strong> directly from your Home Lobby. Choose Fun Credits (FC) or Real Money (PKR) before entering any arena, and tap Back anytime to switch games.</p>
           </div>
           <div>
             <strong style="color: var(--text-primary);">2. Fun Mode (FC) &amp; Real Money (PKR) Wallets</strong>
@@ -1933,7 +2537,23 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="forgotResetNewPass">New Password (Min 6 characters)</label>
-            <input type="password" class="form-input" id="forgotResetNewPass" placeholder="Enter new password" minlength="6" required />
+            <div class="password-input-wrap">
+              <input type="password" class="form-input" id="forgotResetNewPass" placeholder="Enter new password" minlength="6" required />
+              <button
+                type="button"
+                class="password-toggle-btn"
+                data-toggle-pw="forgotResetNewPass"
+                aria-label="Show password"
+                aria-pressed="false"
+                title="Show / Hide Password"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <span class="pw-toggle-label">Show</span>
+              </button>
+            </div>
           </div>
           <div class="forgot-sec-box" id="forgotSecBox">
             <div id="forgotTurnstileMount" class="hidden"></div>

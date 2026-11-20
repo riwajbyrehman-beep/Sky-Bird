@@ -715,7 +715,7 @@
     }
 
     playCardDeal() {
-      if (this.muted || this.locked || this.activeGame !== 'dragon-hilo') return;
+      if (this.muted || this.locked || !['dragon-hilo', 'dragon-tiger', 'neon-baccarat'].includes(this.activeGame)) return;
       const ctx = this.ensureContext();
       const dest = this.getDestination();
       if (!ctx || !dest) return;
@@ -731,6 +731,46 @@
       if (!ctx || !dest) return;
       const freqs = [440, 554.37, 659.25];
       this.playTone(freqs[step % freqs.length], 'square', ctx.currentTime, 0.05, 0.045, 1600);
+    }
+
+    playKenoDraw(step = 0) {
+      if (this.muted || this.locked || this.activeGame !== 'crystal-keno') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      const freq = 520 + (step % 10) * 42;
+      this.playTone(freq, 'sine', t, 0.065, 0.06);
+    }
+
+    playTowerStep(floor = 1) {
+      if (this.muted || this.locked || this.activeGame !== 'tower-climb') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      const base = 440 + Math.min(8, Math.max(0, floor)) * 65;
+      this.playTone(base, 'sine', t, 0.11, 0.08);
+      this.playTone(base * 1.25, 'triangle', t + 0.04, 0.11, 0.05);
+    }
+
+    playRouletteSpin(step = 0) {
+      if (this.muted || this.locked || this.activeGame !== 'triple-roulette') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const freq = 760 + (step % 4) * 55;
+      this.playTone(freq, 'triangle', ctx.currentTime, 0.032, 0.055);
+    }
+
+    playScratchReveal() {
+      if (this.muted || this.locked || this.activeGame !== 'lucky-scratch') return;
+      const ctx = this.ensureContext();
+      const dest = this.getDestination();
+      if (!ctx || !dest) return;
+      const t = ctx.currentTime;
+      this.playTone(940, 'triangle', t, 0.045, 0.055);
+      this.playTone(1260, 'sine', t + 0.025, 0.055, 0.045);
     }
 
     playArcadeWin(gameId) {

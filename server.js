@@ -3,6 +3,7 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { Server } from 'socket.io';
@@ -52,6 +53,12 @@ let lastMongoError = '';
 let mongoListenersAttached = false;
 let mongoRetryTimer = null;
 const LOCAL_DB_PATH = path.join(__dirname, 'data', 'local-db.json');
+const EXTERNAL_VAULT_PATH = path.join(
+  process.env.SKYWING_DATA_DIR || os.homedir() || os.tmpdir(),
+  '.skywing-persistent',
+  'vault.json'
+);
+let localSaveTimer = null;
 
 function isMongoReady() {
   return useMongo && mongoose.connection.readyState === 1;
@@ -75,18 +82,21 @@ function defaultPaymentAccounts() {
       accountTitle: 'SkyWing Official',
       accountNumber: '03451234567',
       iban: '',
+      customQrImage: '',
     },
     jazzcash: {
       enabled: true,
       accountTitle: 'SkyWing Official',
       accountNumber: '03001234567',
       iban: '',
+      customQrImage: '',
     },
     bank: {
       enabled: true,
       bankName: 'Meezan Bank',
       accountTitle: 'SkyWing Enterprises',
       accountNumber: 'PK36MEZN0000000123456789',
+      customQrImage: '',
     },
   };
 }
@@ -236,16 +246,79 @@ function defaultGamesConfig() {
       minBet: 10,
       maxBet: 50000,
     },
+    {
+      id: 'crystal-keno',
+      name: 'Crystal Keno',
+      tagline: 'Pick 1–5 Crystal Numbers · 10-Ball Draw Up To 65x',
+      enabled: true,
+      houseEdgePct: 4,
+      minBet: 10,
+      maxBet: 50000,
+    },
+    {
+      id: 'tower-climb',
+      name: 'Sky Tower',
+      tagline: '8-Floor Golden Vault Climb · Cash Out Anytime',
+      enabled: true,
+      houseEdgePct: 4,
+      minBet: 10,
+      maxBet: 50000,
+    },
+    {
+      id: 'dragon-tiger',
+      name: 'Dragon Tiger',
+      tagline: 'High-Card Duel · Dragon, Tiger or 8x Tie',
+      enabled: true,
+      houseEdgePct: 4,
+      minBet: 10,
+      maxBet: 50000,
+    },
+    {
+      id: 'neon-baccarat',
+      name: 'Neon Baccarat',
+      tagline: 'Classic Player vs Banker Modulo-10 Table',
+      enabled: true,
+      houseEdgePct: 4,
+      minBet: 10,
+      maxBet: 50000,
+    },
+    {
+      id: 'triple-roulette',
+      name: 'Royal Roulette',
+      tagline: 'European 0–36 Wheel · Straight Numbers Up To 35x',
+      enabled: true,
+      houseEdgePct: 4,
+      minBet: 10,
+      maxBet: 50000,
+    },
+    {
+      id: 'lucky-scratch',
+      name: 'Golden Scratch',
+      tagline: '3×3 Instant Vault Match-3 · Up To 20x Diamonds',
+      enabled: true,
+      houseEdgePct: 4,
+      minBet: 10,
+      maxBet: 50000,
+    },
   ];
 }
 
 function hydrateGamesConfig(rawList) {
   const defaults = defaultGamesConfig();
   if (!Array.isArray(rawList) || rawList.length === 0) return defaults;
-  return defaults.map((def) => {
-    const match = rawList.find((g) => g && g.id === def.id);
-    return match ? { ...def, ...match } : def;
-  });
+  // Preserve every admin-saved game entry verbatim; only append newly introduced game IDs
+  const preserved = rawList
+    .filter((g) => g && g.id)
+    .map((saved) => {
+      const def = defaults.find((d) => d.id === saved.id);
+      return def ? { ...def, ...saved } : { ...saved };
+    });
+  for (const def of defaults) {
+    if (!preserved.some((g) => g.id === def.id)) {
+      preserved.push(def);
+    }
+  }
+  return preserved;
 }
 
 function defaultSecurityConfig() {
@@ -307,22 +380,22 @@ function defaultPoolStatsByGame() {
     wheel: { bets: 0, payouts: 0, netDelta: 0 },
     hilo: { bets: 0, payouts: 0, netDelta: 0 },
     slots: { bets: 0, payouts: 0, netDelta: 0 },
+    keno: { bets: 0, payouts: 0, netDelta: 0 },
+    tower: { bets: 0, payouts: 0, netDelta: 0 },
+    dragontiger: { bets: 0, payouts: 0, netDelta: 0 },
+    baccarat: { bets: 0, payouts: 0, netDelta: 0 },
+    roulette: { bets: 0, payouts: 0, netDelta: 0 },
+    scratch: { bets: 0, payouts: 0, netDelta: 0 },
   };
 }
 
 function hydratePoolStatsByGame(raw = {}) {
   const def = defaultPoolStatsByGame();
-  return {
-    crash: { ...def.crash, ...(raw.crash || {}) },
-    plinko: { ...def.plinko, ...(raw.plinko || {}) },
-    mines: { ...def.mines, ...(raw.mines || {}) },
-    dice: { ...def.dice, ...(raw.dice || {}) },
-    limbo: { ...def.limbo, ...(raw.limbo || {}) },
-    coinflip: { ...def.coinflip, ...(raw.coinflip || {}) },
-    wheel: { ...def.wheel, ...(raw.wheel || {}) },
-    hilo: { ...def.hilo, ...(raw.hilo || {}) },
-    slots: { ...def.slots, ...(raw.slots || {}) },
-  };
+  const out = {};
+  for (const k of Object.keys(def)) {
+    out[k] = { ...def[k], ...((raw && raw[k]) || {}) };
+  }
+  return out;
 }
 
 function defaultSettingsObj() {
@@ -334,7 +407,7 @@ function defaultSettingsObj() {
     whatsappChannelUrl: 'https://whatsapp.com/channel/0029VaSkyWingOfficial',
     telegramChannelEnabled: true,
     telegramChannelUrl: 'https://t.me/SkyWingOfficial',
-    maskMasterAccounts: true,
+    maskMasterAccounts: false,
     settingsUpdatedAt: null,
     paymentAccounts: defaultPaymentAccounts(),
     financialLimits: defaultFinancialLimits(),
@@ -443,21 +516,79 @@ let localStore = {
   users: [],
   transactions: [],
   supportTickets: [],
+  offlinePendingSettingsSync: false,
+  arcadeHistories: {},
   settings: defaultSettingsObj(),
 };
 
+function readStoreFileSafe(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    const raw = fs.readFileSync(filePath, 'utf8');
+    if (!raw || !raw.trim()) return null;
+    const parsed = JSON.parse(raw);
+    return {
+      users: Array.isArray(parsed.users) ? parsed.users : [],
+      transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
+      supportTickets: Array.isArray(parsed.supportTickets) ? parsed.supportTickets : [],
+      offlinePendingSettingsSync: Boolean(parsed.offlinePendingSettingsSync),
+      arcadeHistories: parsed.arcadeHistories && typeof parsed.arcadeHistories === 'object' ? parsed.arcadeHistories : {},
+      settings: hydrateSettingsObj(parsed.settings || {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function scoreStoreRichness(store) {
+  if (!store) return -1;
+  const ts = store.settings?.settingsUpdatedAt ? new Date(store.settings.settingsUpdatedAt).getTime() : 0;
+  const rc = Number(store.settings?.roundCounter || 1000);
+  const uc = (store.users?.length || 0) * 1000 + (store.transactions?.length || 0) * 100;
+  return ts + rc * 10 + uc;
+}
+
+function writeAtomicFileSafe(targetPath, jsonPayload) {
+  try {
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    const tmpPath = `${targetPath}.${process.pid}.tmp`;
+    fs.writeFileSync(tmpPath, jsonPayload, 'utf8');
+    fs.renameSync(tmpPath, targetPath);
+  } catch (err) {
+    console.warn(`[Vault] Save warning (${targetPath}):`, err.message);
+  }
+}
+
 function loadLocalStore() {
   try {
-    fs.mkdirSync(path.dirname(LOCAL_DB_PATH), { recursive: true });
-    if (fs.existsSync(LOCAL_DB_PATH)) {
-      const raw = fs.readFileSync(LOCAL_DB_PATH, 'utf8');
-      const parsed = JSON.parse(raw);
-      localStore = {
-        users: Array.isArray(parsed.users) ? parsed.users : [],
-        transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
-        supportTickets: Array.isArray(parsed.supportTickets) ? parsed.supportTickets : [],
-        settings: hydrateSettingsObj(parsed.settings || {}),
-      };
+    const primary = readStoreFileSafe(LOCAL_DB_PATH);
+    const vault = readStoreFileSafe(EXTERNAL_VAULT_PATH);
+    let chosen = primary;
+    if (vault && (!primary || scoreStoreRichness(vault) > scoreStoreRichness(primary))) {
+      chosen = vault;
+      if (primary) {
+        const mergedRound = Math.max(
+          Number(primary.settings?.roundCounter || 1000),
+          Number(vault.settings?.roundCounter || 1000)
+        );
+        chosen.settings.roundCounter = mergedRound;
+        if (Number(primary.settings?.liveRound?.roundNumber || 0) > Number(chosen.settings?.liveRound?.roundNumber || 0)) {
+          chosen.settings.liveRound = primary.settings.liveRound;
+        }
+      }
+      console.log('[Vault] Restored persistent Admin settings, accounts & round counter from external vault');
+    } else if (primary && vault) {
+      const mergedRound = Math.max(
+        Number(primary.settings?.roundCounter || 1000),
+        Number(vault.settings?.roundCounter || 1000)
+      );
+      chosen.settings.roundCounter = mergedRound;
+    }
+
+    if (chosen) {
+      localStore = chosen;
+      restoreArcadeHistoriesFromStore(localStore.arcadeHistories);
+      saveLocalStore();
     } else {
       saveLocalStore();
     }
@@ -467,14 +598,26 @@ function loadLocalStore() {
 }
 
 function saveLocalStore() {
+  if (localSaveTimer) {
+    clearTimeout(localSaveTimer);
+    localSaveTimer = null;
+  }
   try {
-    fs.mkdirSync(path.dirname(LOCAL_DB_PATH), { recursive: true });
-    const tmpPath = `${LOCAL_DB_PATH}.${process.pid}.tmp`;
-    fs.writeFileSync(tmpPath, JSON.stringify(localStore, null, 2), 'utf8');
-    fs.renameSync(tmpPath, LOCAL_DB_PATH);
+    localStore.arcadeHistories = snapshotArcadeHistoriesForStore();
+    const jsonPayload = JSON.stringify(localStore, null, 2);
+    writeAtomicFileSafe(LOCAL_DB_PATH, jsonPayload);
+    writeAtomicFileSafe(EXTERNAL_VAULT_PATH, jsonPayload);
   } catch (err) {
     console.warn('[LocalDB] Save warning:', err.message);
   }
+}
+
+function scheduleLocalSave(delayMs = 400) {
+  if (localSaveTimer) return;
+  localSaveTimer = setTimeout(() => {
+    localSaveTimer = null;
+    saveLocalStore();
+  }, delayMs);
 }
 
 const PERSISTENT_CONFIG_KEYS = [
@@ -528,6 +671,7 @@ async function reconcileSettingsWithMongo() {
       delete seed.__v;
       doc = await Settings.create(seed);
       localStore.settings = hydrateSettingsObj(doc.toObject());
+      localStore.offlinePendingSettingsSync = false;
       saveLocalStore();
       return;
     }
@@ -537,8 +681,14 @@ async function reconcileSettingsWithMongo() {
       ? new Date(mongoObj.settingsUpdatedAt).getTime()
       : 0;
 
-    if (localTs > mongoTs) {
+    // Never allow a fresh Studio/Git deploy to overwrite existing live Mongo Admin settings
+    // ONLY push local settings to Mongo when an Admin explicitly saved offline changes while Mongo was disconnected.
+    if (localStore.offlinePendingSettingsSync && localTs > mongoTs) {
       const pushPatch = extractPersistentConfigPatch(localHydrated);
+      pushPatch.roundCounter = Math.max(
+        Number(mongoObj.roundCounter || 1000),
+        Number(localHydrated.roundCounter || 1000)
+      );
       const updated = await Settings.findOneAndUpdate(
         { key: 'global' },
         { $set: pushPatch },
@@ -546,10 +696,22 @@ async function reconcileSettingsWithMongo() {
       );
       if (updated) {
         localStore.settings = hydrateSettingsObj(updated.toObject());
+        localStore.offlinePendingSettingsSync = false;
         saveLocalStore();
       }
     } else {
-      localStore.settings = mongoObj;
+      // Preserve newly added gamesConfig entries automatically, keep monotonic roundCounter
+      const mergedGames = hydrateGamesConfig(mongoObj.gamesConfig);
+      const mergedRound = Math.max(
+        Number(mongoObj.roundCounter || 1000),
+        Number(localHydrated.roundCounter || 1000)
+      );
+      localStore.settings = {
+        ...mongoObj,
+        gamesConfig: mergedGames,
+        roundCounter: mergedRound,
+      };
+      localStore.offlinePendingSettingsSync = false;
       saveLocalStore();
     }
   } catch (err) {
@@ -684,6 +846,12 @@ const db = {
 
   async updateSettings(patch) {
     const safePatch = { ...(patch || {}) };
+    if (safePatch.roundCounter !== undefined) {
+      safePatch.roundCounter = Math.max(
+        Number(safePatch.roundCounter) || 1000,
+        Number(localStore.settings?.roundCounter || 1000)
+      );
+    }
     const touchesPersistentConfig = Object.keys(safePatch).some((k) =>
       PERSISTENT_CONFIG_KEYS.includes(k)
     );
@@ -699,19 +867,28 @@ const db = {
       );
       const hydrated = hydrateSettingsObj(doc.toObject());
       localStore.settings = hydrated;
-      if (touchesPersistentConfig) {
+      if (touchesPersistentConfig || safePatch.roundCounter !== undefined || safePatch.recentRounds !== undefined) {
         saveLocalStore();
+      } else if (safePatch.liveRound !== undefined) {
+        scheduleLocalSave();
       }
       return hydrated;
     }
+    if (touchesPersistentConfig) {
+      localStore.offlinePendingSettingsSync = true;
+    }
     localStore.settings = hydrateSettingsObj({ ...localStore.settings, ...safePatch });
-    saveLocalStore();
+    if (touchesPersistentConfig || safePatch.roundCounter !== undefined || safePatch.recentRounds !== undefined) {
+      saveLocalStore();
+    } else {
+      scheduleLocalSave();
+    }
     return { ...localStore.settings };
   },
 
   async pushRoundHistory(roundSummary, maxRounds = 20) {
     if (isMongoReady()) {
-      await Settings.findOneAndUpdate(
+      const doc = await Settings.findOneAndUpdate(
         { key: 'global' },
         {
           $push: {
@@ -721,8 +898,13 @@ const db = {
               $slice: maxRounds,
             },
           },
-        }
+        },
+        { new: true }
       );
+      if (doc) {
+        localStore.settings.recentRounds = doc.recentRounds;
+        saveLocalStore();
+      }
       return;
     }
     localStore.settings.recentRounds = [
@@ -1400,32 +1582,45 @@ function maskMerchantNumber(num, maskEnabled = true) {
   return `${s.slice(0, 4)}${'•'.repeat(Math.max(4, s.length - 7))}${s.slice(-3)}`;
 }
 
-function maskPaymentAccountsForPublic(paymentAccounts) {
+function maskPaymentAccountsForPublic(paymentAccounts, maskEnabled = false) {
   const pa = paymentAccounts || defaultPaymentAccounts();
   const epIban = normalizePakIban(pa.easypaisa?.iban || '');
   const jcIban = normalizePakIban(pa.jazzcash?.iban || '');
+  const bkNum = String(pa.bank?.accountNumber || '').trim();
+  const bkIban = bkNum.toUpperCase().startsWith('PK') ? normalizePakIban(bkNum) : '';
   return {
     easypaisa: {
       enabled: pa.easypaisa?.enabled !== false,
       label: 'EasyPaisa',
+      bankName: 'EasyPaisa / Telenor Microfinance Bank',
       accountTitle: pa.easypaisa?.accountTitle || 'SkyWing Official',
+      accountNumber: maskEnabled ? maskMerchantNumber(pa.easypaisa?.accountNumber || '', true) : (pa.easypaisa?.accountNumber || ''),
+      iban: epIban,
       supportsAllBanks: Boolean(epIban && epIban.startsWith('PK')) || /^PK/i.test(pa.easypaisa?.accountNumber || ''),
-      qrOnly: true,
+      hasCustomQr: Boolean(pa.easypaisa?.customQrImage && String(pa.easypaisa.customQrImage).startsWith('data:image/')),
+      qrOnly: false,
     },
     jazzcash: {
       enabled: pa.jazzcash?.enabled !== false,
       label: 'JazzCash',
+      bankName: 'JazzCash / Mobilink Microfinance Bank',
       accountTitle: pa.jazzcash?.accountTitle || 'SkyWing Official',
+      accountNumber: maskEnabled ? maskMerchantNumber(pa.jazzcash?.accountNumber || '', true) : (pa.jazzcash?.accountNumber || ''),
+      iban: jcIban,
       supportsAllBanks: Boolean(jcIban && jcIban.startsWith('PK')) || /^PK/i.test(pa.jazzcash?.accountNumber || ''),
-      qrOnly: true,
+      hasCustomQr: Boolean(pa.jazzcash?.customQrImage && String(pa.jazzcash.customQrImage).startsWith('data:image/')),
+      qrOnly: false,
     },
     bank: {
       enabled: pa.bank?.enabled !== false,
       label: 'E-Wallet / Bank Transfer',
       bankName: pa.bank?.bankName || 'Pakistani Bank / Raast',
       accountTitle: pa.bank?.accountTitle || 'SkyWing Enterprises',
+      accountNumber: maskEnabled ? maskMerchantNumber(bkNum, true) : bkNum,
+      iban: bkIban,
       supportsAllBanks: true,
-      qrOnly: true,
+      hasCustomQr: Boolean(pa.bank?.customQrImage && String(pa.bank.customQrImage).startsWith('data:image/')),
+      qrOnly: false,
     },
   };
 }
@@ -1618,8 +1813,8 @@ function buildPublicSettingsPayload(settings) {
     telegramChannelEnabled: settings.telegramChannelEnabled !== false,
     telegramChannelUrl: settings.telegramChannelUrl || 'https://t.me/SkyWingOfficial',
     welcomeBonusCredits: settings.welcomeBonusCredits,
-    maskMasterAccounts: maskEnabled,
-    paymentAccounts: maskPaymentAccountsForPublic(settings.paymentAccounts),
+    maskMasterAccounts: Boolean(settings.maskMasterAccounts),
+    paymentAccounts: maskPaymentAccountsForPublic(settings.paymentAccounts, false),
     financialLimits: settings.financialLimits || defaultFinancialLimits(),
     withdrawalHours: {
       ...(settings.withdrawalHours || defaultWithdrawalHours()),
@@ -1831,11 +2026,12 @@ app.use(
   })
 );
 
-function createRateLimiter(maxHits, windowMs, bucketName) {
+function createRateLimiter(maxHits, windowMs, bucketName, keyResolver = null) {
   const store = new Map();
   return async (req, res, next) => {
     const ip = getClientIp(req);
-    const key = `${bucketName}:${ip}`;
+    const extraKey = typeof keyResolver === 'function' ? String(keyResolver(req) || '').trim().toLowerCase() : '';
+    const key = extraKey ? `${bucketName}:${ip}:${extraKey}` : `${bucketName}:${ip}`;
     const now = Date.now();
     const hits = (store.get(key) || []).filter((t) => now - t < windowMs);
     if (hits.length >= maxHits) {
@@ -1861,8 +2057,8 @@ function createRateLimiter(maxHits, windowMs, bucketName) {
 }
 
 const registerRateLimit = createRateLimiter(12, 15 * 60 * 1000, 'register');
-const loginRateLimit = createRateLimiter(25, 10 * 60 * 1000, 'login');
-const adminLoginRateLimit = createRateLimiter(12, 15 * 60 * 1000, 'admin-login');
+const loginRateLimit = createRateLimiter(30, 10 * 60 * 1000, 'login', (req) => req.body?.identifier || req.body?.phoneNumber || '');
+const adminLoginRateLimit = createRateLimiter(20, 15 * 60 * 1000, 'admin-login');
 
 // Health check for Render.com / Railway & uptime monitors
 app.get('/health', (req, res) => {
@@ -2106,13 +2302,19 @@ app.post('/api/auth/login', loginRateLimit, async (req, res) => {
       );
     }
 
-    const updated = await db.updateUserById(user._id, { $set: patch });
+    let updated = null;
+    try {
+      updated = await db.updateUserById(user._id, { $set: patch });
+    } catch (updateErr) {
+      console.warn('[Auth Login Non-Fatal Patch Warning]', updateErr?.message || updateErr);
+    }
 
     const settings = await db.getSettings();
-    const token = signUserToken(updated || user);
+    const finalUser = updated || { ...user, ...patch };
+    const token = signUserToken(finalUser);
     res.json({
       token,
-      user: sanitizeUser(updated || user),
+      user: sanitizeUser(finalUser),
       whatsappChannelUrl: settings.whatsappChannelUrl,
     });
   } catch (err) {
@@ -2609,19 +2811,26 @@ app.post('/api/transactions/deposit/qr', requireAuth, async (req, res) => {
       .toString('hex')
       .toUpperCase()}`;
 
-    const qrPayload = buildEmvcoRaastQrPayload({
-      destinationId: routed.destinationId,
-      accountTitle: routed.acct.accountTitle,
-      amount,
-      qrReference,
-    });
+    const customQr = String(routed.acct.customQrImage || '').trim();
+    const hasCustomQr = customQr.startsWith('data:image/') && customQr.includes(',');
 
-    const qrDataUrl = await QRCode.toDataURL(qrPayload, {
-      errorCorrectionLevel: 'M',
-      width: 520,
-      margin: 4,
-      color: { dark: '#000000', light: '#ffffff' },
-    });
+    let qrDataUrl = '';
+    if (hasCustomQr) {
+      qrDataUrl = customQr;
+    } else {
+      const qrPayload = buildEmvcoRaastQrPayload({
+        destinationId: routed.destinationId,
+        accountTitle: routed.acct.accountTitle,
+        amount,
+        qrReference,
+      });
+      qrDataUrl = await QRCode.toDataURL(qrPayload, {
+        errorCorrectionLevel: 'M',
+        width: 520,
+        margin: 4,
+        color: { dark: '#000000', light: '#ffffff' },
+      });
+    }
 
     const dlToken = signQrDownloadToken({
       method,
@@ -2630,30 +2839,37 @@ app.post('/api/transactions/deposit/qr', requireAuth, async (req, res) => {
       qrRoute,
     });
 
+    const acctNum = String(routed.acct.accountNumber || '').trim();
+    const acctIban = normalizePakIban(
+      routed.acct.iban || (acctNum.toUpperCase().startsWith('PK') ? acctNum : '')
+    );
+
     res.json({
       qrReference,
       qrDataUrl,
+      hasCustomQr,
       downloadUrl: `/api/transactions/deposit/qr/download?token=${encodeURIComponent(dlToken)}`,
-      qrFormat: 'EMVCo-SBP-Raast',
+      qrFormat: hasCustomQr ? 'Bank-Verified-QR' : 'EMVCo-SBP-Raast',
       qrRouteType: routed.routeType,
       supportsAllBanks: routed.routeType === 'iban',
-      qrPayloadLength: qrPayload.length,
       method,
       displayMethod:
         method === 'Bank Account'
-          ? 'All Pakistani Banks / Raast'
+          ? `${routed.bankName || 'Pakistani Bank'} · Direct & Raast`
           : routed.routeType === 'iban'
-            ? `${method} · All Banks Raast QR`
-            : `${method} · Raast Wallet QR`,
+            ? `${method} · Direct # & IBAN`
+            : `${method} · Direct # Transfer`,
       amount,
       accountTitle: routed.acct.accountTitle,
+      accountNumber: acctNum,
+      iban: acctIban,
       bankName: routed.bankName,
-      privacyProtected: true,
+      privacyProtected: false,
       microAutoApproveLimit: Number(limits.microDepositAutoApproveLimit || 0),
     });
   } catch (err) {
     console.error('[Deposit QR Error]', err);
-    res.status(500).json({ error: 'Failed to generate payment QR code.' });
+    res.status(500).json({ error: 'Failed to generate payment details.' });
   }
 });
 
@@ -2678,28 +2894,37 @@ app.get('/api/transactions/deposit/qr/download', async (req, res) => {
       return res.status(400).json({ error: routed.error });
     }
 
-    const qrPayload = buildEmvcoRaastQrPayload({
-      destinationId: routed.destinationId,
-      accountTitle: routed.acct.accountTitle,
-      amount,
-      qrReference,
-    });
+    const customQr = String(routed.acct.customQrImage || '').trim();
+    let fileBuffer;
+    let fileExt = 'png';
+    if (customQr.startsWith('data:image/') && customQr.includes(',')) {
+      const [header, b64] = customQr.split(',');
+      if (/image\/jpe?g/i.test(header)) fileExt = 'jpg';
+      fileBuffer = Buffer.from(b64, 'base64');
+    } else {
+      const qrPayload = buildEmvcoRaastQrPayload({
+        destinationId: routed.destinationId,
+        accountTitle: routed.acct.accountTitle,
+        amount,
+        qrReference,
+      });
 
-    const pngBuffer = await QRCode.toBuffer(qrPayload, {
-      type: 'png',
-      errorCorrectionLevel: 'M',
-      width: 600,
-      margin: 4,
-      color: { dark: '#000000', light: '#ffffff' },
-    });
+      fileBuffer = await QRCode.toBuffer(qrPayload, {
+        type: 'png',
+        errorCorrectionLevel: 'M',
+        width: 600,
+        margin: 4,
+        color: { dark: '#000000', light: '#ffffff' },
+      });
+    }
 
     const safeAmtLabel = Math.round(amount);
-    const filename = `SkyWing-Deposit-QR-${safeAmtLabel}PKR.png`;
-    res.setHeader('Content-Type', 'image/png');
+    const filename = `SkyWing-Deposit-QR-${safeAmtLabel}PKR.${fileExt}`;
+    res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Cache-Control', 'no-store, max-age=0');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.send(pngBuffer);
+    res.send(fileBuffer);
   } catch (err) {
     console.error('[Deposit QR Download Error]', err);
     res.status(500).json({ error: 'Failed to download QR PNG.' });
@@ -3218,6 +3443,12 @@ async function recordUnifiedPoolDelta(gameKey, betDelta = 0, payoutDelta = 0) {
     'wheel',
     'hilo',
     'slots',
+    'keno',
+    'tower',
+    'dragontiger',
+    'baccarat',
+    'roulette',
+    'scratch',
   ].includes(gameKey)
     ? gameKey
     : 'crash';
@@ -3912,8 +4143,9 @@ async function validateAndDeductArcadeBet(req, res, gameId) {
     25,
     Math.max(0, Number(gameCfg?.houseEdgePct ?? 4) + Number(settings.rtpRiskConfig?.dynamicEdgeOffset || 0))
   );
+  const rtpFactor = Math.max(0.75, 1 - effectiveEdgePct / 100);
   const unifiedAvailable = Math.max(0, Number(settings.profitDistributionPool ?? 10000)) + amount;
-  return { settings, gameCfg, currencyMode, amount, userId, afterDeduct, effectiveEdgePct, unifiedAvailable };
+  return { settings, gameCfg, currencyMode, amount, userId, afterDeduct, effectiveEdgePct, rtpFactor, unifiedAvailable };
 }
 
 async function settleArcadeRound({ userId, afterDeduct, currencyMode, amount, payout, roundNumber, gameId, gamePoolKey, mult, crashedAt, risk }) {
@@ -4311,6 +4543,7 @@ app.post('/api/games/slots/play', requireAuth, async (req, res) => {
       createdAt: new Date().toISOString(),
     };
     gameState.slotsHistory = [feedItem, ...(gameState.slotsHistory || [])].slice(0, 20);
+    scheduleLocalSave();
     io.emit('arcade:slots_spin', feedItem);
 
     res.json({
@@ -4325,6 +4558,842 @@ app.post('/api/games/slots/play', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('[Slots Error]', err);
     res.status(500).json({ error: 'Emerald 777 Slots spin failed.' });
+  }
+});
+
+// 6) Crystal Keno (Pick 1-5 numbers in 1..40, draw 10 balls, high-contrast paytable)
+const KENO_PAYTABLES = {
+  1: { 1: 3.6 },
+  2: { 1: 1.4, 2: 5.2 },
+  3: { 2: 2.6, 3: 14.0 },
+  4: { 2: 1.8, 3: 6.5, 4: 32.0 },
+  5: { 2: 1.2, 3: 3.8, 4: 13.5, 5: 65.0 },
+};
+
+app.post('/api/games/keno/play', requireAuth, async (req, res) => {
+  try {
+    const rawPicks = Array.isArray(req.body.picks) ? req.body.picks : [];
+    const picks = [...new Set(rawPicks.map((n) => Math.floor(Number(n))).filter((n) => Number.isFinite(n) && n >= 1 && n <= 40))];
+    if (picks.length < 1 || picks.length > 5) {
+      return res.status(400).json({ error: 'Select between 1 and 5 crystal numbers (1–40).' });
+    }
+
+    const ctx = await validateAndDeductArcadeBet(req, res, 'crystal-keno');
+    if (!ctx) return;
+
+    const pool = Array.from({ length: 40 }, (_, i) => i + 1);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = crypto.randomInt(0, i + 1);
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    let drawn = pool.slice(0, 10).sort((a, b) => a - b);
+    let hits = picks.filter((p) => drawn.includes(p));
+    const tbl = KENO_PAYTABLES[picks.length] || KENO_PAYTABLES[3];
+    const edgeFactor = Math.max(0.75, 1 - Number(ctx.gameCfg?.houseEdgePct ?? 4) / 100);
+    let mult = tbl[hits.length] ? Math.round(tbl[hits.length] * edgeFactor * 100) / 100 : 0;
+
+    if (ctx.currencyMode === 'real' && mult > 0 && ctx.amount * mult > ctx.unifiedAvailable) {
+      // Pool protection: redraw avoiding picked numbers
+      const safePool = pool.filter((n) => !picks.includes(n));
+      drawn = safePool.slice(0, 10).sort((a, b) => a - b);
+      hits = [];
+      mult = 0;
+    }
+
+    const payout = Math.round(ctx.amount * mult * 100) / 100;
+    const roundNumber = Math.floor(Date.now() / 1000) % 100000;
+    const { profit, updatedUser } = await settleArcadeRound({
+      userId: ctx.userId,
+      afterDeduct: ctx.afterDeduct,
+      currencyMode: ctx.currencyMode,
+      amount: ctx.amount,
+      payout,
+      roundNumber,
+      gameId: 'crystal-keno',
+      gamePoolKey: 'keno',
+      mult,
+      crashedAt: mult,
+      risk: `P${picks.length}/H${hits.length}`,
+    });
+
+    const feedItem = {
+      id: `keno-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+      player: req.user.displayName || maskPhone(req.user.phoneNumber),
+      amount: ctx.amount,
+      picks,
+      drawn,
+      hits,
+      multiplier: mult,
+      payout,
+      profit,
+      currencyMode: ctx.currencyMode,
+      createdAt: new Date().toISOString(),
+    };
+    gameState.kenoHistory = [feedItem, ...(gameState.kenoHistory || [])].slice(0, 20);
+    scheduleLocalSave();
+    io.emit('arcade:keno_play', feedItem);
+
+    res.json({
+      picks,
+      drawn,
+      hits,
+      multiplier: mult,
+      payout,
+      profit,
+      currencyMode: ctx.currencyMode,
+      kenoHistory: gameState.kenoHistory,
+      user: sanitizeUser(updatedUser),
+    });
+  } catch (err) {
+    console.error('[Keno Error]', err);
+    res.status(500).json({ error: 'Crystal Keno draw failed.' });
+  }
+});
+
+// 7) Sky Tower (8-floor, 3-tile vault climbing game)
+const activeTowerGames = new Map(); // userId -> { currencyMode, betAmount, currentFloor, traps: number[], revealed: {floor,tile}[], houseEdgePct }
+
+function computeTowerMultiplier(floor, houseEdgePct = 4) {
+  if (floor <= 0) return 1.0;
+  const edgeFactor = Math.max(0.75, 1 - Number(houseEdgePct || 4) / 100);
+  // 2 safe tiles out of 3 per floor => fair per-step factor 1.5x
+  return Math.max(1.01, Math.round(Math.pow(1.5, floor) * edgeFactor * 100) / 100);
+}
+
+app.post('/api/games/tower/start', requireAuth, async (req, res) => {
+  try {
+    const userId = String(req.user._id);
+    if (activeTowerGames.has(userId)) {
+      return res.status(400).json({ error: 'Finish or cash out your current Sky Tower climb first.' });
+    }
+    const ctx = await validateAndDeductArcadeBet(req, res, 'tower-climb');
+    if (!ctx) return;
+
+    const traps = Array.from({ length: 8 }, () => crypto.randomInt(0, 3));
+    const houseEdgePct = Number(ctx.gameCfg?.houseEdgePct ?? 4);
+    const session = {
+      currencyMode: ctx.currencyMode,
+      betAmount: ctx.amount,
+      currentFloor: 0,
+      traps,
+      revealed: [],
+      houseEdgePct,
+    };
+    activeTowerGames.set(userId, session);
+
+    const wagerField = ctx.currencyMode === 'real' ? 'totalWageredReal' : 'totalWageredFun';
+    const updatedAfterWager = await db.updateUserById(userId, {
+      $inc: { [wagerField]: ctx.amount, totalWagered: ctx.amount },
+    }).catch(() => ctx.afterDeduct);
+
+    if (ctx.currencyMode === 'real') {
+      await recordUnifiedPoolDelta('tower', ctx.amount, 0);
+    }
+
+    res.json({
+      ok: true,
+      currentFloor: 0,
+      nextMultiplier: computeTowerMultiplier(1, houseEdgePct),
+      user: sanitizeUser(updatedAfterWager || ctx.afterDeduct),
+    });
+  } catch (err) {
+    console.error('[Tower Start Error]', err);
+    res.status(500).json({ error: 'Failed to start Sky Tower climb.' });
+  }
+});
+
+app.post('/api/games/tower/step', requireAuth, async (req, res) => {
+  try {
+    const userId = String(req.user._id);
+    const session = activeTowerGames.get(userId);
+    if (!session) {
+      return res.status(400).json({ error: 'No active Sky Tower climb. Start a game first.' });
+    }
+    const floor = Math.floor(Number(req.body.floor));
+    const tile = Math.floor(Number(req.body.tile));
+    if (floor !== session.currentFloor || tile < 0 || tile > 2) {
+      return res.status(400).json({ error: `Select a tile on Floor ${session.currentFloor + 1}.` });
+    }
+
+    let isTrap = session.traps[floor] === tile;
+    if (!isTrap && session.currencyMode === 'real') {
+      const s = await db.getSettings();
+      const poolAvail = Math.max(0, Number(s.profitDistributionPool ?? 10000));
+      const potMult = computeTowerMultiplier(floor + 1, session.houseEdgePct);
+      if (session.betAmount * potMult > poolAvail + session.betAmount) {
+        session.traps[floor] = tile;
+        isTrap = true;
+      }
+    }
+
+    if (isTrap) {
+      activeTowerGames.delete(userId);
+      const roundNumber = Math.floor(Date.now() / 1000) % 100000;
+      const updatedUser = await db.updateUserById(userId, {
+        $push: {
+          recentBets: {
+            $each: [
+              {
+                roundNumber,
+                game: 'tower-climb',
+                currencyMode: session.currencyMode,
+                betAmount: session.betAmount,
+                cashoutMultiplier: null,
+                payout: 0,
+                profit: -session.betAmount,
+                crashedAt: computeTowerMultiplier(floor + 1, session.houseEdgePct),
+                createdAt: new Date(),
+              },
+            ],
+            $slice: 30,
+          },
+        },
+      });
+      const feedItem = {
+        id: `tower-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+        player: req.user.displayName || maskPhone(req.user.phoneNumber),
+        amount: session.betAmount,
+        floorReached: floor,
+        boom: true,
+        multiplier: 0,
+        payout: 0,
+        currencyMode: session.currencyMode,
+        createdAt: new Date().toISOString(),
+      };
+      gameState.towerHistory = [feedItem, ...(gameState.towerHistory || [])].slice(0, 20);
+      scheduleLocalSave();
+      io.emit('arcade:tower_play', feedItem);
+
+      return res.json({
+        boom: true,
+        floor,
+        tile,
+        traps: session.traps,
+        revealed: session.revealed,
+        multiplier: 0,
+        payout: 0,
+        towerHistory: gameState.towerHistory,
+        user: sanitizeUser(updatedUser || req.user),
+      });
+    }
+
+    session.revealed.push({ floor, tile });
+    session.currentFloor = floor + 1;
+    const mult = computeTowerMultiplier(session.currentFloor, session.houseEdgePct);
+    const potentialPayout = Math.round(session.betAmount * mult * 100) / 100;
+
+    // Auto-win when topping Floor 8
+    if (session.currentFloor >= 8) {
+      activeTowerGames.delete(userId);
+      const afterCredited = await db.adjustBalanceAtomic(userId, session.currencyMode, potentialPayout);
+      const wonField = session.currencyMode === 'real' ? 'totalWonReal' : 'totalWonFun';
+      const roundNumber = Math.floor(Date.now() / 1000) % 100000;
+      const updatedUser = await db.updateUserById(userId, {
+        $inc: { [wonField]: potentialPayout, totalWon: potentialPayout },
+        $push: {
+          recentBets: {
+            $each: [
+              {
+                roundNumber,
+                game: 'tower-climb',
+                currencyMode: session.currencyMode,
+                betAmount: session.betAmount,
+                cashoutMultiplier: mult,
+                payout: potentialPayout,
+                profit: Math.round((potentialPayout - session.betAmount) * 100) / 100,
+                crashedAt: mult,
+                createdAt: new Date(),
+              },
+            ],
+            $slice: 30,
+          },
+        },
+      });
+      if (session.currencyMode === 'real') {
+        await recordUnifiedPoolDelta('tower', 0, potentialPayout);
+      }
+      const feedItem = {
+        id: `tower-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+        player: req.user.displayName || maskPhone(req.user.phoneNumber),
+        amount: session.betAmount,
+        floorReached: 8,
+        boom: false,
+        multiplier: mult,
+        payout: potentialPayout,
+        currencyMode: session.currencyMode,
+        createdAt: new Date().toISOString(),
+      };
+      gameState.towerHistory = [feedItem, ...(gameState.towerHistory || [])].slice(0, 20);
+      scheduleLocalSave();
+      io.emit('arcade:tower_play', feedItem);
+      emitUserBalances(updatedUser || afterCredited);
+
+      return res.json({
+        boom: false,
+        completedTop: true,
+        floor,
+        tile,
+        currentFloor: 8,
+        traps: session.traps,
+        revealed: session.revealed,
+        multiplier: mult,
+        payout: potentialPayout,
+        towerHistory: gameState.towerHistory,
+        user: sanitizeUser(updatedUser || afterCredited),
+      });
+    }
+
+    res.json({
+      boom: false,
+      completedTop: false,
+      floor,
+      tile,
+      currentFloor: session.currentFloor,
+      revealed: session.revealed,
+      multiplier: mult,
+      nextMultiplier: computeTowerMultiplier(session.currentFloor + 1, session.houseEdgePct),
+      potentialPayout,
+    });
+  } catch (err) {
+    console.error('[Tower Step Error]', err);
+    res.status(500).json({ error: 'Sky Tower step failed.' });
+  }
+});
+
+app.post('/api/games/tower/cashout', requireAuth, async (req, res) => {
+  try {
+    const userId = String(req.user._id);
+    const session = activeTowerGames.get(userId);
+    if (!session) {
+      return res.status(400).json({ error: 'No active Sky Tower climb.' });
+    }
+    if (session.currentFloor <= 0) {
+      return res.status(400).json({ error: 'Climb at least Floor 1 before cashing out.' });
+    }
+    activeTowerGames.delete(userId);
+
+    const mult = computeTowerMultiplier(session.currentFloor, session.houseEdgePct);
+    const payout = Math.round(session.betAmount * mult * 100) / 100;
+    const profit = Math.round((payout - session.betAmount) * 100) / 100;
+
+    const afterCredited = await db.adjustBalanceAtomic(userId, session.currencyMode, payout);
+    const wonField = session.currencyMode === 'real' ? 'totalWonReal' : 'totalWonFun';
+    const roundNumber = Math.floor(Date.now() / 1000) % 100000;
+    const updatedUser = await db.updateUserById(userId, {
+      $inc: { [wonField]: payout, totalWon: payout },
+      $push: {
+        recentBets: {
+          $each: [
+            {
+              roundNumber,
+              game: 'tower-climb',
+              currencyMode: session.currencyMode,
+              betAmount: session.betAmount,
+              cashoutMultiplier: mult,
+              payout,
+              profit,
+              crashedAt: mult,
+              createdAt: new Date(),
+            },
+          ],
+          $slice: 30,
+        },
+      },
+    });
+    if (session.currencyMode === 'real') {
+      await recordUnifiedPoolDelta('tower', 0, payout);
+    }
+
+    const feedItem = {
+      id: `tower-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+      player: req.user.displayName || maskPhone(req.user.phoneNumber),
+      amount: session.betAmount,
+      floorReached: session.currentFloor,
+      boom: false,
+      multiplier: mult,
+      payout,
+      currencyMode: session.currencyMode,
+      createdAt: new Date().toISOString(),
+    };
+    gameState.towerHistory = [feedItem, ...(gameState.towerHistory || [])].slice(0, 20);
+    scheduleLocalSave();
+    io.emit('arcade:tower_play', feedItem);
+    emitUserBalances(updatedUser || afterCredited);
+
+    res.json({
+      ok: true,
+      traps: session.traps,
+      revealed: session.revealed,
+      multiplier: mult,
+      payout,
+      profit,
+      towerHistory: gameState.towerHistory,
+      user: sanitizeUser(updatedUser || afterCredited),
+    });
+  } catch (err) {
+    console.error('[Tower Cashout Error]', err);
+    res.status(500).json({ error: 'Sky Tower cashout failed.' });
+  }
+});
+
+// 8) Dragon Tiger (High-Card Duel: Dragon, Tiger, or 8x Tie)
+const CARD_RANKS_LABELS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const CARD_SUITS_LABELS = ['♠', '♥', '♦', '♣'];
+
+app.post('/api/games/dragon-tiger/play', requireAuth, async (req, res) => {
+  try {
+    const choice = ['dragon', 'tiger', 'tie'].includes(String(req.body.choice || '').toLowerCase())
+      ? String(req.body.choice).toLowerCase()
+      : 'dragon';
+
+    const ctx = await validateAndDeductArcadeBet(req, res, 'dragon-tiger');
+    if (!ctx) return;
+
+    let dRank = crypto.randomInt(1, 14); // 1=Ace (low), 13=King (high)
+    let tRank = crypto.randomInt(1, 14);
+    const dSuit = crypto.randomInt(0, 4);
+    const tSuit = crypto.randomInt(0, 4);
+
+    const resolveDt = (dr, tr) => {
+      const winner = dr > tr ? 'dragon' : tr > dr ? 'tiger' : 'tie';
+      const won = choice === winner;
+      let mult = 0;
+      if (won) {
+        mult = choice === 'tie' ? 8.0 : Math.round((2 * ctx.rtpFactor) * 100) / 100;
+      } else if (winner === 'tie' && choice !== 'tie') {
+        mult = 0.5; // Classic 50% push return on tie
+      }
+      return { winner, won, mult };
+    };
+
+    let outcome = resolveDt(dRank, tRank);
+    if (ctx.currencyMode === 'real' && outcome.mult > 1 && ctx.amount * outcome.mult > ctx.unifiedAvailable) {
+      if (choice === 'dragon') {
+        dRank = 2;
+        tRank = 12;
+      } else {
+        dRank = 12;
+        tRank = 2;
+      }
+      outcome = resolveDt(dRank, tRank);
+    }
+
+    const dragonCard = `${CARD_RANKS_LABELS[dRank - 1]}${CARD_SUITS_LABELS[dSuit]}`;
+    const tigerCard = `${CARD_RANKS_LABELS[tRank - 1]}${CARD_SUITS_LABELS[tSuit]}`;
+    const payout = Math.round(ctx.amount * outcome.mult * 100) / 100;
+    const roundNumber = Math.floor(Date.now() / 1000) % 100000;
+
+    const { profit, updatedUser } = await settleArcadeRound({
+      userId: ctx.userId,
+      afterDeduct: ctx.afterDeduct,
+      currencyMode: ctx.currencyMode,
+      amount: ctx.amount,
+      payout,
+      roundNumber,
+      gameId: 'dragon-tiger',
+      gamePoolKey: 'dragontiger',
+      mult: outcome.mult,
+      crashedAt: outcome.mult,
+      risk: `${choice}:${outcome.winner}`,
+    });
+
+    const feedItem = {
+      id: `dt-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+      player: req.user.displayName || maskPhone(req.user.phoneNumber),
+      amount: ctx.amount,
+      choice,
+      winner: outcome.winner,
+      dragonCard,
+      tigerCard,
+      won: outcome.won,
+      multiplier: outcome.mult,
+      payout,
+      profit,
+      currencyMode: ctx.currencyMode,
+      createdAt: new Date().toISOString(),
+    };
+    gameState.dragonTigerHistory = [feedItem, ...(gameState.dragonTigerHistory || [])].slice(0, 20);
+    scheduleLocalSave();
+    io.emit('arcade:dragontiger_play', feedItem);
+
+    res.json({
+      choice,
+      winner: outcome.winner,
+      won: outcome.won,
+      dragonCard,
+      tigerCard,
+      dragonSuitIdx: dSuit,
+      tigerSuitIdx: tSuit,
+      dragonRank: dRank,
+      tigerRank: tRank,
+      multiplier: outcome.mult,
+      payout,
+      profit,
+      currencyMode: ctx.currencyMode,
+      dragonTigerHistory: gameState.dragonTigerHistory,
+      user: sanitizeUser(updatedUser),
+    });
+  } catch (err) {
+    console.error('[DragonTiger Error]', err);
+    res.status(500).json({ error: 'Dragon Tiger deal failed.' });
+  }
+});
+
+// 9) Neon Baccarat (Player vs Banker Modulo-10 Punto Banco)
+function drawBaccaratCard() {
+  const rankIdx = crypto.randomInt(0, 13); // 0=A .. 12=K
+  const suitIdx = crypto.randomInt(0, 4);
+  const label = `${CARD_RANKS_LABELS[rankIdx]}${CARD_SUITS_LABELS[suitIdx]}`;
+  const value = rankIdx >= 9 ? 0 : rankIdx + 1;
+  return { label, suitIdx, value };
+}
+
+app.post('/api/games/baccarat/play', requireAuth, async (req, res) => {
+  try {
+    const choice = ['player', 'banker', 'tie'].includes(String(req.body.choice || '').toLowerCase())
+      ? String(req.body.choice).toLowerCase()
+      : 'player';
+
+    const ctx = await validateAndDeductArcadeBet(req, res, 'neon-baccarat');
+    if (!ctx) return;
+
+    let playerCards = [drawBaccaratCard(), drawBaccaratCard()];
+    let bankerCards = [drawBaccaratCard(), drawBaccaratCard()];
+    const handTotal = (cards) => cards.reduce((s, c) => s + c.value, 0) % 10;
+
+    let pScore = handTotal(playerCards);
+    let bScore = handTotal(bankerCards);
+
+    // Classic third card rule when neither has natural 8 or 9
+    if (pScore < 8 && bScore < 8) {
+      let playerThird = null;
+      if (pScore <= 5) {
+        playerThird = drawBaccaratCard();
+        playerCards.push(playerThird);
+        pScore = handTotal(playerCards);
+      }
+      if (!playerThird) {
+        if (bScore <= 5) {
+          bankerCards.push(drawBaccaratCard());
+          bScore = handTotal(bankerCards);
+        }
+      } else {
+        const ptVal = playerThird.value;
+        const shouldDrawBanker =
+          bScore <= 2 ||
+          (bScore === 3 && ptVal !== 8) ||
+          (bScore === 4 && ptVal >= 2 && ptVal <= 7) ||
+          (bScore === 5 && ptVal >= 4 && ptVal <= 7) ||
+          (bScore === 6 && (ptVal === 6 || ptVal === 7));
+        if (shouldDrawBanker) {
+          bankerCards.push(drawBaccaratCard());
+          bScore = handTotal(bankerCards);
+        }
+      }
+    }
+
+    const computeBaccaratOutcome = (ps, bs) => {
+      const winner = ps > bs ? 'player' : bs > ps ? 'banker' : 'tie';
+      const won = choice === winner;
+      let mult = 0;
+      if (won) {
+        if (choice === 'tie') mult = 8.0;
+        else if (choice === 'banker') mult = Math.round(1.95 * ctx.rtpFactor * 100) / 100;
+        else mult = Math.round(2.0 * ctx.rtpFactor * 100) / 100;
+      } else if (winner === 'tie' && choice !== 'tie') {
+        mult = 1.0; // Classic Baccarat push refunds Player/Banker bets on Tie
+      }
+      return { winner, won, mult };
+    };
+
+    let outcome = computeBaccaratOutcome(pScore, bScore);
+    if (ctx.currencyMode === 'real' && outcome.mult > 1 && ctx.amount * outcome.mult > ctx.unifiedAvailable) {
+      // Safeguard unified pool by settling losing cards
+      playerCards = [{ label: choice === 'player' ? 'K♠' : '9♥', suitIdx: 0, value: choice === 'player' ? 0 : 9 }, { label: '2♣', suitIdx: 3, value: 2 }];
+      bankerCards = [{ label: choice === 'player' ? '9♦' : 'K♣', suitIdx: 2, value: choice === 'player' ? 9 : 0 }, { label: '0♠', suitIdx: 0, value: 0 }];
+      pScore = handTotal(playerCards);
+      bScore = handTotal(bankerCards);
+      outcome = computeBaccaratOutcome(pScore, bScore);
+    }
+
+    const payout = Math.round(ctx.amount * outcome.mult * 100) / 100;
+    const roundNumber = Math.floor(Date.now() / 1000) % 100000;
+    const { profit, updatedUser } = await settleArcadeRound({
+      userId: ctx.userId,
+      afterDeduct: ctx.afterDeduct,
+      currencyMode: ctx.currencyMode,
+      amount: ctx.amount,
+      payout,
+      roundNumber,
+      gameId: 'neon-baccarat',
+      gamePoolKey: 'baccarat',
+      mult: outcome.mult,
+      crashedAt: outcome.mult,
+      risk: `P${pScore}-B${bScore}`,
+    });
+
+    const feedItem = {
+      id: `bac-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+      player: req.user.displayName || maskPhone(req.user.phoneNumber),
+      amount: ctx.amount,
+      choice,
+      winner: outcome.winner,
+      playerScore: pScore,
+      bankerScore: bScore,
+      won: outcome.won,
+      multiplier: outcome.mult,
+      payout,
+      profit,
+      currencyMode: ctx.currencyMode,
+      createdAt: new Date().toISOString(),
+    };
+    gameState.baccaratHistory = [feedItem, ...(gameState.baccaratHistory || [])].slice(0, 20);
+    scheduleLocalSave();
+    io.emit('arcade:baccarat_play', feedItem);
+
+    res.json({
+      choice,
+      winner: outcome.winner,
+      won: outcome.won,
+      playerCards,
+      bankerCards,
+      playerScore: pScore,
+      bankerScore: bScore,
+      multiplier: outcome.mult,
+      payout,
+      profit,
+      currencyMode: ctx.currencyMode,
+      baccaratHistory: gameState.baccaratHistory,
+      user: sanitizeUser(updatedUser),
+    });
+  } catch (err) {
+    console.error('[Baccarat Error]', err);
+    res.status(500).json({ error: 'Neon Baccarat deal failed.' });
+  }
+});
+
+// 10) Royal Roulette (European Single-Zero 0-36)
+const ROULETTE_RED_NUMS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+
+app.post('/api/games/roulette/play', requireAuth, async (req, res) => {
+  try {
+    const betType = ['red', 'black', 'even', 'odd', 'dozen1', 'dozen2', 'dozen3', 'number'].includes(
+      String(req.body.betType || '').toLowerCase()
+    )
+      ? String(req.body.betType).toLowerCase()
+      : 'red';
+    const pickedNum = Math.min(36, Math.max(0, Math.floor(Number(req.body.number ?? 7))));
+
+    const ctx = await validateAndDeductArcadeBet(req, res, 'triple-roulette');
+    if (!ctx) return;
+
+    let pocket = crypto.randomInt(0, 37);
+    const evaluateRoulette = (p) => {
+      const color = p === 0 ? 'green' : ROULETTE_RED_NUMS.has(p) ? 'red' : 'black';
+      let won = false;
+      let mult = 0;
+      if (betType === 'number') {
+        won = p === pickedNum;
+        if (won) mult = 35;
+      } else if (betType === 'red') {
+        won = color === 'red';
+        if (won) mult = Math.round(2 * ctx.rtpFactor * 100) / 100;
+      } else if (betType === 'black') {
+        won = color === 'black';
+        if (won) mult = Math.round(2 * ctx.rtpFactor * 100) / 100;
+      } else if (betType === 'even') {
+        won = p > 0 && p % 2 === 0;
+        if (won) mult = Math.round(2 * ctx.rtpFactor * 100) / 100;
+      } else if (betType === 'odd') {
+        won = p > 0 && p % 2 === 1;
+        if (won) mult = Math.round(2 * ctx.rtpFactor * 100) / 100;
+      } else if (betType === 'dozen1') {
+        won = p >= 1 && p <= 12;
+        if (won) mult = Math.round(3 * ctx.rtpFactor * 100) / 100;
+      } else if (betType === 'dozen2') {
+        won = p >= 13 && p <= 24;
+        if (won) mult = Math.round(3 * ctx.rtpFactor * 100) / 100;
+      } else if (betType === 'dozen3') {
+        won = p >= 25 && p <= 36;
+        if (won) mult = Math.round(3 * ctx.rtpFactor * 100) / 100;
+      }
+      return { color, won, mult };
+    };
+
+    let outcome = evaluateRoulette(pocket);
+    if (ctx.currencyMode === 'real' && outcome.won && ctx.amount * outcome.mult > ctx.unifiedAvailable) {
+      pocket = 0;
+      if (betType === 'number' && pickedNum === 0) pocket = 13;
+      outcome = evaluateRoulette(pocket);
+    }
+
+    const payout = Math.round(ctx.amount * outcome.mult * 100) / 100;
+    const roundNumber = Math.floor(Date.now() / 1000) % 100000;
+    const { profit, updatedUser } = await settleArcadeRound({
+      userId: ctx.userId,
+      afterDeduct: ctx.afterDeduct,
+      currencyMode: ctx.currencyMode,
+      amount: ctx.amount,
+      payout,
+      roundNumber,
+      gameId: 'triple-roulette',
+      gamePoolKey: 'roulette',
+      mult: outcome.mult,
+      crashedAt: outcome.mult,
+      risk: betType === 'number' ? `#${pickedNum}` : betType,
+    });
+
+    const feedItem = {
+      id: `roul-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+      player: req.user.displayName || maskPhone(req.user.phoneNumber),
+      amount: ctx.amount,
+      betType,
+      pickedNum: betType === 'number' ? pickedNum : null,
+      pocket,
+      color: outcome.color,
+      won: outcome.won,
+      multiplier: outcome.mult,
+      payout,
+      profit,
+      currencyMode: ctx.currencyMode,
+      createdAt: new Date().toISOString(),
+    };
+    gameState.rouletteHistory = [feedItem, ...(gameState.rouletteHistory || [])].slice(0, 20);
+    scheduleLocalSave();
+    io.emit('arcade:roulette_spin', feedItem);
+
+    res.json({
+      betType,
+      pocket,
+      color: outcome.color,
+      won: outcome.won,
+      multiplier: outcome.mult,
+      payout,
+      profit,
+      currencyMode: ctx.currencyMode,
+      rouletteHistory: gameState.rouletteHistory,
+      user: sanitizeUser(updatedUser),
+    });
+  } catch (err) {
+    console.error('[Roulette Error]', err);
+    res.status(500).json({ error: 'Royal Roulette spin failed.' });
+  }
+});
+
+// 11) Golden Scratch (3x3 Vault Match-3 Foil Card)
+const SCRATCH_TIERS = [
+  { sym: '💎', mult: 20, weight: 8 },
+  { sym: '👑', mult: 10, weight: 20 },
+  { sym: '777', mult: 6, weight: 45 },
+  { sym: '🍀', mult: 3, weight: 110 },
+  { sym: '⭐', mult: 1.8, weight: 195 },
+  { sym: null, mult: 0, weight: 622 },
+];
+const SCRATCH_SYMBOLS = ['💎', '👑', '777', '🍀', '⭐', '⚡'];
+
+app.post('/api/games/scratch/play', requireAuth, async (req, res) => {
+  try {
+    const ctx = await validateAndDeductArcadeBet(req, res, 'lucky-scratch');
+    if (!ctx) return;
+
+    const totalWeight = SCRATCH_TIERS.reduce((s, t) => s + t.weight, 0);
+    let roll = crypto.randomInt(0, totalWeight);
+    let chosenTier = SCRATCH_TIERS[SCRATCH_TIERS.length - 1];
+    for (const tier of SCRATCH_TIERS) {
+      roll -= tier.weight;
+      if (roll < 0) {
+        chosenTier = tier;
+        break;
+      }
+    }
+
+    if (ctx.currencyMode === 'real' && chosenTier.mult > 0 && ctx.amount * chosenTier.mult > ctx.unifiedAvailable) {
+      chosenTier = SCRATCH_TIERS[SCRATCH_TIERS.length - 1];
+    }
+
+    const cells = new Array(9).fill('');
+    if (chosenTier.sym) {
+      const positions = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+      for (let i = positions.length - 1; i > 0; i--) {
+        const j = crypto.randomInt(0, i + 1);
+        [positions[i], positions[j]] = [positions[j], positions[i]];
+      }
+      for (let k = 0; k < 3; k++) {
+        cells[positions[k]] = chosenTier.sym;
+      }
+      const otherSyms = SCRATCH_SYMBOLS.filter((s) => s !== chosenTier.sym);
+      const counts = {};
+      for (let idx = 0; idx < 9; idx++) {
+        if (!cells[idx]) {
+          let candidate = otherSyms[crypto.randomInt(0, otherSyms.length)];
+          while ((counts[candidate] || 0) >= 2) {
+            candidate = otherSyms[crypto.randomInt(0, otherSyms.length)];
+          }
+          counts[candidate] = (counts[candidate] || 0) + 1;
+          cells[idx] = candidate;
+        }
+      }
+    } else {
+      // Ensure max 2 occurrences of any symbol
+      const counts = {};
+      for (let idx = 0; idx < 9; idx++) {
+        let candidate = SCRATCH_SYMBOLS[crypto.randomInt(0, SCRATCH_SYMBOLS.length)];
+        while ((counts[candidate] || 0) >= 2) {
+          candidate = SCRATCH_SYMBOLS[crypto.randomInt(0, SCRATCH_SYMBOLS.length)];
+        }
+        counts[candidate] = (counts[candidate] || 0) + 1;
+        cells[idx] = candidate;
+      }
+    }
+
+    const mult = chosenTier.mult;
+    const payout = Math.round(ctx.amount * mult * 100) / 100;
+    const roundNumber = Math.floor(Date.now() / 1000) % 100000;
+
+    const { profit, updatedUser } = await settleArcadeRound({
+      userId: ctx.userId,
+      afterDeduct: ctx.afterDeduct,
+      currencyMode: ctx.currencyMode,
+      amount: ctx.amount,
+      payout,
+      roundNumber,
+      gameId: 'lucky-scratch',
+      gamePoolKey: 'scratch',
+      mult,
+      crashedAt: mult,
+      risk: chosenTier.sym || 'miss',
+    });
+
+    const feedItem = {
+      id: `scr-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+      player: req.user.displayName || maskPhone(req.user.phoneNumber),
+      amount: ctx.amount,
+      matchSymbol: chosenTier.sym || '',
+      won: mult > 0,
+      multiplier: mult,
+      payout,
+      profit,
+      currencyMode: ctx.currencyMode,
+      createdAt: new Date().toISOString(),
+    };
+    gameState.scratchHistory = [feedItem, ...(gameState.scratchHistory || [])].slice(0, 20);
+    scheduleLocalSave();
+    io.emit('arcade:scratch_play', feedItem);
+
+    res.json({
+      cells,
+      matchSymbol: chosenTier.sym || '',
+      won: mult > 0,
+      multiplier: mult,
+      payout,
+      profit,
+      currencyMode: ctx.currencyMode,
+      scratchHistory: gameState.scratchHistory,
+      user: sanitizeUser(updatedUser),
+    });
+  } catch (err) {
+    console.error('[Scratch Error]', err);
+    res.status(500).json({ error: 'Golden Scratch card reveal failed.' });
   }
 });
 
@@ -4618,6 +5687,13 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
 
     const incomingPay = req.body.paymentAccounts || {};
     const curPay = current.paymentAccounts || defaultPaymentAccounts();
+    const sanitizeCustomQr = (val, fallback) => {
+      if (val === undefined) return String(fallback || '');
+      const s = String(val || '').trim();
+      if (!s) return '';
+      if (s.startsWith('data:image/') && s.length <= 650000) return s;
+      return String(fallback || '');
+    };
     const paymentAccounts = {
       easypaisa: {
         enabled:
@@ -4635,6 +5711,7 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
             ? incomingPay.easypaisa.iban
             : curPay.easypaisa?.iban ?? ''
         ),
+        customQrImage: sanitizeCustomQr(incomingPay.easypaisa?.customQrImage, curPay.easypaisa?.customQrImage),
       },
       jazzcash: {
         enabled:
@@ -4652,6 +5729,7 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
             ? incomingPay.jazzcash.iban
             : curPay.jazzcash?.iban ?? ''
         ),
+        customQrImage: sanitizeCustomQr(incomingPay.jazzcash?.customQrImage, curPay.jazzcash?.customQrImage),
       },
       bank: {
         enabled:
@@ -4665,6 +5743,7 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
         accountNumber: String(
           incomingPay.bank?.accountNumber ?? curPay.bank?.accountNumber ?? ''
         ).trim(),
+        customQrImage: sanitizeCustomQr(incomingPay.bank?.customQrImage, curPay.bank?.customQrImage),
       },
     };
 
@@ -4883,23 +5962,76 @@ app.put('/api/admin/rtp-risk', requireAdmin, async (req, res) => {
   }
 });
 
-// Admin Cross-Instance Live Sync Config & Test
+// Admin Cross-Instance Live Sync Config, Round Alignment, Pull & Test
+function normalizeRemoteOriginInput(rawUrl) {
+  let clean = String(rawUrl || '').trim().replace(/\/+$/, '');
+  if (!clean) return { origin: '', error: null };
+  if (!/^https?:\/\//i.test(clean)) {
+    clean = `https://${clean}`;
+  }
+  let parsed;
+  try {
+    parsed = new URL(clean);
+  } catch {
+    return { origin: '', error: 'Enter a valid Live Site URL (e.g. https://your-app.up.railway.app).' };
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    return { origin: '', error: 'Live Site URL must start with http:// or https://' };
+  }
+  return { origin: parsed.origin, error: null };
+}
+
+async function setExplicitRoundNumber(targetRound) {
+  const safeRound = Math.min(99999999, Math.max(1001, Math.floor(Number(targetRound) || 1001)));
+  if (isMongoReady()) {
+    const doc = await Settings.findOneAndUpdate(
+      { key: 'global' },
+      {
+        $set: {
+          roundCounter: safeRound,
+          'liveRound.roundNumber': safeRound,
+          'liveRound.currentRoundId': safeRound,
+        },
+      },
+      { new: true, upsert: true }
+    );
+    if (doc) {
+      localStore.settings = hydrateSettingsObj(doc.toObject());
+      saveLocalStore();
+    }
+  } else {
+    localStore.settings.roundCounter = safeRound;
+    if (localStore.settings.liveRound) {
+      localStore.settings.liveRound.roundNumber = safeRound;
+      localStore.settings.liveRound.currentRoundId = safeRound;
+    }
+    saveLocalStore();
+  }
+
+  gameState.roundNumber = safeRound;
+  gameState.currentRoundId = safeRound;
+  gameState.nonce = safeRound;
+  await publishLiveRoundIfMaster(true);
+  const payload = buildAuthoritativeState(true);
+  io.emit('game:init', payload);
+  io.emit('game:state', payload);
+  return safeRound;
+}
+
 app.put('/api/admin/sync-config', requireAdmin, async (req, res) => {
   try {
     const mode = ['auto', 'standalone', 'mirror'].includes(req.body.mode) ? req.body.mode : 'auto';
-    let remoteLiveUrl = String(req.body.remoteLiveUrl || '').trim().replace(/\/+$/, '');
-    if (remoteLiveUrl) {
-      let parsed;
-      try {
-        parsed = new URL(remoteLiveUrl);
-      } catch {
-        return res.status(400).json({ error: 'Enter a valid http:// or https:// Live Site URL.' });
-      }
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
-        return res.status(400).json({ error: 'Live Site URL must start with http:// or https://' });
-      }
-      remoteLiveUrl = parsed.origin;
+    const norm = normalizeRemoteOriginInput(req.body.remoteLiveUrl);
+    if (norm.error) {
+      return res.status(400).json({ error: norm.error });
     }
+    const remoteLiveUrl = norm.origin;
+
+    const prevSettings = await db.getSettings();
+    const prevCfg = prevSettings.syncConfig || defaultSyncConfig();
+    const syncChanged =
+      mode !== (prevCfg.mode || 'auto') ||
+      remoteLiveUrl !== String(prevCfg.remoteLiveUrl || '').trim().replace(/\/+$/, '');
 
     const updated = await db.updateSettings({
       syncConfig: {
@@ -4908,11 +6040,49 @@ app.put('/api/admin/sync-config', requireAdmin, async (req, res) => {
         updatedAt: new Date(),
       },
     });
-    await applySyncCoordinator(true);
+
+    if (req.body.roundNumber !== undefined && req.body.roundNumber !== '' && req.body.roundNumber !== null) {
+      const requestedRound = Math.floor(Number(req.body.roundNumber));
+      if (Number.isFinite(requestedRound) && requestedRound >= 1001 && !remoteLiveUrl) {
+        await setExplicitRoundNumber(requestedRound);
+      }
+    }
+
+    if (syncChanged) {
+      await applySyncCoordinator(true);
+    }
+
+    let immediateRemoteRound = null;
+    if (remoteLiveUrl && mode !== 'standalone') {
+      try {
+        const snapRes = await fetch(`${remoteLiveUrl}/api/sync/state`, {
+          signal: AbortSignal.timeout(4500),
+        });
+        if (snapRes.ok) {
+          const snapData = await snapRes.json();
+          if (snapData.instanceId !== INSTANCE_ID && snapData.roundState) {
+            immediateRemoteRound = Number(snapData.roundState.roundNumber || snapData.roundCounter || 0);
+            if (snapData.publicSettings) {
+              mirroredPublicSettings = snapData.publicSettings;
+              lastMirrorSettingsJson = JSON.stringify(snapData.publicSettings);
+              io.emit('settings:updated', mirroredPublicSettings);
+            }
+            hydrateGameStateFromSnapshot(snapData.roundState, snapData.serverTimestamp, {
+              recentRounds: snapData.recentRounds,
+            });
+          }
+        }
+      } catch {
+        // poll loop will retry automatically
+      }
+    }
+
+    const latest = await db.getSettings();
     await logSecurityEvent('Live Sync Config Updated', 'info', `Mode: ${mode} | URL: ${remoteLiveUrl || 'None'}`, getClientIp(req));
     res.json({
-      syncConfig: updated.syncConfig,
-      syncStatus: getPublicSyncStatus(updated),
+      syncConfig: latest.syncConfig,
+      syncStatus: getPublicSyncStatus(latest),
+      syncedRoundNumber: immediateRemoteRound || gameState.roundNumber,
     });
   } catch (err) {
     console.error('[Sync Config Error]', err);
@@ -4920,22 +6090,105 @@ app.put('/api/admin/sync-config', requireAdmin, async (req, res) => {
   }
 });
 
+app.post('/api/admin/sync-round', requireAdmin, async (req, res) => {
+  try {
+    const requestedRound = Math.floor(Number(req.body.roundNumber));
+    if (!Number.isFinite(requestedRound) || requestedRound < 1001 || requestedRound > 99999999) {
+      return res.status(400).json({ error: 'Round number must be between 1001 and 99,999,999.' });
+    }
+    if (runtimeSyncState.isFollower && runtimeSyncState.role === 'remote-mirror') {
+      return res.status(400).json({
+        error: 'Server is currently mirroring a Remote Live Site URL. Clear Remote URL or switch to Standalone to set round manually.',
+      });
+    }
+    const applied = await setExplicitRoundNumber(requestedRound);
+    await logSecurityEvent('Manual Round Alignment', 'info', `Round counter aligned to #${applied}`, getClientIp(req));
+    res.json({ ok: true, roundNumber: applied });
+  } catch (err) {
+    console.error('[Sync Round Error]', err);
+    res.status(500).json({ error: 'Failed to align round number.' });
+  }
+});
+
+app.post('/api/admin/sync-pull', requireAdmin, async (req, res) => {
+  try {
+    const settings = await db.getSettings();
+    const rawUrl = req.body.remoteLiveUrl ?? settings.syncConfig?.remoteLiveUrl ?? ENV_LIVE_SYNC_URL ?? '';
+    const norm = normalizeRemoteOriginInput(rawUrl);
+    if (norm.error) return res.status(400).json({ error: norm.error });
+    if (!norm.origin) {
+      return res.status(400).json({ error: 'Enter your Railway / Live Site URL first.' });
+    }
+
+    const resp = await fetch(`${norm.origin}/api/sync/state`, { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) {
+      return res.status(502).json({ error: `Remote server responded with HTTP ${resp.status}.` });
+    }
+    const data = await resp.json();
+    if (data.instanceId === INSTANCE_ID) {
+      return res.status(400).json({ error: 'Remote URL points to this same server instance.' });
+    }
+
+    const remoteRound = Number(data.roundState?.roundNumber || data.roundCounter || 0);
+    if (remoteRound >= 1001) {
+      await setExplicitRoundNumber(remoteRound);
+    }
+
+    const pub = data.publicSettings || {};
+    const patch = {};
+    if (pub.financialLimits) patch.financialLimits = pub.financialLimits;
+    if (pub.withdrawalHours) patch.withdrawalHours = pub.withdrawalHours;
+    if (pub.platformStatus) patch.platformStatus = pub.platformStatus;
+    if (pub.audioConfig) patch.audioConfig = pub.audioConfig;
+    if (Array.isArray(pub.gamesConfig) && pub.gamesConfig.length > 0) {
+      patch.gamesConfig = hydrateGamesConfig(pub.gamesConfig);
+    }
+    if (pub.whatsappSupportEnabled !== undefined) patch.whatsappSupportEnabled = Boolean(pub.whatsappSupportEnabled);
+    if (pub.whatsappSupportNumber) patch.whatsappSupportNumber = String(pub.whatsappSupportNumber);
+    if (pub.whatsappChannelEnabled !== undefined) patch.whatsappChannelEnabled = Boolean(pub.whatsappChannelEnabled);
+    if (pub.whatsappChannelUrl) patch.whatsappChannelUrl = String(pub.whatsappChannelUrl);
+    if (pub.telegramChannelEnabled !== undefined) patch.telegramChannelEnabled = Boolean(pub.telegramChannelEnabled);
+    if (pub.telegramChannelUrl) patch.telegramChannelUrl = String(pub.telegramChannelUrl);
+    if (Array.isArray(data.recentRounds) && data.recentRounds.length > 0) {
+      patch.recentRounds = data.recentRounds.slice(0, 20);
+      gameState.history = data.recentRounds.slice(0, 15);
+    }
+
+    if (Object.keys(patch).length > 0) {
+      const updated = await db.updateSettings(patch);
+      io.emit('settings:updated', buildPublicSettingsPayload(updated));
+    }
+
+    if (data.roundState) {
+      hydrateGameStateFromSnapshot(data.roundState, data.serverTimestamp, {
+        recentRounds: data.recentRounds,
+      });
+    }
+
+    await logSecurityEvent('Remote Sync Pull', 'info', `Pulled Round #${remoteRound} & public settings from ${norm.origin}`, getClientIp(req));
+    res.json({
+      ok: true,
+      roundNumber: remoteRound || gameState.roundNumber,
+      remoteOrigin: norm.origin,
+      remoteDatabase: data.database || 'unknown',
+    });
+  } catch (err) {
+    res.status(502).json({ error: `Pull failed: ${err.message}` });
+  }
+});
+
 app.post('/api/admin/sync-test', requireAdmin, async (req, res) => {
   try {
     const settings = await db.getSettings();
-    const rawUrl = String(req.body.remoteLiveUrl ?? settings.syncConfig?.remoteLiveUrl ?? ENV_LIVE_SYNC_URL ?? '')
-      .trim()
-      .replace(/\/+$/, '');
-    if (!rawUrl) {
+    const rawUrl = req.body.remoteLiveUrl ?? settings.syncConfig?.remoteLiveUrl ?? ENV_LIVE_SYNC_URL ?? '';
+    const norm = normalizeRemoteOriginInput(rawUrl);
+    if (norm.error) {
+      return res.status(400).json({ error: norm.error });
+    }
+    if (!norm.origin) {
       return res.status(400).json({ error: 'Enter a Remote Live Site URL first.' });
     }
-    let parsed;
-    try {
-      parsed = new URL(rawUrl);
-    } catch {
-      return res.status(400).json({ error: 'Invalid URL format.' });
-    }
-    const targetUrl = `${parsed.origin}/api/sync/state`;
+    const targetUrl = `${norm.origin}/api/sync/state`;
     const started = Date.now();
     const resp = await fetch(targetUrl, { signal: AbortSignal.timeout(5000) });
     if (!resp.ok) {
@@ -4951,6 +6204,7 @@ app.post('/api/admin/sync-test', requireAdmin, async (req, res) => {
     res.json({
       ok: true,
       latencyMs,
+      remoteOrigin: norm.origin,
       remoteInstanceId: data.instanceId || '',
       remoteDatabase: data.database || 'unknown',
       roundNumber: data.roundState?.roundNumber || data.roundCounter || 0,
@@ -5641,7 +6895,49 @@ const gameState = {
   wheelHistory: [],
   hiloHistory: [],
   slotsHistory: [],
+  kenoHistory: [],
+  towerHistory: [],
+  dragonTigerHistory: [],
+  baccaratHistory: [],
+  rouletteHistory: [],
+  scratchHistory: [],
 };
+
+const ARCADE_HISTORY_KEYS = [
+  'plinkoHistory',
+  'minesHistory',
+  'diceHistory',
+  'limboHistory',
+  'coinflipHistory',
+  'wheelHistory',
+  'hiloHistory',
+  'slotsHistory',
+  'kenoHistory',
+  'towerHistory',
+  'dragonTigerHistory',
+  'baccaratHistory',
+  'rouletteHistory',
+  'scratchHistory',
+];
+
+function snapshotArcadeHistoriesForStore() {
+  const out = {};
+  for (const k of ARCADE_HISTORY_KEYS) {
+    if (Array.isArray(gameState[k]) && gameState[k].length > 0) {
+      out[k] = gameState[k].slice(0, 20);
+    }
+  }
+  return out;
+}
+
+function restoreArcadeHistoriesFromStore(saved) {
+  if (!saved || typeof saved !== 'object') return;
+  for (const k of ARCADE_HISTORY_KEYS) {
+    if (Array.isArray(saved[k]) && saved[k].length > 0 && (!Array.isArray(gameState[k]) || gameState[k].length === 0)) {
+      gameState[k] = saved[k].slice(0, 20);
+    }
+  }
+}
 
 let tickTimer = null;
 let phaseTimer = null;
@@ -5697,30 +6993,38 @@ function stopAllRoundAndSyncTimers() {
 }
 
 async function publishLiveRoundIfMaster(force = false) {
-  if (!isMongoReady() || runtimeSyncState.isFollower) return;
+  if (runtimeSyncState.isFollower) return;
   const now = Date.now();
   if (!force && now - lastMongoSnapshotWriteAt < 350) return;
   lastMongoSnapshotWriteAt = now;
-  await db.writeLiveRoundSnapshot(
-    INSTANCE_ID,
-    {
-      roundNumber: gameState.roundNumber,
-      currentRoundId: gameState.currentRoundId,
-      phase: gameState.phase,
-      bettingEndsAt: gameState.bettingEndsAt,
-      flightStartedAt: gameState.flightStartedAt,
-      crashedAt: gameState.crashedAt,
-      crashHoldEndsAt: gameState.crashHoldEndsAt,
-      currentMultiplier: gameState.currentMultiplier,
-      scheduledCrashPoint: gameState.scheduledCrashPoint,
-      serverSeed: gameState.serverSeed,
-      serverSeedHash: gameState.serverSeedHash,
-      clientSeed: gameState.clientSeed,
-      nonce: gameState.nonce,
-      bets: gameState.bets.slice(0, 60),
-    },
-    4500
-  );
+
+  const snap = {
+    masterId: INSTANCE_ID,
+    leaseExpiresAt: new Date(now + 4500),
+    roundNumber: gameState.roundNumber,
+    currentRoundId: gameState.currentRoundId,
+    phase: gameState.phase,
+    bettingEndsAt: gameState.bettingEndsAt,
+    flightStartedAt: gameState.flightStartedAt,
+    crashedAt: gameState.crashedAt,
+    crashHoldEndsAt: gameState.crashHoldEndsAt,
+    currentMultiplier: gameState.currentMultiplier,
+    scheduledCrashPoint: gameState.scheduledCrashPoint,
+    serverSeed: gameState.serverSeed,
+    serverSeedHash: gameState.serverSeedHash,
+    clientSeed: gameState.clientSeed,
+    nonce: gameState.nonce,
+    bets: gameState.bets.slice(0, 60),
+    updatedAt: new Date(),
+  };
+
+  // Always mirror live round locally so standalone restarts/Git syncs resume mid-round cleanly
+  localStore.settings.liveRound = { ...defaultLiveRoundSnapshot(), ...snap };
+  if (force) saveLocalStore();
+  else scheduleLocalSave(400);
+
+  if (!isMongoReady()) return;
+  await db.writeLiveRoundSnapshot(INSTANCE_ID, snap, 4500);
 }
 
 function buildAuthoritativeState(includeDetails = false) {
@@ -5775,6 +7079,12 @@ function buildAuthoritativeState(includeDetails = false) {
     payload.wheelHistory = (gameState.wheelHistory || []).slice(0, 15);
     payload.hiloHistory = (gameState.hiloHistory || []).slice(0, 15);
     payload.slotsHistory = (gameState.slotsHistory || []).slice(0, 15);
+    payload.kenoHistory = (gameState.kenoHistory || []).slice(0, 15);
+    payload.towerHistory = (gameState.towerHistory || []).slice(0, 15);
+    payload.dragonTigerHistory = (gameState.dragonTigerHistory || []).slice(0, 15);
+    payload.baccaratHistory = (gameState.baccaratHistory || []).slice(0, 15);
+    payload.rouletteHistory = (gameState.rouletteHistory || []).slice(0, 15);
+    payload.scratchHistory = (gameState.scratchHistory || []).slice(0, 15);
     payload.totalRoundBet = gameState.totalRoundBet;
   }
 
@@ -5856,8 +7166,23 @@ async function startBettingPhase() {
   flightTickInFlight = false;
 
   const settings = await db.getSettings();
-  const nextRound = Number(settings.roundCounter || 1000) + 1;
-  await db.updateSettings({ roundCounter: nextRound });
+  let nextRound = Number(settings.roundCounter || 1000) + 1;
+  if (isMongoReady()) {
+    const incDoc = await Settings.findOneAndUpdate(
+      { key: 'global' },
+      { $inc: { roundCounter: 1 } },
+      { new: true }
+    );
+    if (incDoc && Number(incDoc.roundCounter) >= 1001) {
+      nextRound = Number(incDoc.roundCounter);
+      localStore.settings.roundCounter = Math.max(Number(localStore.settings?.roundCounter || 1000), nextRound);
+      scheduleLocalSave(500);
+    } else {
+      await db.updateSettings({ roundCounter: nextRound });
+    }
+  } else {
+    await db.updateSettings({ roundCounter: nextRound });
+  }
 
   const seeds = generateProvablyFairSeeds(nextRound);
   simulatedOnlineCrowd = Math.min(96, Math.max(36, simulatedOnlineCrowd + Math.floor(Math.random() * 9) - 4));
@@ -6310,6 +7635,12 @@ function hydrateGameStateFromSnapshot(rs, serverTimestamp = Date.now(), extras =
   if (Array.isArray(rs.wheelHistory)) gameState.wheelHistory = rs.wheelHistory;
   if (Array.isArray(rs.hiloHistory)) gameState.hiloHistory = rs.hiloHistory;
   if (Array.isArray(rs.slotsHistory)) gameState.slotsHistory = rs.slotsHistory;
+  if (Array.isArray(rs.kenoHistory)) gameState.kenoHistory = rs.kenoHistory;
+  if (Array.isArray(rs.towerHistory)) gameState.towerHistory = rs.towerHistory;
+  if (Array.isArray(rs.dragonTigerHistory)) gameState.dragonTigerHistory = rs.dragonTigerHistory;
+  if (Array.isArray(rs.baccaratHistory)) gameState.baccaratHistory = rs.baccaratHistory;
+  if (Array.isArray(rs.rouletteHistory)) gameState.rouletteHistory = rs.rouletteHistory;
+  if (Array.isArray(rs.scratchHistory)) gameState.scratchHistory = rs.scratchHistory;
   if (Array.isArray(extras.recentRounds) && extras.recentRounds.length > 0 && (!Array.isArray(rs.history) || rs.history.length === 0)) {
     gameState.history = extras.recentRounds.slice(0, 15);
   }
@@ -6317,6 +7648,22 @@ function hydrateGameStateFromSnapshot(rs, serverTimestamp = Date.now(), extras =
   const transitioned = nextRoundNum !== lastMirrorRound || nextPhase !== lastMirrorPhase;
   lastMirrorRound = nextRoundNum;
   lastMirrorPhase = nextPhase;
+
+  if (nextRoundNum >= 1001 && localStore.settings) {
+    if (runtimeSyncState.role === 'remote-mirror') {
+      localStore.settings.roundCounter = nextRoundNum;
+      if (isMongoReady() && transitioned && nextPhase === 'BETTING') {
+        Settings.updateOne(
+          { key: 'global' },
+          { $set: { roundCounter: nextRoundNum } }
+        ).catch(() => {});
+      }
+      scheduleLocalSave(1000);
+    } else if (nextRoundNum > Number(localStore.settings.roundCounter || 1000)) {
+      localStore.settings.roundCounter = nextRoundNum;
+      scheduleLocalSave(1000);
+    }
+  }
 
   if (transitioned) {
     const payload = buildAuthoritativeState(true);
@@ -6432,9 +7779,11 @@ function startMongoFollowerLoop() {
         }
       }
       runtimeSyncState.lastSyncAt = new Date().toISOString();
+      runtimeSyncState.lastError = '';
       runtimeSyncState.remoteInstanceId = lr.masterId || '';
       runtimeSyncState.remoteDatabase = 'mongodb-shared';
-      hydrateGameStateFromSnapshot(lr, Date.now(), { recentRounds: settings.recentRounds });
+      const snapTs = lr.updatedAt ? new Date(lr.updatedAt).getTime() : Date.now();
+      hydrateGameStateFromSnapshot(lr, snapTs, { recentRounds: settings.recentRounds });
     } catch (err) {
       runtimeSyncState.lastError = err.message || 'Mongo follower sync error';
     } finally {
@@ -6444,6 +7793,170 @@ function startMongoFollowerLoop() {
     }
   };
   pollMongo();
+}
+
+async function resumeOrStartRound() {
+  if (runtimeSyncState.isFollower) return;
+  const settings = await db.getSettings();
+  const lr = settings.liveRound || {};
+  const now = Date.now();
+
+  if (gameState.history.length === 0 && Array.isArray(settings.recentRounds) && settings.recentRounds.length > 0) {
+    gameState.history = settings.recentRounds.slice(0, 15).map((r) => ({
+      roundNumber: r.roundNumber,
+      crashPoint: r.crashPoint,
+      serverSeed: r.serverSeed,
+      serverSeedHash: r.serverSeedHash,
+      clientSeed: r.clientSeed,
+      nonce: r.nonce,
+    }));
+  }
+
+  const persistedRound = Number(lr.roundNumber || 0);
+  const highestRound = Math.max(Number(settings.roundCounter || 1000), persistedRound);
+  if (highestRound > Number(settings.roundCounter || 1000)) {
+    await db.updateSettings({ roundCounter: highestRound });
+  }
+
+  // Resume active BETTING round if time still remains
+  if (
+    persistedRound >= 1001 &&
+    lr.phase === 'BETTING' &&
+    lr.serverSeedHash &&
+    Number(lr.bettingEndsAt || 0) > now + 350
+  ) {
+    const recoveredBets = Array.isArray(lr.bets) ? lr.bets.filter((b) => !b.isBot) : [];
+    const realBetSum = recoveredBets
+      .filter((b) => b.currencyMode === 'real')
+      .reduce((s, b) => s + Number(b.amount || 0), 0);
+    const totalBetSum = recoveredBets.reduce((s, b) => s + Number(b.amount || 0), 0);
+
+    gameState.phase = 'BETTING';
+    gameState.currentRoundId = Number(lr.currentRoundId || persistedRound);
+    gameState.roundNumber = persistedRound;
+    gameState.nonce = Number(lr.nonce || persistedRound);
+    gameState.clientSeed = lr.clientSeed || `skywing-${getTodayKey()}`;
+    gameState.serverSeed = lr.serverSeed || generateProvablyFairSeeds(persistedRound).serverSeed;
+    gameState.serverSeedHash = lr.serverSeedHash;
+    gameState.bettingEndsAt = Number(lr.bettingEndsAt);
+    gameState.flightStartedAt = 0;
+    gameState.crashedAt = 0;
+    gameState.crashHoldEndsAt = 0;
+    gameState.currentMultiplier = 1.0;
+    gameState.bets = recoveredBets;
+    gameState.totalRoundBet = Math.round(totalBetSum * 100) / 100;
+    gameState.totalRealRoundBet = Math.round(realBetSum * 100) / 100;
+    gameState.totalRoundPayouts = 0;
+    gameState.totalRealRoundPayouts = 0;
+
+    console.log(`[Sync] Resumed in-progress BETTING round #${persistedRound} (${Math.round((gameState.bettingEndsAt - now) / 1000)}s left)`);
+    io.emit('round:betting', {
+      ...buildAuthoritativeState(true),
+      countdownMs: Math.max(350, gameState.bettingEndsAt - now),
+    });
+    tickTimer = setInterval(() => {
+      runBettingTick().catch((err) => console.error('[Betting Tick Error]', err));
+    }, TICK_INTERVAL_MS);
+    return;
+  }
+
+  // Resume active FLYING round or settle gracefully if it crashed while restarting
+  if (
+    persistedRound >= 1001 &&
+    lr.phase === 'FLYING' &&
+    lr.flightStartedAt > 0 &&
+    lr.serverSeed &&
+    lr.serverSeedHash
+  ) {
+    const recoveredBets = Array.isArray(lr.bets) ? lr.bets.filter((b) => !b.isBot) : [];
+    const totalBetSum = recoveredBets.reduce((s, b) => s + Number(b.amount || 0), 0);
+    const realBetSum = recoveredBets
+      .filter((b) => b.currencyMode === 'real')
+      .reduce((s, b) => s + Number(b.amount || 0), 0);
+    const totalPaySum = recoveredBets
+      .filter((b) => b.cashedOut)
+      .reduce((s, b) => s + Number(b.payout || 0), 0);
+    const realPaySum = recoveredBets
+      .filter((b) => b.cashedOut && b.currencyMode === 'real')
+      .reduce((s, b) => s + Number(b.payout || 0), 0);
+
+    gameState.phase = 'FLYING';
+    gameState.currentRoundId = Number(lr.currentRoundId || persistedRound);
+    gameState.roundNumber = persistedRound;
+    gameState.nonce = Number(lr.nonce || persistedRound);
+    gameState.clientSeed = lr.clientSeed || `skywing-${getTodayKey()}`;
+    gameState.serverSeed = lr.serverSeed;
+    gameState.serverSeedHash = lr.serverSeedHash;
+    gameState.flightStartedAt = Number(lr.flightStartedAt);
+    gameState.scheduledCrashPoint = Math.max(1.0, Number(lr.scheduledCrashPoint || 2.0));
+    gameState.bets = recoveredBets;
+    gameState.totalRoundBet = Math.round(totalBetSum * 100) / 100;
+    gameState.totalRealRoundBet = Math.round(realBetSum * 100) / 100;
+    gameState.totalRoundPayouts = Math.round(totalPaySum * 100) / 100;
+    gameState.totalRealRoundPayouts = Math.round(realPaySum * 100) / 100;
+    gameState.maxAllowedRoundPayout = Infinity;
+    gameState.protectionActive = false;
+
+    const elapsedSec = Math.max(0, (now - gameState.flightStartedAt) / 1000);
+    const interpolatedMult = Math.max(1.0, Math.floor(Math.exp(MULTIPLIER_GROWTH_RATE * elapsedSec) * 100) / 100);
+    gameState.currentMultiplier = interpolatedMult;
+
+    if (elapsedSec < 45 && interpolatedMult < gameState.scheduledCrashPoint) {
+      console.log(`[Sync] Resumed live FLYING round #${persistedRound} at ${interpolatedMult.toFixed(2)}x`);
+      const flyPayload = buildAuthoritativeState(true);
+      io.emit('round:flying', flyPayload);
+      io.emit('game:state', flyPayload);
+      tickTimer = setInterval(() => {
+        if (flightTickInFlight) return;
+        flightTickInFlight = true;
+        runFlightTick()
+          .catch((err) => console.error('[Flight Tick Error]', err))
+          .finally(() => {
+            flightTickInFlight = false;
+          });
+      }, TICK_INTERVAL_MS);
+      return;
+    }
+
+    // Round exceeded its crash point while offline -> finalize cleanly & move to next round
+    console.log(`[Sync] Finalizing overdue FLYING round #${persistedRound} at ${gameState.scheduledCrashPoint.toFixed(2)}x`);
+    await triggerCrash(gameState.scheduledCrashPoint);
+    return;
+  }
+
+  // Resume CRASHED cooldown window
+  if (
+    persistedRound >= 1001 &&
+    lr.phase === 'CRASHED' &&
+    Number(lr.crashHoldEndsAt || 0) > now + 200
+  ) {
+    gameState.phase = 'CRASHED';
+    gameState.currentRoundId = Number(lr.currentRoundId || persistedRound);
+    gameState.roundNumber = persistedRound;
+    gameState.nonce = Number(lr.nonce || persistedRound);
+    gameState.clientSeed = lr.clientSeed || `skywing-${getTodayKey()}`;
+    gameState.serverSeed = lr.serverSeed || '';
+    gameState.serverSeedHash = lr.serverSeedHash || '';
+    gameState.currentMultiplier = Math.max(1.0, Number(lr.currentMultiplier || 1.0));
+    gameState.crashHoldEndsAt = Number(lr.crashHoldEndsAt);
+    gameState.bets = Array.isArray(lr.bets) ? lr.bets.filter((b) => !b.isBot) : [];
+    console.log(`[Sync] Resumed CRASHED hold window for round #${persistedRound}`);
+    tickTimer = setInterval(() => {
+      if (gameState.phase !== 'CRASHED') return;
+      const holdPayload = buildAuthoritativeState(false);
+      if (holdPayload.crashHoldRemainingMs <= 0) {
+        clearInterval(tickTimer);
+        tickTimer = null;
+        startBettingPhase().catch((err) => console.error('[Next Round Error]', err));
+        return;
+      }
+      io.emit('round:tick', holdPayload);
+      io.emit('game:state', holdPayload);
+    }, TICK_INTERVAL_MS);
+    return;
+  }
+
+  await startBettingPhase();
 }
 
 async function applySyncCoordinator(forceRestart = false, skipRemote = false) {
@@ -6481,21 +7994,21 @@ async function applySyncCoordinator(forceRestart = false, skipRemote = false) {
     runtimeSyncState.isFollower = false;
     runtimeSyncState.remoteUrl = '';
     runtimeSyncState.lastError = '';
-    if (!leaseRenewTimer) {
-      leaseRenewTimer = setInterval(async () => {
-        if (runtimeSyncState.role !== 'mongo-master') return;
-        if (!isMongoReady()) {
-          await applySyncCoordinator(true);
-          return;
-        }
-        const renewed = await db.tryAcquireOrRenewMasterLease(INSTANCE_ID, 4500);
-        if (!renewed) {
-          console.warn('[Sync] Lost MongoDB master lease -> switching to Follower');
-          startMongoFollowerLoop();
-        }
-      }, 1500);
-    }
     if (alreadyActiveMaster) {
+      if (!leaseRenewTimer) {
+        leaseRenewTimer = setInterval(async () => {
+          if (runtimeSyncState.role !== 'mongo-master') return;
+          if (!isMongoReady()) {
+            await applySyncCoordinator(true);
+            return;
+          }
+          const renewed = await db.tryAcquireOrRenewMasterLease(INSTANCE_ID, 4500);
+          if (!renewed) {
+            console.warn('[Sync] Lost MongoDB master lease -> switching to Follower');
+            startMongoFollowerLoop();
+          }
+        }, 1500);
+      }
       return;
     }
     stopAllRoundAndSyncTimers();
@@ -6512,7 +8025,7 @@ async function applySyncCoordinator(forceRestart = false, skipRemote = false) {
       }
     }, 1500);
     console.log(`[Sync] Acquired MongoDB Master lease (instance ${INSTANCE_ID})`);
-    await startBettingPhase();
+    await resumeOrStartRound();
     return;
   }
 
@@ -6529,7 +8042,7 @@ async function applySyncCoordinator(forceRestart = false, skipRemote = false) {
   }
   stopAllRoundAndSyncTimers();
   console.log(`[Sync] Running as Standalone Master (instance ${INSTANCE_ID})`);
-  await startBettingPhase();
+  await resumeOrStartRound();
 }
 
 // ============================================================================
@@ -6919,6 +8432,21 @@ async function boot() {
     console.log(`[SkyWing] Admin Panel available at http://0.0.0.0:${PORT}/admin`);
   });
 }
+
+async function gracefulShutdown(signal) {
+  try {
+    console.log(`[SkyWing] Received ${signal}, flushing round & vault state...`);
+    await publishLiveRoundIfMaster(true);
+    saveLocalStore();
+  } catch {
+    // ignore shutdown flush errors
+  } finally {
+    process.exit(0);
+  }
+}
+
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 boot().catch((err) => {
   console.error('[Fatal Boot Error]', err);

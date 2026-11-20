@@ -30,6 +30,50 @@
 
   const SLOT_SYMBOLS = ['777', '💎', '👑', '⚡', '🍒', '🍋'];
 
+  const KENO_PAYTABLES = {
+    1: { 1: 3.6 },
+    2: { 1: 1.4, 2: 5.2 },
+    3: { 2: 2.6, 3: 14.0 },
+    4: { 2: 1.8, 3: 6.5, 4: 32.0 },
+    5: { 2: 1.2, 3: 3.8, 4: 13.5, 5: 65.0 },
+  };
+
+  function lsGet(key) {
+    try {
+      return localStorage.getItem(key) || '';
+    } catch {
+      return '';
+    }
+  }
+  function lsSet(key, val) {
+    try {
+      localStorage.setItem(key, String(val));
+    } catch {
+      // ignore blocked storage
+    }
+  }
+  function lsRemove(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore blocked storage
+    }
+  }
+  function ssSet(key, val) {
+    try {
+      sessionStorage.setItem(key, String(val));
+    } catch {
+      // ignore blocked storage
+    }
+  }
+  function ssRemove(key) {
+    try {
+      sessionStorage.removeItem(key);
+    } catch {
+      // ignore blocked storage
+    }
+  }
+
   // Persistent LocalStorage & Cookie Session Vault (3-Day Inactivity Window)
   function setVaultCookie(name, value, days = 30) {
     try {
@@ -66,16 +110,12 @@
 
   function updateLastActive() {
     const now = String(Date.now());
-    try {
-      localStorage.setItem('skywing_last_active', now);
-      setVaultCookie('skywing_last_active', now, 7);
-    } catch {
-      // ignore
-    }
+    lsSet('skywing_last_active', now);
+    setVaultCookie('skywing_last_active', now, 7);
   }
 
   function isSessionInactiveExpired() {
-    const raw = localStorage.getItem('skywing_last_active') || getVaultCookie('skywing_last_active') || '';
+    const raw = lsGet('skywing_last_active') || getVaultCookie('skywing_last_active') || '';
     if (!raw) return false;
     const lastTs = Number(raw);
     if (!Number.isFinite(lastTs) || lastTs <= 0) return false;
@@ -87,11 +127,11 @@
       clearSessionVault();
       return '';
     }
-    const lsToken = localStorage.getItem('skywing_token') || '';
+    const lsToken = lsGet('skywing_token');
     const ckToken = getVaultCookie('skywing_token') || '';
     const token = lsToken || ckToken;
     if (token) {
-      if (!lsToken) localStorage.setItem('skywing_token', token);
+      if (!lsToken) lsSet('skywing_token', token);
       if (!ckToken) setVaultCookie('skywing_token', token);
       updateLastActive();
     }
@@ -101,23 +141,23 @@
   function readStoredUserCache() {
     let cached = null;
     try {
-      const raw = localStorage.getItem('skywing_user_cache') || getVaultCookie('skywing_user_cache');
+      const raw = lsGet('skywing_user_cache') || getVaultCookie('skywing_user_cache');
       if (raw) cached = JSON.parse(raw);
     } catch {
       cached = null;
     }
     if (cached && typeof cached === 'object') return cached;
 
-    const uid = localStorage.getItem('skywing_user_id') || getVaultCookie('skywing_user_id') || '';
-    const uname = localStorage.getItem('skywing_username') || getVaultCookie('skywing_username') || '';
-    const phone = localStorage.getItem('skywing_phone') || getVaultCookie('skywing_phone') || '';
+    const uid = lsGet('skywing_user_id') || getVaultCookie('skywing_user_id') || '';
+    const uname = lsGet('skywing_username') || getVaultCookie('skywing_username') || '';
+    const phone = lsGet('skywing_phone') || getVaultCookie('skywing_phone') || '';
     if (uid || uname) {
       return {
         id: uid,
         displayName: uname || phone || 'Player',
         phoneNumber: phone || uname,
-        funBalance: Number(localStorage.getItem('skywing_fun_balance') || 0),
-        realBalance: Number(localStorage.getItem('skywing_real_balance') || 0),
+        funBalance: Number(lsGet('skywing_fun_balance') || 0),
+        realBalance: Number(lsGet('skywing_real_balance') || 0),
         totalDeposited: 0,
         totalWithdrawn: 0,
       };
@@ -127,9 +167,9 @@
 
   function saveSessionVault(token, user) {
     if (token) {
-      localStorage.setItem('skywing_token', token);
+      lsSet('skywing_token', token);
       setVaultCookie('skywing_token', token);
-      sessionStorage.setItem('skywing_tab_auth', '1');
+      ssSet('skywing_tab_auth', '1');
       updateLastActive();
     }
     if (user && typeof user === 'object') {
@@ -137,19 +177,19 @@
       const uname = String(user.displayName || user.phoneNumber || '');
       const phone = String(user.phoneNumber || '');
       if (uid) {
-        localStorage.setItem('skywing_user_id', uid);
+        lsSet('skywing_user_id', uid);
         setVaultCookie('skywing_user_id', uid);
       }
       if (uname) {
-        localStorage.setItem('skywing_username', uname);
+        lsSet('skywing_username', uname);
         setVaultCookie('skywing_username', uname);
       }
       if (phone) {
-        localStorage.setItem('skywing_phone', phone);
+        lsSet('skywing_phone', phone);
         setVaultCookie('skywing_phone', phone);
       }
-      localStorage.setItem('skywing_fun_balance', String(Number(user.funBalance ?? 0)));
-      localStorage.setItem('skywing_real_balance', String(Number(user.realBalance ?? 0)));
+      lsSet('skywing_fun_balance', String(Number(user.funBalance ?? 0)));
+      lsSet('skywing_real_balance', String(Number(user.realBalance ?? 0)));
       try {
         const compactCache = JSON.stringify({
           id: uid,
@@ -167,7 +207,7 @@
           vip: user.vip || null,
           savedPayoutAccounts: Array.isArray(user.savedPayoutAccounts) ? user.savedPayoutAccounts : [],
         });
-        localStorage.setItem('skywing_user_cache', compactCache);
+        lsSet('skywing_user_cache', compactCache);
         setVaultCookie('skywing_user_cache', compactCache);
       } catch {
         // ignore serialization quota errors
@@ -176,15 +216,15 @@
   }
 
   function clearSessionVault() {
-    localStorage.removeItem('skywing_token');
-    localStorage.removeItem('skywing_last_active');
-    localStorage.removeItem('skywing_user_id');
-    localStorage.removeItem('skywing_username');
-    localStorage.removeItem('skywing_phone');
-    localStorage.removeItem('skywing_fun_balance');
-    localStorage.removeItem('skywing_real_balance');
-    localStorage.removeItem('skywing_user_cache');
-    sessionStorage.removeItem('skywing_tab_auth');
+    lsRemove('skywing_token');
+    lsRemove('skywing_last_active');
+    lsRemove('skywing_user_id');
+    lsRemove('skywing_username');
+    lsRemove('skywing_phone');
+    lsRemove('skywing_fun_balance');
+    lsRemove('skywing_real_balance');
+    lsRemove('skywing_user_cache');
+    ssRemove('skywing_tab_auth');
     deleteVaultCookie('skywing_token');
     deleteVaultCookie('skywing_last_active');
     deleteVaultCookie('skywing_user_id');
@@ -196,13 +236,21 @@
   const urlParams = new URLSearchParams(window.location.search);
   const urlRefCode = String(urlParams.get('ref') || '').trim().toUpperCase().slice(0, 16);
   if (urlRefCode) {
-    localStorage.setItem('skywing_ref', urlRefCode);
+    lsSet('skywing_ref', urlRefCode);
   }
 
   function getOrCreateDeviceFingerprint() {
-    let fp = localStorage.getItem('skywing_device_id');
+    let fp = lsGet('skywing_device_id');
     if (!fp) {
-      const navPart = `${navigator.platform || 'x'}|${screen.width}x${screen.height}|${Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'}`;
+      let tz = 'UTC';
+      try {
+        tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      } catch {
+        tz = 'UTC';
+      }
+      const scrW = typeof screen !== 'undefined' ? screen.width : 1024;
+      const scrH = typeof screen !== 'undefined' ? screen.height : 768;
+      const navPart = `${navigator.platform || 'x'}|${scrW}x${scrH}|${tz}`;
       let hash = 2166136261;
       for (let i = 0; i < navPart.length; i++) {
         hash ^= navPart.charCodeAt(i);
@@ -210,7 +258,7 @@
       }
       const randHex = Math.random().toString(16).slice(2, 10);
       fp = `swfp-${(hash >>> 0).toString(16)}-${randHex}`;
-      localStorage.setItem('skywing_device_id', fp);
+      lsSet('skywing_device_id', fp);
     }
     return fp;
   }
@@ -225,8 +273,10 @@
   const state = {
     token: initialRestoredToken,
     user: initialRestoredUser,
-    currencyMode: localStorage.getItem('skywing_mode') === 'real' ? 'real' : 'fun',
+    currencyMode: lsGet('skywing_mode') === 'real' ? 'real' : 'fun',
     activeGameId: null,
+    lobbyCategory: 'all',
+    isFullscreen: false,
     publicSettings: {
       maskMasterAccounts: true,
       paymentAccounts: null,
@@ -257,6 +307,12 @@
         { id: 'lucky-wheel', name: 'Lucky Wheel', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
         { id: 'dragon-hilo', name: 'Dragon Hi-Lo', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
         { id: 'emerald-slots', name: 'Emerald 777 Slots', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'crystal-keno', name: 'Crystal Keno', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'tower-climb', name: 'Sky Tower', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'dragon-tiger', name: 'Dragon Tiger', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'neon-baccarat', name: 'Neon Baccarat', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'triple-roulette', name: 'Royal Roulette', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
+        { id: 'lucky-scratch', name: 'Golden Scratch', enabled: true, minBet: 10, maxBet: 50000, houseEdgePct: 4 },
       ],
       audioConfig: {
         bgmEnabled: true,
@@ -264,7 +320,7 @@
         masterVolume: 75,
       },
     },
-    soundEnabled: localStorage.getItem('skywing_sound') !== 'off',
+    soundEnabled: lsGet('skywing_sound') !== 'off',
     sidebarTab: 'live', // 'live' | 'mine' | 'wallet'
     transactions: [],
     depositScreenshotData: '',
@@ -290,6 +346,38 @@
     hiloBaseRankIdx: 5,
     hiloBusy: false,
     slotsBusy: false,
+    kenoPicks: [7, 14, 25],
+    kenoBusy: false,
+    tower: {
+      active: false,
+      currentFloor: 0,
+      betAmount: 50,
+      multiplier: 1.0,
+      nextMultiplier: 1.44,
+      revealed: [],
+      traps: [],
+      busy: false,
+    },
+    dtChoice: 'dragon',
+    dtBusy: false,
+    bacChoice: 'player',
+    bacBusy: false,
+    roulBetType: 'red',
+    roulRotation: 0,
+    roulBusy: false,
+    scratch: {
+      active: false,
+      cells: [],
+      scratched: [],
+      matchSymbol: '',
+      won: false,
+      mult: 0,
+      payout: 0,
+      currencyMode: 'fun',
+      pendingUser: null,
+      pendingHistory: null,
+      busy: false,
+    },
     qrRequestSeq: 0,
     qrDebounceTimer: null,
     arcade: {
@@ -301,6 +389,12 @@
       wheelHistory: [],
       hiloHistory: [],
       slotsHistory: [],
+      kenoHistory: [],
+      towerHistory: [],
+      dragonTigerHistory: [],
+      baccaratHistory: [],
+      rouletteHistory: [],
+      scratchHistory: [],
     },
     mines: {
       active: false,
@@ -374,8 +468,12 @@
     historyLabel: document.getElementById('historyLabel'),
     historyList: document.getElementById('historyList'),
 
-    // Auth-First Gate, Visual Game Lobby & Active Arena Wrappers
+    // Auth-First Gate, Visual Game Lobby, Home Hero & Active Arena Wrappers
     headerGameControls: document.getElementById('headerGameControls'),
+    headerBackHomeBtn: document.getElementById('headerBackHomeBtn'),
+    fullscreenToggleBtn: document.getElementById('fullscreenToggleBtn'),
+    fullscreenBtnLabel: document.getElementById('fullscreenBtnLabel'),
+    arenaFullscreenBtn: document.getElementById('arenaFullscreenBtn'),
     authEntryGate: document.getElementById('authEntryGate'),
     mainGameShell: document.getElementById('mainGameShell'),
     siteFooter: document.getElementById('siteFooter'),
@@ -399,6 +497,13 @@
     maintenanceMessage: document.getElementById('maintenanceMessage'),
     helpWithdrawHoursText: document.getElementById('helpWithdrawHoursText'),
     gameLobbySection: document.getElementById('gameLobbySection'),
+    homeQuickDepositBtn: document.getElementById('homeQuickDepositBtn'),
+    homeQuickRewardsBtn: document.getElementById('homeQuickRewardsBtn'),
+    homeWhatsappShareBtn: document.getElementById('homeWhatsappShareBtn'),
+    homeFunBalStat: document.getElementById('homeFunBalStat'),
+    homeRealBalStat: document.getElementById('homeRealBalStat'),
+    homeVipStat: document.getElementById('homeVipStat'),
+    lobbyCategoryFilters: document.getElementById('lobbyCategoryFilters'),
     gameLobbyBar: document.getElementById('gameLobbyBar'),
     activeGameWorkspace: document.getElementById('activeGameWorkspace'),
     backToLobbyBtn: document.getElementById('backToLobbyBtn'),
@@ -412,6 +517,12 @@
     wheelArena: document.getElementById('wheelArena'),
     hiloArena: document.getElementById('hiloArena'),
     slotsArena: document.getElementById('slotsArena'),
+    kenoArena: document.getElementById('kenoArena'),
+    towerArena: document.getElementById('towerArena'),
+    dragonTigerArena: document.getElementById('dragonTigerArena'),
+    baccaratArena: document.getElementById('baccaratArena'),
+    rouletteArena: document.getElementById('rouletteArena'),
+    scratchArena: document.getElementById('scratchArena'),
 
     // Plinko & Mines
     plinkoCanvas: document.getElementById('plinkoCanvas'),
@@ -499,6 +610,66 @@
     slotsResultSub: document.getElementById('slotsResultSub'),
     slotsAmount: document.getElementById('slotsAmount'),
     slotsSpinBtn: document.getElementById('slotsSpinBtn'),
+
+    // Crystal Keno
+    kenoStatusBadge: document.getElementById('kenoStatusBadge'),
+    kenoPickCountText: document.getElementById('kenoPickCountText'),
+    kenoQuickPickBtn: document.getElementById('kenoQuickPickBtn'),
+    kenoClearBtn: document.getElementById('kenoClearBtn'),
+    kenoGrid: document.getElementById('kenoGrid'),
+    kenoPaytableStrip: document.getElementById('kenoPaytableStrip'),
+    kenoResultSub: document.getElementById('kenoResultSub'),
+    kenoAmount: document.getElementById('kenoAmount'),
+    kenoPlayBtn: document.getElementById('kenoPlayBtn'),
+
+    // Sky Tower
+    towerMultBadge: document.getElementById('towerMultBadge'),
+    towerRowsContainer: document.getElementById('towerRowsContainer'),
+    towerResultSub: document.getElementById('towerResultSub'),
+    towerAmount: document.getElementById('towerAmount'),
+    towerCashoutVal: document.getElementById('towerCashoutVal'),
+    towerNextFloorText: document.getElementById('towerNextFloorText'),
+    towerStartBtn: document.getElementById('towerStartBtn'),
+    towerCashoutBtn: document.getElementById('towerCashoutBtn'),
+
+    // Dragon Tiger
+    dtStatusBadge: document.getElementById('dtStatusBadge'),
+    dtDragonCard: document.getElementById('dtDragonCard'),
+    dtTigerCard: document.getElementById('dtTigerCard'),
+    dtChoiceGroup: document.getElementById('dtChoiceGroup'),
+    dtResultSub: document.getElementById('dtResultSub'),
+    dtAmount: document.getElementById('dtAmount'),
+    dtDealBtn: document.getElementById('dtDealBtn'),
+
+    // Neon Baccarat
+    bacStatusBadge: document.getElementById('bacStatusBadge'),
+    bacPlayerScore: document.getElementById('bacPlayerScore'),
+    bacPlayerCards: document.getElementById('bacPlayerCards'),
+    bacBankerScore: document.getElementById('bacBankerScore'),
+    bacBankerCards: document.getElementById('bacBankerCards'),
+    bacChoiceGroup: document.getElementById('bacChoiceGroup'),
+    bacResultSub: document.getElementById('bacResultSub'),
+    bacAmount: document.getElementById('bacAmount'),
+    bacDealBtn: document.getElementById('bacDealBtn'),
+
+    // Royal Roulette
+    roulStatusBadge: document.getElementById('roulStatusBadge'),
+    roulWheelDisc: document.getElementById('roulWheelDisc'),
+    roulPocketOrb: document.getElementById('roulPocketOrb'),
+    roulBetBoard: document.getElementById('roulBetBoard'),
+    roulStraightRow: document.getElementById('roulStraightRow'),
+    roulStraightInput: document.getElementById('roulStraightInput'),
+    roulResultSub: document.getElementById('roulResultSub'),
+    roulAmount: document.getElementById('roulAmount'),
+    roulSpinBtn: document.getElementById('roulSpinBtn'),
+
+    // Golden Scratch
+    scratchStatusBadge: document.getElementById('scratchStatusBadge'),
+    scratchGrid: document.getElementById('scratchGrid'),
+    scratchResultSub: document.getElementById('scratchResultSub'),
+    scratchAmount: document.getElementById('scratchAmount'),
+    scratchBuyBtn: document.getElementById('scratchBuyBtn'),
+    scratchRevealAllBtn: document.getElementById('scratchRevealAllBtn'),
 
     canvas: document.getElementById('flightCanvas'),
     hudRoundNumber: document.getElementById('hudRoundNumber'),
@@ -594,6 +765,16 @@
     depSenderNumber: document.getElementById('depSenderNumber'),
     depLimitInfoText: document.getElementById('depLimitInfoText'),
     depLiveQrCard: document.getElementById('depLiveQrCard'),
+    depTabDirectBtn: document.getElementById('depTabDirectBtn'),
+    depTabQrBtn: document.getElementById('depTabQrBtn'),
+    depDirectPanel: document.getElementById('depDirectPanel'),
+    depQrPanel: document.getElementById('depQrPanel'),
+    depDirectBank: document.getElementById('depDirectBank'),
+    depDirectTitle: document.getElementById('depDirectTitle'),
+    depDirectNumber: document.getElementById('depDirectNumber'),
+    depDirectIbanRow: document.getElementById('depDirectIbanRow'),
+    depDirectIban: document.getElementById('depDirectIban'),
+    depDirectAmount: document.getElementById('depDirectAmount'),
     depQrGatewayBadge: document.getElementById('depQrGatewayBadge'),
     depQrAmountBadge: document.getElementById('depQrAmountBadge'),
     depQrRefBadge: document.getElementById('depQrRefBadge'),
@@ -834,10 +1015,10 @@
   // Sound Toggle
   // ==========================================================================
   function updateSoundUI() {
-    el.soundToggleBtn.classList.toggle('active', state.soundEnabled);
-    el.soundToggleBtn.setAttribute('aria-pressed', String(state.soundEnabled));
-    el.soundOnIcon.classList.toggle('hidden', !state.soundEnabled);
-    el.soundOffIcon.classList.toggle('hidden', state.soundEnabled);
+    el.soundToggleBtn?.classList.toggle('active', state.soundEnabled);
+    el.soundToggleBtn?.setAttribute('aria-pressed', String(state.soundEnabled));
+    el.soundOnIcon?.classList.toggle('hidden', !state.soundEnabled);
+    el.soundOffIcon?.classList.toggle('hidden', state.soundEnabled);
     if (el.soundStatusLabel) {
       el.soundStatusLabel.textContent = state.soundEnabled ? 'SFX On' : 'Muted';
     }
@@ -845,7 +1026,7 @@
 
   el.soundToggleBtn?.addEventListener('click', () => {
     state.soundEnabled = !state.soundEnabled;
-    localStorage.setItem('skywing_sound', state.soundEnabled ? 'on' : 'off');
+    lsSet('skywing_sound', state.soundEnabled ? 'on' : 'off');
     audio.setMuted(!state.soundEnabled);
     if (state.soundEnabled && state.user && state.activeGameId) {
       audio.setLocked(false);
@@ -878,41 +1059,46 @@
   // ==========================================================================
   function setCurrencyMode(mode) {
     state.currencyMode = mode === 'real' ? 'real' : 'fun';
-    localStorage.setItem('skywing_mode', state.currencyMode);
+    lsSet('skywing_mode', state.currencyMode);
     updateModeAndWalletUI();
     updatePanelButtons();
     updateDiceMetrics();
     updateLimboMetrics();
     updateCoinflipMetrics();
+    updateTowerCashoutUI?.();
     renderSidebar();
   }
 
   function updateModeAndWalletUI() {
     const isReal = state.currencyMode === 'real';
-    el.modeFunBtn.className = `mode-btn ${!isReal ? 'active-fun' : ''}`;
-    el.modeRealBtn.className = `mode-btn ${isReal ? 'active-real' : ''}`;
+    if (el.modeFunBtn) el.modeFunBtn.className = `mode-btn ${!isReal ? 'active-fun' : ''}`;
+    if (el.modeRealBtn) el.modeRealBtn.className = `mode-btn ${isReal ? 'active-real' : ''}`;
 
     el.realWalletActions?.classList.toggle('hidden', !isReal);
 
-    el.walletBalance.classList.toggle('real-active', isReal);
-    el.walletModeLabel.textContent = isReal ? 'Real PKR' : 'Fun Credits';
-    el.bettingModeHint.textContent = isReal
-      ? 'Place your Real Money (PKR) bets'
-      : 'Place your Fun Credits (FC) bets';
+    el.walletBalance?.classList.toggle('real-active', isReal);
+    if (el.walletModeLabel) el.walletModeLabel.textContent = isReal ? 'Real PKR' : 'Fun Credits';
+    if (el.bettingModeHint) {
+      el.bettingModeHint.textContent = isReal
+        ? 'Place your Real Money (PKR) bets'
+        : 'Place your Fun Credits (FC) bets';
+    }
 
-    if (state.user) {
-      const bal = isReal ? state.user.realBalance : state.user.funBalance;
-      el.walletBalance.textContent = fmtMoney(bal, state.currencyMode);
-    } else {
-      el.walletBalance.textContent = isReal ? '0.00 PKR' : '0.00 FC';
+    if (el.walletBalance) {
+      if (state.user) {
+        const bal = isReal ? state.user.realBalance : state.user.funBalance;
+        el.walletBalance.textContent = fmtMoney(bal, state.currencyMode);
+      } else {
+        el.walletBalance.textContent = isReal ? '0.00 PKR' : '0.00 FC';
+      }
     }
   }
 
-  el.modeFunBtn.addEventListener('click', () => {
+  el.modeFunBtn?.addEventListener('click', () => {
     audio.playClick();
     setCurrencyMode('fun');
   });
-  el.modeRealBtn.addEventListener('click', () => {
+  el.modeRealBtn?.addEventListener('click', () => {
     audio.playClick();
     setCurrencyMode('real');
   });
@@ -923,7 +1109,7 @@
   function getEffectiveAudioConfig(serverCfg) {
     const base = serverCfg || state.publicSettings.audioConfig || { bgmEnabled: true, soundPreset: 'aviator-jet', masterVolume: 75 };
     try {
-      const savedRaw = localStorage.getItem('skywing_player_audio');
+      const savedRaw = lsGet('skywing_player_audio');
       if (savedRaw) {
         const parsed = JSON.parse(savedRaw);
         return {
@@ -1012,12 +1198,70 @@
     'lucky-wheel': 'Lucky Wheel',
     'dragon-hilo': 'Dragon Hi-Lo',
     'emerald-slots': 'Emerald 777 Slots',
+    'crystal-keno': 'Crystal Keno',
+    'tower-climb': 'Sky Tower',
+    'dragon-tiger': 'Dragon Tiger',
+    'neon-baccarat': 'Neon Baccarat',
+    'triple-roulette': 'Royal Roulette',
+    'lucky-scratch': 'Golden Scratch',
   };
 
   function getGameConfig(gameId) {
     const games = state.publicSettings.gamesConfig || [];
     return games.find((g) => g.id === gameId) || null;
   }
+
+  function syncFullscreenButtonUI() {
+    const active = Boolean(state.isFullscreen || document.fullscreenElement);
+    document.body.classList.toggle('is-game-fullscreen', active);
+    if (el.fullscreenToggleBtn) {
+      el.fullscreenToggleBtn.setAttribute('aria-pressed', String(active));
+    }
+    if (el.fullscreenBtnLabel) {
+      el.fullscreenBtnLabel.textContent = active ? 'Exit Full' : 'Fullscreen';
+    }
+    if (el.arenaFullscreenBtn) {
+      el.arenaFullscreenBtn.textContent = active ? '✕ Exit Fullscreen' : '⛶ Fullscreen';
+    }
+    if (state.activeGameId === 'skywing-crash') {
+      setTimeout(() => resizeCanvas(), 50);
+    }
+  }
+
+  async function toggleGameFullscreen() {
+    const nextFs = !state.isFullscreen && !document.fullscreenElement;
+    state.isFullscreen = nextFs;
+    try {
+      if (nextFs && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      } else if (!nextFs && document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // Fallback gracefully to pure CSS full-viewport fullscreen inside embedded iframes
+    }
+    syncFullscreenButtonUI();
+  }
+
+  async function exitGameFullscreen() {
+    state.isFullscreen = false;
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // ignore
+    }
+    syncFullscreenButtonUI();
+  }
+
+  document.addEventListener('fullscreenchange', () => {
+    state.isFullscreen = Boolean(document.fullscreenElement);
+    syncFullscreenButtonUI();
+  });
+
+  el.fullscreenToggleBtn?.addEventListener('click', toggleGameFullscreen);
+  el.arenaFullscreenBtn?.addEventListener('click', toggleGameFullscreen);
 
   function syncFeaturePaneTabs() {
     if (!el.topFeaturePane) return;
@@ -1031,6 +1275,7 @@
     const isAuthed = Boolean(state.user);
     const hasActiveGame = Boolean(isAuthed && state.activeGameId);
 
+    document.body.classList.toggle('in-game-mode', hasActiveGame);
     el.gameLobbySection?.classList.toggle('hidden', !isAuthed || hasActiveGame);
     el.activeGameWorkspace?.classList.toggle('hidden', !hasActiveGame);
 
@@ -1038,6 +1283,9 @@
       stopCrashRenderLoop();
       audio.setActiveGame(null);
       audio.setLocked(true);
+      if (state.isFullscreen || document.fullscreenElement) {
+        exitGameFullscreen();
+      }
     } else if (el.activeArenaTitle) {
       el.activeArenaTitle.textContent = GAME_LABELS[state.activeGameId] || 'Game Arena';
     }
@@ -1049,6 +1297,7 @@
     stopCrashRenderLoop();
     audio.setActiveGame(null);
     audio.setLocked(true);
+    exitGameFullscreen();
     syncGamesLobbyUI();
     syncGameWorkspaceView();
   }
@@ -1083,6 +1332,9 @@
         if (badge) {
           badge.textContent = enabled ? 'LIVE' : 'OFF';
         }
+        const cat = card.dataset.category || 'crash';
+        const showCat = state.lobbyCategory === 'all' || state.lobbyCategory === cat;
+        card.classList.toggle('hidden', !showCat);
       });
     }
 
@@ -1127,8 +1379,14 @@
     el.wheelArena?.classList.toggle('hidden', gameId !== 'lucky-wheel');
     el.hiloArena?.classList.toggle('hidden', gameId !== 'dragon-hilo');
     el.slotsArena?.classList.toggle('hidden', gameId !== 'emerald-slots');
+    el.kenoArena?.classList.toggle('hidden', gameId !== 'crystal-keno');
+    el.towerArena?.classList.toggle('hidden', gameId !== 'tower-climb');
+    el.dragonTigerArena?.classList.toggle('hidden', gameId !== 'dragon-tiger');
+    el.baccaratArena?.classList.toggle('hidden', gameId !== 'neon-baccarat');
+    el.rouletteArena?.classList.toggle('hidden', gameId !== 'triple-roulette');
+    el.scratchArena?.classList.toggle('hidden', gameId !== 'lucky-scratch');
 
-    // Enforce strict per-game SFX isolation (stops Crash turbine/ticks/explosions in other games)
+    // Enforce strict per-game SFX isolation
     audio.setActiveGame(gameId);
     audio.setLocked(false);
     audio.setMuted(!state.soundEnabled);
@@ -1174,9 +1432,30 @@
         renderWheelCanvas(state.wheelRotation);
       } else if (gameId === 'dragon-hilo') {
         updateHiLoOddsUI();
+      } else if (gameId === 'crystal-keno') {
+        renderKenoBoard();
+        renderKenoPaytable();
+      } else if (gameId === 'tower-climb') {
+        renderTowerRows();
+        updateTowerCashoutUI();
+      } else if (gameId === 'lucky-scratch') {
+        if (!state.scratch.cells.length) renderScratchGrid();
       }
     }
   }
+
+  el.lobbyCategoryFilters?.querySelectorAll('[data-lobby-cat]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.lobbyCategory = btn.dataset.lobbyCat || 'all';
+      el.lobbyCategoryFilters?.querySelectorAll('[data-lobby-cat]').forEach((b) => {
+        b.classList.toggle('active', b === btn);
+      });
+      syncGamesLobbyUI();
+    });
+  });
+
+  el.homeQuickDepositBtn?.addEventListener('click', () => openDepositFlow());
+  el.homeQuickRewardsBtn?.addEventListener('click', () => openRewardsFlow());
 
   el.gameLobbyBar?.querySelectorAll('.game-lobby-card').forEach((card) => {
     card.addEventListener('click', () => {
@@ -1234,6 +1513,9 @@
   });
 
   el.backToLobbyBtn?.addEventListener('click', () => {
+    returnToGameLobby();
+  });
+  el.headerBackHomeBtn?.addEventListener('click', () => {
     returnToGameLobby();
   });
 
@@ -1351,21 +1633,31 @@
       cards.push({
         meta: getGatewayBrandMeta('EasyPaisa'),
         label: 'EasyPaisa',
-        subtitle: acc.easypaisa.supportsAllBanks ? 'All Banks Raast · QR Only' : 'Verified · QR Only',
+        subtitle: acc.easypaisa.accountNumber
+          ? `${acc.easypaisa.accountNumber} · Instant`
+          : acc.easypaisa.supportsAllBanks
+            ? 'Direct # & IBAN · All Banks'
+            : 'Direct # · Instant',
       });
     }
     if (acc.jazzcash?.enabled) {
       cards.push({
         meta: getGatewayBrandMeta('JazzCash'),
         label: 'JazzCash',
-        subtitle: acc.jazzcash.supportsAllBanks ? 'All Banks Raast · QR Only' : 'Verified · QR Only',
+        subtitle: acc.jazzcash.accountNumber
+          ? `${acc.jazzcash.accountNumber} · Instant`
+          : acc.jazzcash.supportsAllBanks
+            ? 'Direct # & IBAN · All Banks'
+            : 'Direct # · Instant',
       });
     }
     if (acc.bank?.enabled) {
       cards.push({
         meta: getGatewayBrandMeta('Bank Account'),
-        label: 'E-Wallet / Bank Transfer',
-        subtitle: acc.bank.bankName ? `${acc.bank.bankName} · All Banks Raast QR` : 'All Banks Raast · QR Only',
+        label: acc.bank.bankName || 'E-Wallet / Bank Transfer',
+        subtitle: acc.bank.accountNumber
+          ? `${acc.bank.accountNumber}`
+          : 'All Pakistani Banks · Raast',
       });
     }
 
@@ -1633,9 +1925,24 @@
     return refUrl;
   }
 
+  function buildWhatsAppShareUrl() {
+    const shareUrl = getWhatsAppReferralHref();
+    const msg = `Join me on SkyWing Arena! Play 15 provably fair games & earn welcome rewards with my link: ${shareUrl}`;
+    return `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  }
+
+  function syncWhatsappShareLinks() {
+    const waHref = state.user?.referralCode ? buildWhatsAppShareUrl() : 'https://wa.me/';
+    [el.shareHeaderBtn, el.homeWhatsappShareBtn, el.drawerShareBtn].forEach((anchorEl) => {
+      if (anchorEl && anchorEl.tagName === 'A') {
+        anchorEl.href = waHref;
+      }
+    });
+  }
+
   function readRememberedCredentials() {
     try {
-      const raw = localStorage.getItem('skywing_remember_creds');
+      const raw = lsGet('skywing_remember_creds');
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (parsed && parsed.phone) return parsed;
@@ -1656,13 +1963,28 @@
 
   el.loginRememberCheck?.addEventListener('change', () => {
     if (!el.loginRememberCheck.checked) {
-      localStorage.removeItem('skywing_remember_creds');
+      lsRemove('skywing_remember_creds');
     }
+  });
+
+  document.querySelectorAll('[data-toggle-pw]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.togglePw;
+      const input = document.getElementById(targetId);
+      if (!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.classList.toggle('is-visible', show);
+      btn.setAttribute('aria-pressed', String(show));
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      const labelSpan = btn.querySelector('.pw-toggle-label');
+      if (labelSpan) labelSpan.textContent = show ? 'Hide' : 'Show';
+    });
   });
 
   function openAuthModal(defaultTab = 'login') {
     if (el.authErrorBox) el.authErrorBox.classList.add('hidden');
-    const savedRef = localStorage.getItem('skywing_ref') || '';
+    const savedRef = lsGet('skywing_ref');
     if (savedRef && el.regRefCode && !el.regRefCode.value) {
       el.regRefCode.value = savedRef;
     }
@@ -1679,28 +2001,29 @@
     const isAuthed = Boolean(state.user);
     if (state.user) {
       const displayName = String(state.user.displayName || state.user.phoneNumber || 'Player').trim();
-      el.authTriggerBtn.textContent = displayName;
-      el.authTriggerBtn.classList.remove('btn-primary');
-      el.authTriggerBtn.classList.add('btn-secondary');
-      if (el.userAccountLabel) {
-        el.userAccountLabel.textContent = displayName;
+      if (el.authTriggerBtn) {
+        el.authTriggerBtn.textContent = displayName;
+        el.authTriggerBtn.classList.remove('btn-primary');
+        el.authTriggerBtn.classList.add('btn-secondary');
       }
-
+      if (el.userAccountLabel) el.userAccountLabel.textContent = displayName;
       if (el.profileAvatarInitial) {
         el.profileAvatarInitial.textContent = String(displayName || 'S').trim().charAt(0).toUpperCase() || 'S';
       }
-      el.profilePhone.textContent = state.user.phoneNumber;
-      el.profileName.textContent = state.user.displayName;
-      el.profileFunBalance.textContent = fmtMoney(state.user.funBalance, 'fun');
-      el.profileRealBalance.textContent = fmtMoney(state.user.realBalance, 'real');
-      el.profileDeposited.textContent = fmtMoney(state.user.totalDeposited, 'real');
-      el.profileWithdrawn.textContent = fmtMoney(state.user.totalWithdrawn, 'real');
-      if (el.profileRefEarnings) {
-        el.profileRefEarnings.textContent = fmtMoney(state.user.referralEarnings || 0, 'real');
-      }
-      if (el.profileRefCode) {
-        el.profileRefCode.textContent = state.user.referralCode || '---';
-      }
+      if (el.profilePhone) el.profilePhone.textContent = state.user.phoneNumber || '-';
+      if (el.profileName) el.profileName.textContent = state.user.displayName || displayName;
+      if (el.profileFunBalance) el.profileFunBalance.textContent = fmtMoney(state.user.funBalance, 'fun');
+      if (el.profileRealBalance) el.profileRealBalance.textContent = fmtMoney(state.user.realBalance, 'real');
+      if (el.profileDeposited) el.profileDeposited.textContent = fmtMoney(state.user.totalDeposited, 'real');
+      if (el.profileWithdrawn) el.profileWithdrawn.textContent = fmtMoney(state.user.totalWithdrawn, 'real');
+      if (el.profileRefEarnings) el.profileRefEarnings.textContent = fmtMoney(state.user.referralEarnings || 0, 'real');
+      if (el.profileRefCode) el.profileRefCode.textContent = state.user.referralCode || '---';
+
+      // Home Hero live wallet & VIP readout
+      if (el.homeFunBalStat) el.homeFunBalStat.textContent = fmtMoney(state.user.funBalance, 'fun');
+      if (el.homeRealBalStat) el.homeRealBalStat.textContent = fmtMoney(state.user.realBalance, 'real');
+      if (el.homeVipStat) el.homeVipStat.textContent = `${state.user.vip?.tier || 'Bronze'} VIP`;
+
       const totalDep = Math.max(0, Number(state.user.totalDeposited || 0));
       const totalWager = Math.max(0, Number(state.user.totalWageredReal || 0));
       if (el.profileRolloverStatus) {
@@ -1731,17 +2054,23 @@
           ? `Next: ${state.user.vip.nextTier} (${Number(state.user.vip.nextTarget || 0).toLocaleString()} PKR)`
           : 'Max Platinum VIP';
       }
-      el.withdrawAvailBalance.textContent = fmtMoney(state.user.realBalance, 'real');
-      renderSavedPayouts();
+      if (el.withdrawAvailBalance) el.withdrawAvailBalance.textContent = fmtMoney(state.user.realBalance, 'real');
+      try {
+        renderSavedPayouts();
+      } catch {
+        // non-fatal
+      }
     } else {
       state.activeGameId = null;
-      el.authTriggerBtn.textContent = 'Log In / Join';
-      el.authTriggerBtn.classList.remove('btn-secondary');
-      el.authTriggerBtn.classList.add('btn-primary');
-      if (el.userAccountLabel) {
-        el.userAccountLabel.textContent = 'Guest';
+      if (el.authTriggerBtn) {
+        el.authTriggerBtn.textContent = 'Log In / Join';
+        el.authTriggerBtn.classList.remove('btn-secondary');
+        el.authTriggerBtn.classList.add('btn-primary');
       }
+      if (el.userAccountLabel) el.userAccountLabel.textContent = 'Guest';
     }
+
+    syncWhatsappShareLinks();
 
     // Auth-First Gate Enforcement + Visual Game Lobby Isolation
     el.authEntryGate?.classList.toggle('hidden', isAuthed);
@@ -1851,13 +2180,13 @@
     el.authErrorBox.classList.add('hidden');
   });
 
-  el.authTabRegister.addEventListener('click', () => {
+  el.authTabRegister?.addEventListener('click', () => {
     el.authTabRegister.classList.add('active');
-    el.authTabLogin.classList.remove('active');
-    el.registerForm.classList.remove('hidden');
-    el.loginForm.classList.add('hidden');
-    el.authErrorBox.classList.add('hidden');
-    const savedRef = localStorage.getItem('skywing_ref') || '';
+    el.authTabLogin?.classList.remove('active');
+    el.registerForm?.classList.remove('hidden');
+    el.loginForm?.classList.add('hidden');
+    el.authErrorBox?.classList.add('hidden');
+    const savedRef = lsGet('skywing_ref');
     if (savedRef && el.regRefCode && !el.regRefCode.value) {
       el.regRefCode.value = savedRef;
     }
@@ -1869,15 +2198,16 @@
   });
 
   function showAuthError(msg) {
+    if (!el.authErrorBox) return;
     el.authErrorBox.textContent = msg;
     el.authErrorBox.classList.remove('hidden');
   }
 
-  el.loginForm.addEventListener('submit', async (e) => {
+  el.loginForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    el.authErrorBox.classList.add('hidden');
-    const rawIdentifier = String(el.loginPhone.value || '').trim();
-    const password = String(el.loginPassword.value || '');
+    el.authErrorBox?.classList.add('hidden');
+    const rawIdentifier = String(el.loginPhone?.value || '').trim();
+    const password = String(el.loginPassword?.value || '');
     if (!rawIdentifier) {
       showAuthError('Enter your mobile number or username.');
       return;
@@ -1892,9 +2222,12 @@
       submitBtn.disabled = true;
       submitBtn.textContent = 'Logging in...';
     }
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 15000) : null;
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
+        signal: controller ? controller.signal : undefined,
         headers: {
           'Content-Type': 'application/json',
           'x-device-fingerprint': DEVICE_FINGERPRINT,
@@ -1914,7 +2247,13 @@
         data = {};
       }
       if (!res.ok) {
-        showAuthError(data.error || 'Invalid mobile number/username or password.');
+        const fallbackErr =
+          res.status === 429
+            ? 'Too many login attempts. Please wait a minute and try again.'
+            : res.status >= 500
+              ? 'Server busy during login. Please try again in a moment.'
+              : 'Invalid mobile number/username or password.';
+        showAuthError(data.error || fallbackErr);
         return;
       }
       if (data.isAdmin) {
@@ -1927,7 +2266,7 @@
           return;
         }
         if (data.adminToken) {
-          localStorage.setItem('skywing_admin_token', data.adminToken);
+          lsSet('skywing_admin_token', data.adminToken);
           closeModal('authModal');
           showToast('Admin authenticated — opening Operations Console...');
           setTimeout(() => {
@@ -1936,23 +2275,22 @@
           return;
         }
       }
+      if (!data.token || !data.user) {
+        showAuthError(data.error || 'Login response incomplete. Please try again.');
+        return;
+      }
       state.token = data.token;
       state.user = data.user;
       state.activeGameId = null;
 
-      // Remember Username & Password if checked, otherwise clear saved credentials
       if (el.loginRememberCheck?.checked) {
-        try {
-          localStorage.setItem(
-            'skywing_remember_creds',
-            JSON.stringify({
-              phone: rawIdentifier,
-              password,
-            })
-          );
-        } catch {
-          // ignore storage quota errors
-        }
+        lsSet(
+          'skywing_remember_creds',
+          JSON.stringify({
+            phone: rawIdentifier,
+            password,
+          })
+        );
         if (window.PasswordCredential && navigator.credentials?.store) {
           try {
             const cred = new window.PasswordCredential({
@@ -1966,20 +2304,27 @@
           }
         }
       } else {
-        localStorage.removeItem('skywing_remember_creds');
+        lsRemove('skywing_remember_creds');
       }
 
       saveSessionVault(state.token, state.user);
-      socket.emit('auth:identify', { token: state.token });
-      closeModal('authModal');
-      closeModal('forgotPasswordModal');
-      closeModal('termsModal');
+      try {
+        socket.emit('auth:identify', { token: state.token });
+      } catch {
+        // non-fatal
+      }
+      ['authModal', 'forgotPasswordModal', 'termsModal', 'playModeSelectModal'].forEach(closeModal);
       updateUserUI();
       fetchMyTransactions();
-      showToast(`Welcome back, ${state.user.displayName}!`);
-    } catch {
-      showAuthError('Network error. Please check your connection and try again.');
+      showToast(`Welcome back, ${state.user.displayName || state.user.phoneNumber}!`);
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        showAuthError('Login timed out. Please check your connection and try again.');
+      } else {
+        showAuthError('Network error. Please check your connection and try again.');
+      }
     } finally {
+      if (timeoutId) clearTimeout(timeoutId);
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = origLabel;
@@ -1987,53 +2332,74 @@
     }
   });
 
-  el.registerForm.addEventListener('submit', async (e) => {
+  el.registerForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    el.authErrorBox.classList.add('hidden');
+    el.authErrorBox?.classList.add('hidden');
     if (!el.regAgeAgreement?.checked) {
       const msg = 'You must confirm you are 18+ and accept the User Agreement to register.';
       showAuthError(msg);
       showToast(msg, true);
       return;
     }
-    const cleanPhone = normalizePakPhone(el.regPhone.value);
+    const cleanPhone = normalizePakPhone(el.regPhone?.value);
     if (!PK_PHONE_REGEX.test(cleanPhone)) {
       showAuthError('Enter a valid 11-digit Pakistani mobile number starting with 03 (e.g. 03001234567).');
       return;
     }
-    if ((el.regPassword.value || '').length < 6) {
+    if ((el.regPassword?.value || '').length < 6) {
       showAuthError('Password must be at least 6 characters.');
       return;
     }
+    const submitBtn = el.registerForm.querySelector('button[type="submit"]');
+    const origLabel = submitBtn ? submitBtn.textContent : 'Create Account & Claim Bonus';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating Account...';
+    }
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 15000) : null;
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
+        signal: controller ? controller.signal : undefined,
         headers: {
           'Content-Type': 'application/json',
           'x-device-fingerprint': DEVICE_FINGERPRINT,
         },
         body: JSON.stringify({
           phoneNumber: cleanPhone,
-          displayName: el.regName.value,
+          displayName: el.regName?.value || '',
           referralCode: String(el.regRefCode?.value || '').trim().toUpperCase(),
-          password: el.regPassword.value,
+          password: el.regPassword?.value || '',
           acceptedTerms: true,
           deviceFingerprint: DEVICE_FINGERPRINT,
         }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
       if (!res.ok) {
         showAuthError(data.error || 'Registration failed.');
+        return;
+      }
+      if (!data.token || !data.user) {
+        showAuthError('Registration response incomplete. Please try again.');
         return;
       }
       state.token = data.token;
       state.user = data.user;
       state.activeGameId = null;
       saveSessionVault(state.token, state.user);
-      socket.emit('auth:identify', { token: state.token });
-      closeModal('authModal');
-      closeModal('forgotPasswordModal');
-      closeModal('termsModal');
+      try {
+        socket.emit('auth:identify', { token: state.token });
+      } catch {
+        // non-fatal
+      }
+      ['authModal', 'forgotPasswordModal', 'termsModal', 'playModeSelectModal'].forEach(closeModal);
       updateUserUI();
       fetchMyTransactions();
       if (state.user.bonusRestricted) {
@@ -2041,8 +2407,18 @@
       } else {
         showToast(`Account created! Welcome to SkyWing, ${state.user.displayName}.`);
       }
-    } catch {
-      showAuthError('Network error. Please try again.');
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        showAuthError('Request timed out. Please try again.');
+      } else {
+        showAuthError('Network error. Please try again.');
+      }
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = origLabel;
+      }
     }
   });
 
@@ -2451,21 +2827,43 @@
     if (clearRef && el.depQrRefBadge) el.depQrRefBadge.textContent = 'REF: ---';
   }
 
+  function dataUrlToPngBlob(dataUrl) {
+    if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.includes(',')) return null;
+    const parts = dataUrl.split(',');
+    const byteString = atob(parts[1]);
+    const len = byteString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i += 1) {
+      bytes[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: 'image/png' });
+  }
+
   el.depSaveQrBtn?.addEventListener('click', async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!state.qrDownloadUrl) {
+    if (!state.lastQrDataUrl && !state.qrDownloadUrl) {
       await requestDynamicDepositQr();
     }
-    if (!state.qrDownloadUrl) {
+    if (!state.lastQrDataUrl && !state.qrDownloadUrl) {
       showToast('Generate a valid deposit QR code first.', true);
       return;
     }
     const amt = Math.round(Number(el.depAmount?.value || 0) || 0);
     const filename = `SkyWing-Deposit-QR-${amt}PKR.png`;
     try {
+      let blob = dataUrlToPngBlob(state.lastQrDataUrl);
+      if (!blob && state.qrDownloadUrl) {
+        const dlRes = await fetch(state.qrDownloadUrl, { credentials: 'same-origin' });
+        if (!dlRes.ok) throw new Error('QR fetch failed');
+        const rawBuf = await dlRes.arrayBuffer();
+        blob = new Blob([rawBuf], { type: 'image/png' });
+      }
+      if (!blob) throw new Error('QR image unavailable');
+
+      const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = state.qrDownloadUrl;
+      a.href = blobUrl;
       a.setAttribute('download', filename);
       a.rel = 'noopener';
       a.style.display = 'none';
@@ -2473,11 +2871,102 @@
       a.click();
       setTimeout(() => {
         if (a.parentNode) a.parentNode.removeChild(a);
-      }, 250);
-      showToast(`Downloading ${filename}...`);
+        try {
+          URL.revokeObjectURL(blobUrl);
+        } catch {
+          // ignore
+        }
+      }, 15000);
+      showToast(`QR downloaded: ${filename}`);
     } catch {
-      showToast('Unable to start download automatically. Please screenshot the QR code.', true);
+      showToast('Could not download QR automatically. Please refresh the QR code and try again.', true);
     }
+  });
+
+  function setDepositTransferTab(tabName) {
+    const showQr = tabName === 'qr';
+    el.depTabDirectBtn?.classList.toggle('active', !showQr);
+    el.depTabQrBtn?.classList.toggle('active', showQr);
+    el.depDirectPanel?.classList.toggle('hidden', showQr);
+    el.depQrPanel?.classList.toggle('hidden', !showQr);
+  }
+
+  el.depTabDirectBtn?.addEventListener('click', () => setDepositTransferTab('direct'));
+  el.depTabQrBtn?.addEventListener('click', () => setDepositTransferTab('qr'));
+
+  function syncDirectPanelFromSettings(method, amount, override = null) {
+    const pa = state.publicSettings.paymentAccounts || {};
+    const acct = method === 'EasyPaisa' ? pa.easypaisa : method === 'JazzCash' ? pa.jazzcash : pa.bank;
+    const meta = getGatewayBrandMeta(method);
+    const bankLabel = override?.bankName || acct?.bankName || (method === 'EasyPaisa' ? 'EasyPaisa / Telenor Bank' : method === 'JazzCash' ? 'JazzCash / Mobilink Bank' : 'Pakistani Bank / Raast');
+    const title = override?.accountTitle || acct?.accountTitle || 'SkyWing Official';
+    const acctNumber = override?.accountNumber || acct?.accountNumber || 'Contact Support';
+    const iban = override?.iban !== undefined ? override.iban : (acct?.iban || '');
+
+    if (el.depDirectBank) el.depDirectBank.textContent = bankLabel;
+    if (el.depDirectTitle) el.depDirectTitle.textContent = title;
+    if (el.depDirectNumber) el.depDirectNumber.textContent = acctNumber;
+    if (el.depDirectIbanRow && el.depDirectIban) {
+      if (iban) {
+        el.depDirectIban.textContent = iban;
+        el.depDirectIbanRow.classList.remove('hidden');
+      } else {
+        el.depDirectIban.textContent = '';
+        el.depDirectIbanRow.classList.add('hidden');
+      }
+    }
+    if (el.depDirectAmount) {
+      el.depDirectAmount.textContent = Number.isFinite(amount) && amount > 0 ? `${amount.toLocaleString()} PKR` : '0 PKR';
+    }
+    if (el.depQrGatewayBadge && !override) {
+      el.depQrGatewayBadge.textContent = `${meta.name} · Direct Transfer`;
+    }
+  }
+
+  document.querySelectorAll('.dep-copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const targetId = btn.dataset.copyTarget;
+      const targetEl = targetId ? document.getElementById(targetId) : null;
+      if (!targetEl) return;
+      let text = String(targetEl.textContent || '').trim();
+      if (btn.dataset.copyRaw === 'amount') {
+        text = String(Math.round(Number(el.depAmount?.value || 0) || 0));
+      }
+      if (!text || text === 'Loading...' || text === '---') return;
+      let copied = false;
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+          copied = true;
+        }
+      } catch {
+        copied = false;
+      }
+      if (!copied) {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          copied = document.execCommand('copy');
+          ta.remove();
+        } catch {
+          copied = false;
+        }
+      }
+      if (copied) {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied ✓';
+        setTimeout(() => {
+          btn.textContent = orig;
+        }, 1600);
+        showToast(`Copied: ${text}`);
+      } else {
+        showToast('Long-press the number to copy.', true);
+      }
+    });
   });
 
   async function requestDynamicDepositQr() {
@@ -2487,13 +2976,14 @@
     const minDep = Number(state.publicSettings.financialLimits?.minDeposit || 50);
     const meta = getGatewayBrandMeta(method);
 
-    if (el.depQrGatewayBadge) el.depQrGatewayBadge.textContent = `${meta.name} · Raast QR`;
+    syncDirectPanelFromSettings(method, amount, null);
+    if (el.depQrGatewayBadge) el.depQrGatewayBadge.textContent = `${meta.name} · Direct & QR`;
     if (el.depQrAmountBadge) {
       el.depQrAmountBadge.textContent = Number.isFinite(amount) && amount > 0 ? `${amount.toLocaleString()} PKR` : '0 PKR';
     }
 
     if (!Number.isFinite(amount) || amount < minDep || amount > 1000000) {
-      setQrLoadingState(`Enter at least ${minDep} PKR to generate your live QR code.`);
+      setQrLoadingState(`Enter at least ${minDep} PKR to generate your payment QR.`);
       if (el.depMicroHint) el.depMicroHint.textContent = '';
       return;
     }
@@ -2518,6 +3008,7 @@
         return;
       }
 
+      syncDirectPanelFromSettings(method, amount, data);
       state.qrDepositRef = data.qrReference;
       state.lastQrDataUrl = data.qrDataUrl || '';
       state.qrDownloadUrl = data.downloadUrl || '';
@@ -2531,15 +3022,16 @@
       if (el.depQrPlaceholder) el.depQrPlaceholder.classList.add('hidden');
       if (el.depQrRefBadge) el.depQrRefBadge.textContent = `REF: ${data.qrReference}`;
       if (el.depQrGatewayBadge) {
-        el.depQrGatewayBadge.textContent = data.displayMethod || `${meta.name} · Raast QR`;
+        el.depQrGatewayBadge.textContent = data.displayMethod || `${meta.name} · Direct & QR`;
       }
       if (el.depQrAmountBadge) el.depQrAmountBadge.textContent = `${Number(data.amount).toLocaleString()} PKR`;
       if (el.depQrScanHint) {
-        if (data.supportsAllBanks || method === 'Bank Account') {
+        if (data.hasCustomQr) {
           el.depQrScanHint.innerHTML =
-            'Scan via <strong>EasyPaisa, JazzCash, SadaPay, NayaPay, Meezan, HBL, UBL</strong> or any Pakistani Bank Raast scanner, then submit your TID / screenshot below.';
+            'Official Account QR ready! Scan with <strong>EasyPaisa, JazzCash, SadaPay, NayaPay or any Bank App</strong>, or use <strong>Direct Number / IBAN</strong> above.';
         } else {
-          el.depQrScanHint.innerHTML = `Scan via <strong>${escapeHtml(method)}</strong> (or set an IBAN in Admin Panel to allow any Pakistani Bank app), then submit your TID / screenshot below.`;
+          el.depQrScanHint.innerHTML =
+            'Note: Many Pakistani apps only accept official merchant QR or direct transfer. Use <strong>Direct Number / IBAN</strong> above for 100% instant success on every bank app!';
         }
       }
       if (el.depMicroHint) {
@@ -2550,7 +3042,7 @@
       }
     } catch {
       if (seq === state.qrRequestSeq) {
-        setQrLoadingState('Network error generating QR code. Retrying on edit...');
+        setQrLoadingState('Network error generating QR. Use Direct Number / IBAN tab above.');
       }
     }
   }
@@ -3327,6 +3819,138 @@
       return;
     }
 
+    if (gid === 'crystal-keno') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Keno Draws';
+      const items = (state.arcade.kenoHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML = '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Crystal Keno draws...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const mult = Number(item.multiplier || 0);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${mult >= 5 ? 'mult-high' : mult > 0 ? 'mult-med' : 'mult-low'}`;
+        chip.textContent = mult > 0 ? `${mult}x` : '0x';
+        chip.addEventListener('click', () => {
+          showToast(`Keno: ${(item.hits || []).length}/${(item.picks || []).length} Hits → ${mult}x`);
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
+    if (gid === 'tower-climb') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Tower Climbs';
+      const items = (state.arcade.towerHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML = '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Sky Tower climbs...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const boom = Boolean(item.boom);
+        const mult = Number(item.multiplier || 0);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${boom ? 'mult-low' : mult >= 3 ? 'mult-high' : 'mult-med'}`;
+        chip.textContent = boom ? `F${Number(item.floorReached || 0) + 1}✕` : `${mult.toFixed(2)}x`;
+        chip.addEventListener('click', () => {
+          showToast(boom ? `Sky Tower Trap on Floor ${Number(item.floorReached || 0) + 1}` : `Sky Tower Reached Floor ${item.floorReached} (${mult.toFixed(2)}x)`);
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
+    if (gid === 'dragon-tiger') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Dragon Tiger';
+      const items = (state.arcade.dragonTigerHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML = '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Dragon Tiger deals...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const w = String(item.winner || 'dragon').toUpperCase();
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${item.won ? 'mult-med' : w === 'TIE' ? 'mult-high' : 'mult-low'}`;
+        chip.textContent = w === 'DRAGON' ? 'D' : w === 'TIGER' ? 'T' : 'TIE';
+        chip.addEventListener('click', () => {
+          showToast(`Dragon ${item.dragonCard} vs Tiger ${item.tigerCard} → ${w}`);
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
+    if (gid === 'neon-baccarat') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Baccarat';
+      const items = (state.arcade.baccaratHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML = '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Neon Baccarat shoes...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const w = String(item.winner || 'player').toUpperCase();
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${item.won ? 'mult-med' : w === 'TIE' ? 'mult-high' : 'mult-low'}`;
+        chip.textContent = w === 'PLAYER' ? `P${item.playerScore}` : w === 'BANKER' ? `B${item.bankerScore}` : `T${item.playerScore}`;
+        chip.addEventListener('click', () => {
+          showToast(`Baccarat: Player ${item.playerScore} vs Banker ${item.bankerScore} (${w})`);
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
+    if (gid === 'triple-roulette') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Roulette';
+      const items = (state.arcade.rouletteHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML = '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Royal Roulette spins...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${item.color === 'green' ? 'mult-high' : item.won ? 'mult-med' : 'mult-low'}`;
+        chip.textContent = `${item.pocket}`;
+        chip.addEventListener('click', () => {
+          showToast(`Roulette #${item.pocket} (${String(item.color || '').toUpperCase()})`);
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
+    if (gid === 'lucky-scratch') {
+      if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Scratch Cards';
+      const items = (state.arcade.scratchHistory || []).slice(0, 15);
+      if (!items.length) {
+        el.historyList.innerHTML = '<span style="font-size: 0.78rem; color: var(--text-muted);">Waiting for Golden Scratch cards...</span>';
+        return;
+      }
+      el.historyList.innerHTML = '';
+      items.forEach((item) => {
+        const mult = Number(item.multiplier || 0);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `history-chip ${mult >= 6 ? 'mult-high' : mult > 0 ? 'mult-med' : 'mult-low'}`;
+        chip.textContent = mult > 0 ? `${mult}x` : '0x';
+        chip.addEventListener('click', () => {
+          showToast(mult > 0 ? `Scratch Match (${item.matchSymbol}) → ${mult}x` : 'Golden Scratch — No Match');
+        });
+        el.historyList.appendChild(chip);
+      });
+      return;
+    }
+
     // SkyWing Crash History
     if (el.historyLabel) el.historyLabel.textContent = 'Last 15 Flights';
     const items = (state.game.history || []).slice(0, 15);
@@ -3405,6 +4029,42 @@
           empty: 'No Emerald 777 Slots spins yet. Spin now!',
           label: 'Spins',
           multFmt: (x) => (Array.isArray(x.reels) ? x.reels.join('') : `${Number(x.multiplier || 0)}x`),
+        },
+        'crystal-keno': {
+          items: state.arcade.kenoHistory || [],
+          empty: 'No Crystal Keno draws yet. Pick numbers!',
+          label: 'Draws',
+          multFmt: (x) => `${Number(x.multiplier || 0)}x (${(x.hits || []).length}H)`,
+        },
+        'tower-climb': {
+          items: state.arcade.towerHistory || [],
+          empty: 'No Sky Tower climbs yet. Start climbing!',
+          label: 'Climbs',
+          multFmt: (x) => (x.boom ? `Trap F${Number(x.floorReached || 0) + 1}` : `${Number(x.multiplier || 0).toFixed(2)}x`),
+        },
+        'dragon-tiger': {
+          items: state.arcade.dragonTigerHistory || [],
+          empty: 'No Dragon Tiger duels yet. Deal now!',
+          label: 'Duels',
+          multFmt: (x) => `${String(x.winner || 'D').toUpperCase()} (${escapeHtml(x.dragonCard || '')}/${escapeHtml(x.tigerCard || '')})`,
+        },
+        'neon-baccarat': {
+          items: state.arcade.baccaratHistory || [],
+          empty: 'No Neon Baccarat hands yet. Deal shoe!',
+          label: 'Hands',
+          multFmt: (x) => `P${x.playerScore ?? 0}:B${x.bankerScore ?? 0}`,
+        },
+        'triple-roulette': {
+          items: state.arcade.rouletteHistory || [],
+          empty: 'No Royal Roulette spins yet. Place bet!',
+          label: 'Spins',
+          multFmt: (x) => `#${x.pocket ?? 0} ${String(x.color || '').toUpperCase().slice(0, 1)}`,
+        },
+        'lucky-scratch': {
+          items: state.arcade.scratchHistory || [],
+          empty: 'No Golden Scratch cards yet. Buy a card!',
+          label: 'Cards',
+          multFmt: (x) => (Number(x.multiplier || 0) > 0 ? `${x.matchSymbol || ''} ${x.multiplier}x` : '0x'),
         },
       };
 
@@ -4245,6 +4905,12 @@
     if (Array.isArray(data.wheelHistory)) state.arcade.wheelHistory = data.wheelHistory;
     if (Array.isArray(data.hiloHistory)) state.arcade.hiloHistory = data.hiloHistory;
     if (Array.isArray(data.slotsHistory)) state.arcade.slotsHistory = data.slotsHistory;
+    if (Array.isArray(data.kenoHistory)) state.arcade.kenoHistory = data.kenoHistory;
+    if (Array.isArray(data.towerHistory)) state.arcade.towerHistory = data.towerHistory;
+    if (Array.isArray(data.dragonTigerHistory)) state.arcade.dragonTigerHistory = data.dragonTigerHistory;
+    if (Array.isArray(data.baccaratHistory)) state.arcade.baccaratHistory = data.baccaratHistory;
+    if (Array.isArray(data.rouletteHistory)) state.arcade.rouletteHistory = data.rouletteHistory;
+    if (Array.isArray(data.scratchHistory)) state.arcade.scratchHistory = data.scratchHistory;
     if (data.onlineCount !== undefined && el.onlineCount) {
       el.onlineCount.textContent = `${data.onlineCount} Online`;
     }
@@ -4517,6 +5183,12 @@
   socket.on('arcade:wheel_spin', (item) => pushArcadeSocketFeed('wheelHistory', 'lucky-wheel', item));
   socket.on('arcade:hilo_play', (item) => pushArcadeSocketFeed('hiloHistory', 'dragon-hilo', item));
   socket.on('arcade:slots_spin', (item) => pushArcadeSocketFeed('slotsHistory', 'emerald-slots', item));
+  socket.on('arcade:keno_play', (item) => pushArcadeSocketFeed('kenoHistory', 'crystal-keno', item));
+  socket.on('arcade:tower_play', (item) => pushArcadeSocketFeed('towerHistory', 'tower-climb', item));
+  socket.on('arcade:dragontiger_play', (item) => pushArcadeSocketFeed('dragonTigerHistory', 'dragon-tiger', item));
+  socket.on('arcade:baccarat_play', (item) => pushArcadeSocketFeed('baccaratHistory', 'neon-baccarat', item));
+  socket.on('arcade:roulette_spin', (item) => pushArcadeSocketFeed('rouletteHistory', 'triple-roulette', item));
+  socket.on('arcade:scratch_play', (item) => pushArcadeSocketFeed('scratchHistory', 'lucky-scratch', item));
 
   // Periodic 60s activity heartbeat to preserve 72h rolling inactivity window while open
   setInterval(() => {
@@ -5646,52 +6318,774 @@
   });
 
   // ==========================================================================
-  // VIP Loyalty Tiers, Rewards & Referral Copy / Share & Earn
+  // 10) Crystal Keno Controller (1-40 Grid, 1-5 Picks, 10 Balls Drawn)
+  // ==========================================================================
+  function renderKenoPaytable() {
+    if (!el.kenoPaytableStrip) return;
+    const tbl = KENO_PAYTABLES[state.kenoPicks.length] || KENO_PAYTABLES[3];
+    const entries = Object.entries(tbl);
+    el.kenoPaytableStrip.innerHTML = entries
+      .map(([hits, mult]) => `<span class="slots-pay-pill">${hits} Hit${Number(hits) > 1 ? 's' : ''} = ${mult}x</span>`)
+      .join('');
+    if (el.kenoPickCountText) {
+      el.kenoPickCountText.textContent = `Selected: ${state.kenoPicks.length} / 5`;
+    }
+  }
+
+  function renderKenoBoard(drawn = [], hits = []) {
+    if (!el.kenoGrid) return;
+    const drawnSet = new Set(drawn);
+    const hitSet = new Set(hits);
+    el.kenoGrid.innerHTML = '';
+    for (let num = 1; num <= 40; num++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      const isPicked = state.kenoPicks.includes(num);
+      const isHit = hitSet.has(num);
+      const isDrawn = drawnSet.has(num) && !isHit;
+      btn.className = `keno-tile tabular-nums ${isHit ? 'hit' : isPicked ? 'picked' : isDrawn ? 'drawn' : ''}`;
+      btn.textContent = String(num);
+      btn.disabled = state.kenoBusy;
+      btn.addEventListener('click', () => {
+        if (state.kenoBusy) return;
+        audio.playClick();
+        if (state.kenoPicks.includes(num)) {
+          state.kenoPicks = state.kenoPicks.filter((x) => x !== num);
+        } else if (state.kenoPicks.length < 5) {
+          state.kenoPicks.push(num);
+        } else {
+          showToast('Maximum 5 crystal numbers per draw.', true);
+          return;
+        }
+        renderKenoBoard();
+        renderKenoPaytable();
+      });
+      el.kenoGrid.appendChild(btn);
+    }
+  }
+
+  el.kenoQuickPickBtn?.addEventListener('click', () => {
+    if (state.kenoBusy) return;
+    audio.playClick();
+    const nums = [];
+    while (nums.length < 3) {
+      const n = Math.floor(Math.random() * 40) + 1;
+      if (!nums.includes(n)) nums.push(n);
+    }
+    state.kenoPicks = nums;
+    renderKenoBoard();
+    renderKenoPaytable();
+  });
+
+  el.kenoClearBtn?.addEventListener('click', () => {
+    if (state.kenoBusy) return;
+    state.kenoPicks = [];
+    renderKenoBoard();
+    renderKenoPaytable();
+  });
+
+  document.querySelectorAll('.keno-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.kenoAmount && !state.kenoBusy) el.kenoAmount.value = btn.dataset.amt;
+    });
+  });
+
+  el.kenoPlayBtn?.addEventListener('click', async () => {
+    if (!state.user) return openAuthModal('login');
+    if (state.kenoBusy) return;
+    if (state.kenoPicks.length < 1) {
+      showToast('Pick at least 1 crystal number (1–40).', true);
+      return;
+    }
+    const amount = Number(el.kenoAmount?.value || 0);
+    state.kenoBusy = true;
+    el.kenoPlayBtn.disabled = true;
+    if (el.kenoStatusBadge) el.kenoStatusBadge.textContent = 'Drawing...';
+    audio.ensureContext();
+    try {
+      const res = await fetch('/api/games/keno/play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+        body: JSON.stringify({ currencyMode: state.currencyMode, amount, picks: state.kenoPicks }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Keno draw failed.', true);
+        state.kenoBusy = false;
+        el.kenoPlayBtn.disabled = false;
+        if (el.kenoStatusBadge) el.kenoStatusBadge.textContent = 'Ready';
+        return;
+      }
+
+      const drawn = Array.isArray(data.drawn) ? data.drawn : [];
+      const hits = Array.isArray(data.hits) ? data.hits : [];
+      let revealedIdx = 0;
+      const timer = setInterval(() => {
+        revealedIdx += 2;
+        audio.playKenoDraw(revealedIdx);
+        const partial = drawn.slice(0, revealedIdx);
+        const partialHits = hits.filter((h) => partial.includes(h));
+        renderKenoBoard(partial, partialHits);
+        if (revealedIdx >= drawn.length) {
+          clearInterval(timer);
+          renderKenoBoard(drawn, hits);
+          const won = Number(data.multiplier || 0) > 0;
+          if (el.kenoResultSub) {
+            el.kenoResultSub.textContent = won
+              ? `${hits.length} Crystal Hits (${data.multiplier}x)! Won +${fmtMoney(data.payout, data.currencyMode)}`
+              : `${hits.length} Hits — Drawn: ${drawn.join(', ')}`;
+          }
+          if (el.kenoStatusBadge) {
+            el.kenoStatusBadge.textContent = won ? `WIN ${data.multiplier}x` : `${hits.length} Hits`;
+          }
+          if (won) audio.playArcadeWin('crystal-keno');
+          if (Array.isArray(data.kenoHistory)) state.arcade.kenoHistory = data.kenoHistory;
+          if (data.user) {
+            state.user = data.user;
+            saveSessionVault(state.token, state.user);
+            updateUserUI();
+          }
+          renderHistory();
+          renderSidebar();
+          state.kenoBusy = false;
+          el.kenoPlayBtn.disabled = false;
+        }
+      }, 95);
+    } catch {
+      showToast('Network error drawing Keno balls.', true);
+      state.kenoBusy = false;
+      el.kenoPlayBtn.disabled = false;
+    }
+  });
+
+  // ==========================================================================
+  // 11) Sky Tower Controller (8-Floor Progressive Vault Climb)
+  // ==========================================================================
+  function updateTowerCashoutUI() {
+    const active = state.tower.active;
+    const potWin = active && state.tower.currentFloor > 0
+      ? Math.round(state.tower.betAmount * state.tower.multiplier * 100) / 100
+      : 0;
+    if (el.towerMultBadge) el.towerMultBadge.textContent = `${Number(state.tower.multiplier || 1).toFixed(2)}x`;
+    if (el.towerCashoutVal) el.towerCashoutVal.textContent = fmtMoney(potWin, state.currencyMode);
+    if (el.towerNextFloorText) {
+      el.towerNextFloorText.textContent = active
+        ? `Floor ${state.tower.currentFloor + 1} Next: ${Number(state.tower.nextMultiplier || 1.44).toFixed(2)}x`
+        : 'Next Floor: 1.44x';
+    }
+    el.towerStartBtn?.classList.toggle('hidden', active);
+    el.towerCashoutBtn?.classList.toggle('hidden', !active || state.tower.currentFloor <= 0);
+    if (el.towerCashoutBtn) {
+      el.towerCashoutBtn.textContent = `CASH OUT (+${fmtMoney(potWin, state.currencyMode)})`;
+    }
+  }
+
+  function renderTowerRows() {
+    if (!el.towerRowsContainer) return;
+    el.towerRowsContainer.innerHTML = '';
+    const edgeFactor = Math.max(0.75, 1 - Number(getGameConfig('tower-climb')?.houseEdgePct ?? 4) / 100);
+
+    for (let floor = 7; floor >= 0; floor--) {
+      const row = document.createElement('div');
+      const isActiveFloor = state.tower.active && state.tower.currentFloor === floor;
+      row.className = `tower-row ${isActiveFloor ? 'active-floor' : ''}`;
+
+      const floorMult = Math.max(1.01, Math.round(Math.pow(1.5, floor + 1) * edgeFactor * 100) / 100);
+      const label = document.createElement('span');
+      label.className = 'tower-floor-label tabular-nums';
+      label.textContent = `F${floor + 1} · ${floorMult}x`;
+      row.appendChild(label);
+
+      const revItem = state.tower.revealed.find((r) => r.floor === floor);
+      const trapIdx = state.tower.traps.length === 8 ? state.tower.traps[floor] : -1;
+
+      for (let tile = 0; tile < 3; tile++) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tower-tile';
+        const isRevSafe = revItem && revItem.tile === tile;
+        const isHitTrap = !state.tower.active && state.tower.hitBoom && state.tower.hitBoom.floor === floor && state.tower.hitBoom.tile === tile;
+        const isHintTrap = !state.tower.active && trapIdx === tile && !isHitTrap;
+
+        if (isRevSafe) {
+          btn.classList.add('safe');
+          btn.textContent = '💎';
+        } else if (isHitTrap) {
+          btn.classList.add('trap');
+          btn.textContent = '💣';
+        } else if (isHintTrap) {
+          btn.classList.add('trap-hint');
+          btn.textContent = '💣';
+        } else {
+          btn.textContent = isActiveFloor ? '★' : '·';
+        }
+
+        btn.disabled = !isActiveFloor || state.tower.busy;
+        btn.addEventListener('click', () => handleTowerStep(floor, tile));
+        row.appendChild(btn);
+      }
+      el.towerRowsContainer.appendChild(row);
+    }
+  }
+
+  document.querySelectorAll('.tower-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.towerAmount && !state.tower.active) el.towerAmount.value = btn.dataset.amt;
+    });
+  });
+
+  el.towerStartBtn?.addEventListener('click', async () => {
+    if (!state.user) return openAuthModal('login');
+    if (state.tower.busy || state.tower.active) return;
+    const amount = Number(el.towerAmount?.value || 0);
+    state.tower.busy = true;
+    el.towerStartBtn.disabled = true;
+    audio.ensureContext();
+    try {
+      const res = await fetch('/api/games/tower/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+        body: JSON.stringify({ currencyMode: state.currencyMode, amount }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Could not start Sky Tower.', true);
+        return;
+      }
+      state.tower = {
+        active: true,
+        currentFloor: 0,
+        betAmount: amount,
+        multiplier: 1.0,
+        nextMultiplier: Number(data.nextMultiplier || 1.44),
+        revealed: [],
+        traps: [],
+        hitBoom: null,
+        busy: false,
+      };
+      if (data.user) {
+        state.user = data.user;
+        saveSessionVault(state.token, state.user);
+        updateUserUI();
+      }
+      if (el.towerResultSub) el.towerResultSub.textContent = 'Choose 1 of 3 tiles on Floor 1!';
+      audio.playClick();
+      renderTowerRows();
+      updateTowerCashoutUI();
+    } catch {
+      showToast('Network error starting Sky Tower.', true);
+    } finally {
+      state.tower.busy = false;
+      el.towerStartBtn.disabled = false;
+    }
+  });
+
+  async function handleTowerStep(floor, tile) {
+    if (!state.tower.active || state.tower.busy) return;
+    state.tower.busy = true;
+    renderTowerRows();
+    try {
+      const res = await fetch('/api/games/tower/step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+        body: JSON.stringify({ floor, tile }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Tower step failed.', true);
+        state.tower.busy = false;
+        renderTowerRows();
+        return;
+      }
+
+      if (data.boom) {
+        audio.playCrash();
+        state.tower.active = false;
+        state.tower.traps = data.traps || [];
+        state.tower.revealed = data.revealed || state.tower.revealed;
+        state.tower.hitBoom = { floor, tile };
+        state.tower.multiplier = 0;
+        if (el.towerResultSub) el.towerResultSub.textContent = `TRAP HIT on Floor ${floor + 1}! Better luck next climb.`;
+        if (Array.isArray(data.towerHistory)) state.arcade.towerHistory = data.towerHistory;
+        if (data.user) {
+          state.user = data.user;
+          saveSessionVault(state.token, state.user);
+          updateUserUI();
+        }
+        renderHistory();
+        renderSidebar();
+      } else if (data.completedTop) {
+        audio.playArcadeWin('tower-climb');
+        state.tower.active = false;
+        state.tower.traps = data.traps || [];
+        state.tower.revealed = data.revealed || [];
+        state.tower.currentFloor = 8;
+        state.tower.multiplier = Number(data.multiplier || 1);
+        if (el.towerResultSub) el.towerResultSub.textContent = `SUMMIT REACHED ${data.multiplier}x! Won +${fmtMoney(data.payout, state.currencyMode)}`;
+        if (Array.isArray(data.towerHistory)) state.arcade.towerHistory = data.towerHistory;
+        if (data.user) {
+          state.user = data.user;
+          saveSessionVault(state.token, state.user);
+          updateUserUI();
+        }
+        renderHistory();
+        renderSidebar();
+      } else {
+        audio.playTowerStep(floor);
+        state.tower.revealed = data.revealed || [...state.tower.revealed, { floor, tile }];
+        state.tower.currentFloor = Number(data.currentFloor || floor + 1);
+        state.tower.multiplier = Number(data.multiplier || 1);
+        state.tower.nextMultiplier = Number(data.nextMultiplier || state.tower.multiplier);
+        if (el.towerResultSub) {
+          el.towerResultSub.textContent = `Safe! Climbed Floor ${state.tower.currentFloor} (${state.tower.multiplier.toFixed(2)}x) — Keep climbing or Cash Out!`;
+        }
+      }
+      renderTowerRows();
+      updateTowerCashoutUI();
+    } catch {
+      showToast('Network error during Sky Tower climb.', true);
+    } finally {
+      state.tower.busy = false;
+      renderTowerRows();
+    }
+  }
+
+  el.towerCashoutBtn?.addEventListener('click', async () => {
+    if (!state.tower.active || state.tower.busy || state.tower.currentFloor <= 0) return;
+    state.tower.busy = true;
+    el.towerCashoutBtn.disabled = true;
+    try {
+      const res = await fetch('/api/games/tower/cashout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Cashout failed.', true);
+        return;
+      }
+      audio.playCashout();
+      state.tower.active = false;
+      state.tower.traps = data.traps || [];
+      state.tower.revealed = data.revealed || state.tower.revealed;
+      if (el.towerResultSub) {
+        el.towerResultSub.textContent = `CASHED OUT ${data.multiplier}x! Won +${fmtMoney(data.payout, state.currencyMode)}`;
+      }
+      if (Array.isArray(data.towerHistory)) state.arcade.towerHistory = data.towerHistory;
+      if (data.user) {
+        state.user = data.user;
+        saveSessionVault(state.token, state.user);
+        updateUserUI();
+      }
+      renderTowerRows();
+      updateTowerCashoutUI();
+      renderHistory();
+      renderSidebar();
+    } catch {
+      showToast('Network error cashing out Sky Tower.', true);
+    } finally {
+      state.tower.busy = false;
+      el.towerCashoutBtn.disabled = false;
+    }
+  });
+
+  // ==========================================================================
+  // 12) Dragon Tiger Controller
+  // ==========================================================================
+  el.dtChoiceGroup?.querySelectorAll('[data-dt-choice]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (state.dtBusy) return;
+      state.dtChoice = btn.dataset.dtChoice || 'dragon';
+      el.dtChoiceGroup.querySelectorAll('[data-dt-choice]').forEach((b) => b.classList.toggle('active', b === btn));
+    });
+  });
+
+  document.querySelectorAll('.dt-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.dtAmount && !state.dtBusy) el.dtAmount.value = btn.dataset.amt;
+    });
+  });
+
+  function renderPlayingCardEl(cardEl, cardStr, suitIdx) {
+    if (!cardEl) return;
+    const isRed = suitIdx === 1 || suitIdx === 2;
+    cardEl.classList.remove('back', 'red', 'black');
+    cardEl.classList.add(isRed ? 'red' : 'black');
+    const suit = cardStr ? cardStr.slice(-1) : '♠';
+    const top = cardEl.querySelector('.card-corner-top');
+    const mid = cardEl.querySelector('.card-center-pip');
+    const bot = cardEl.querySelector('.card-corner-bot');
+    if (top) top.textContent = cardStr;
+    if (mid) mid.textContent = suit;
+    if (bot) bot.textContent = cardStr;
+  }
+
+  el.dtDealBtn?.addEventListener('click', async () => {
+    if (!state.user) return openAuthModal('login');
+    if (state.dtBusy) return;
+    const amount = Number(el.dtAmount?.value || 0);
+    state.dtBusy = true;
+    el.dtDealBtn.disabled = true;
+    if (el.dtStatusBadge) el.dtStatusBadge.textContent = 'Dealing...';
+    audio.ensureContext();
+    audio.playCardDeal(0);
+    try {
+      const res = await fetch('/api/games/dragon-tiger/play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+        body: JSON.stringify({ currencyMode: state.currencyMode, amount, choice: state.dtChoice }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Dragon Tiger deal failed.', true);
+        if (el.dtStatusBadge) el.dtStatusBadge.textContent = 'Ready';
+        return;
+      }
+      renderPlayingCardEl(el.dtDragonCard, data.dragonCard, data.dragonSuitIdx);
+      setTimeout(() => audio.playCardDeal(1), 110);
+      renderPlayingCardEl(el.dtTigerCard, data.tigerCard, data.tigerSuitIdx);
+
+      const winnerLabel = String(data.winner || '').toUpperCase();
+      if (el.dtStatusBadge) {
+        el.dtStatusBadge.textContent = data.won ? `WIN ${data.multiplier}x` : winnerLabel === 'TIE' ? '50% Push' : `${winnerLabel} Wins`;
+      }
+      if (el.dtResultSub) {
+        el.dtResultSub.textContent = data.won
+          ? `${winnerLabel} WINS! Won +${fmtMoney(data.payout, data.currencyMode)} (${data.multiplier}x)`
+          : winnerLabel === 'TIE'
+            ? `Tie Push — 50% Refunded (+${fmtMoney(data.payout, data.currencyMode)})`
+            : `${winnerLabel} took it (${data.dragonCard} vs ${data.tigerCard})`;
+      }
+      if (data.won) audio.playArcadeWin('dragon-tiger');
+      if (Array.isArray(data.dragonTigerHistory)) state.arcade.dragonTigerHistory = data.dragonTigerHistory;
+      if (data.user) {
+        state.user = data.user;
+        saveSessionVault(state.token, state.user);
+        updateUserUI();
+      }
+      renderHistory();
+      renderSidebar();
+    } catch {
+      showToast('Network error dealing Dragon Tiger.', true);
+    } finally {
+      state.dtBusy = false;
+      el.dtDealBtn.disabled = false;
+    }
+  });
+
+  // ==========================================================================
+  // 13) Neon Baccarat Controller (Punto Banco Shoe)
+  // ==========================================================================
+  el.bacChoiceGroup?.querySelectorAll('[data-bac-choice]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (state.bacBusy) return;
+      state.bacChoice = btn.dataset.bacChoice || 'player';
+      el.bacChoiceGroup.querySelectorAll('[data-bac-choice]').forEach((b) => b.classList.toggle('active', b === btn));
+    });
+  });
+
+  document.querySelectorAll('.bac-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.bacAmount && !state.bacBusy) el.bacAmount.value = btn.dataset.amt;
+    });
+  });
+
+  function renderBaccaratHand(containerEl, cards) {
+    if (!containerEl) return;
+    containerEl.innerHTML = (cards || [])
+      .map((c) => {
+        const redCls = c.suitIdx === 1 || c.suitIdx === 2 ? 'red' : '';
+        return `<div class="mini-card ${redCls}">${escapeHtml(c.label)}</div>`;
+      })
+      .join('');
+  }
+
+  el.bacDealBtn?.addEventListener('click', async () => {
+    if (!state.user) return openAuthModal('login');
+    if (state.bacBusy) return;
+    const amount = Number(el.bacAmount?.value || 0);
+    state.bacBusy = true;
+    el.bacDealBtn.disabled = true;
+    if (el.bacStatusBadge) el.bacStatusBadge.textContent = 'Dealing Shoe...';
+    audio.ensureContext();
+    audio.playCardDeal(0);
+    try {
+      const res = await fetch('/api/games/baccarat/play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+        body: JSON.stringify({ currencyMode: state.currencyMode, amount, choice: state.bacChoice }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Baccarat deal failed.', true);
+        if (el.bacStatusBadge) el.bacStatusBadge.textContent = 'Ready';
+        return;
+      }
+      renderBaccaratHand(el.bacPlayerCards, data.playerCards);
+      renderBaccaratHand(el.bacBankerCards, data.bankerCards);
+      if (el.bacPlayerScore) el.bacPlayerScore.textContent = String(data.playerScore ?? 0);
+      if (el.bacBankerScore) el.bacBankerScore.textContent = String(data.bankerScore ?? 0);
+
+      const winnerLabel = String(data.winner || '').toUpperCase();
+      if (el.bacStatusBadge) {
+        el.bacStatusBadge.textContent = data.won ? `WIN ${data.multiplier}x` : `${winnerLabel} (${data.playerScore}-${data.bankerScore})`;
+      }
+      if (el.bacResultSub) {
+        el.bacResultSub.textContent = data.won
+          ? `${winnerLabel} WINS ${data.playerScore} vs ${data.bankerScore}! +${fmtMoney(data.payout, data.currencyMode)}`
+          : winnerLabel === 'TIE'
+            ? `Tie Push (${data.playerScore}-${data.bankerScore}) — Stake Returned!`
+            : `${winnerLabel} Won (${data.playerScore} vs ${data.bankerScore})`;
+      }
+      if (data.won) audio.playArcadeWin('neon-baccarat');
+      if (Array.isArray(data.baccaratHistory)) state.arcade.baccaratHistory = data.baccaratHistory;
+      if (data.user) {
+        state.user = data.user;
+        saveSessionVault(state.token, state.user);
+        updateUserUI();
+      }
+      renderHistory();
+      renderSidebar();
+    } catch {
+      showToast('Network error dealing Baccarat.', true);
+    } finally {
+      state.bacBusy = false;
+      el.bacDealBtn.disabled = false;
+    }
+  });
+
+  // ==========================================================================
+  // 14) Royal Roulette Controller (0-36 Single Zero Wheel)
+  // ==========================================================================
+  el.roulBetBoard?.querySelectorAll('[data-roul-type]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (state.roulBusy) return;
+      state.roulBetType = btn.dataset.roulType || 'red';
+      el.roulBetBoard.querySelectorAll('[data-roul-type]').forEach((b) => b.classList.toggle('active', b === btn));
+      el.roulStraightRow?.classList.toggle('hidden', state.roulBetType !== 'number');
+    });
+  });
+
+  document.querySelectorAll('.roul-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.roulAmount && !state.roulBusy) el.roulAmount.value = btn.dataset.amt;
+    });
+  });
+
+  el.roulSpinBtn?.addEventListener('click', async () => {
+    if (!state.user) return openAuthModal('login');
+    if (state.roulBusy) return;
+    const amount = Number(el.roulAmount?.value || 0);
+    const number = Math.min(36, Math.max(0, Math.floor(Number(el.roulStraightInput?.value ?? 7))));
+    state.roulBusy = true;
+    el.roulSpinBtn.disabled = true;
+    if (el.roulStatusBadge) el.roulStatusBadge.textContent = 'Spinning...';
+    audio.ensureContext();
+    try {
+      const res = await fetch('/api/games/roulette/play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+        body: JSON.stringify({ currencyMode: state.currencyMode, amount, betType: state.roulBetType, number }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Roulette spin failed.', true);
+        state.roulBusy = false;
+        el.roulSpinBtn.disabled = false;
+        if (el.roulStatusBadge) el.roulStatusBadge.textContent = 'Ready';
+        return;
+      }
+
+      state.roulRotation += 720 + ((Number(data.pocket || 0) * 9.73) % 360);
+      if (el.roulWheelDisc) el.roulWheelDisc.style.transform = `rotate(${state.roulRotation}deg)`;
+
+      let ticks = 0;
+      const tickTimer = setInterval(() => {
+        audio.playRouletteSpin(ticks);
+        ticks += 1;
+        if (ticks >= 8) {
+          clearInterval(tickTimer);
+          if (el.roulPocketOrb) {
+            el.roulPocketOrb.textContent = String(data.pocket ?? 0);
+            el.roulPocketOrb.className = `roul-pocket-hub tabular-nums pocket-${data.color || 'green'}`;
+          }
+          if (el.roulStatusBadge) {
+            el.roulStatusBadge.textContent = data.won ? `WIN ${data.multiplier}x` : `#${data.pocket} ${String(data.color || '').toUpperCase()}`;
+          }
+          if (el.roulResultSub) {
+            el.roulResultSub.textContent = data.won
+              ? `POCKET #${data.pocket} (${String(data.color || '').toUpperCase()})! Won +${fmtMoney(data.payout, data.currencyMode)}`
+              : `Landed on #${data.pocket} (${String(data.color || '').toUpperCase()}) — Spin again!`;
+          }
+          if (data.won) audio.playArcadeWin('triple-roulette');
+          if (Array.isArray(data.rouletteHistory)) state.arcade.rouletteHistory = data.rouletteHistory;
+          if (data.user) {
+            state.user = data.user;
+            saveSessionVault(state.token, state.user);
+            updateUserUI();
+          }
+          renderHistory();
+          renderSidebar();
+          state.roulBusy = false;
+          el.roulSpinBtn.disabled = false;
+        }
+      }, 105);
+    } catch {
+      showToast('Network error spinning Roulette.', true);
+      state.roulBusy = false;
+      el.roulSpinBtn.disabled = false;
+    }
+  });
+
+  // ==========================================================================
+  // 15) Golden Scratch Controller (3x3 Brushed Gold Foil)
+  // ==========================================================================
+  function finalizeScratchCardIfDone() {
+    if (!state.scratch.active) return;
+    if (state.scratch.scratched.every(Boolean)) {
+      state.scratch.active = false;
+      el.scratchRevealAllBtn?.classList.add('hidden');
+      if (state.scratch.pendingUser) {
+        state.user = state.scratch.pendingUser;
+        state.scratch.pendingUser = null;
+        saveSessionVault(state.token, state.user);
+        updateUserUI();
+      }
+      if (Array.isArray(state.scratch.pendingHistory)) {
+        state.arcade.scratchHistory = state.scratch.pendingHistory;
+        state.scratch.pendingHistory = null;
+      }
+      if (state.scratch.won) {
+        audio.playArcadeWin('lucky-scratch');
+        if (el.scratchResultSub) {
+          el.scratchResultSub.textContent = `MATCHED 3× ${state.scratch.matchSymbol} (${state.scratch.mult}x)! Won +${fmtMoney(state.scratch.payout, state.scratch.currencyMode)}`;
+        }
+        if (el.scratchStatusBadge) el.scratchStatusBadge.textContent = `WIN ${state.scratch.mult}x`;
+      } else {
+        if (el.scratchResultSub) el.scratchResultSub.textContent = 'No 3-of-a-kind match — Buy a new Golden Scratch card!';
+        if (el.scratchStatusBadge) el.scratchStatusBadge.textContent = 'Try Again';
+      }
+      renderHistory();
+      renderSidebar();
+      renderScratchGrid();
+    }
+  }
+
+  function renderScratchGrid() {
+    if (!el.scratchGrid) return;
+    el.scratchGrid.innerHTML = '';
+    const hasCard = state.scratch.cells.length === 9;
+    for (let i = 0; i < 9; i++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      const isRevealed = hasCard && state.scratch.scratched[i];
+      const sym = hasCard ? state.scratch.cells[i] : '✦';
+      const isWinningMatch = isRevealed && state.scratch.won && !state.scratch.active && sym === state.scratch.matchSymbol;
+      btn.className = `scratch-tile ${isRevealed ? 'scratched' : ''} ${isWinningMatch ? 'match-win' : ''}`;
+      btn.textContent = isRevealed ? sym : '✦';
+      btn.disabled = !hasCard || isRevealed || state.scratch.busy;
+      btn.addEventListener('click', () => {
+        if (!state.scratch.active || state.scratch.scratched[i]) return;
+        state.scratch.scratched[i] = true;
+        audio.playScratchReveal(i);
+        renderScratchGrid();
+        finalizeScratchCardIfDone();
+      });
+      el.scratchGrid.appendChild(btn);
+    }
+  }
+
+  document.querySelectorAll('.scratch-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (el.scratchAmount && !state.scratch.busy) el.scratchAmount.value = btn.dataset.amt;
+    });
+  });
+
+  el.scratchBuyBtn?.addEventListener('click', async () => {
+    if (!state.user) return openAuthModal('login');
+    if (state.scratch.busy) return;
+    if (state.scratch.active) {
+      el.scratchRevealAllBtn?.click();
+    }
+    const amount = Number(el.scratchAmount?.value || 0);
+    state.scratch.busy = true;
+    el.scratchBuyBtn.disabled = true;
+    if (el.scratchStatusBadge) el.scratchStatusBadge.textContent = 'Minting Card...';
+    audio.ensureContext();
+    try {
+      const res = await fetch('/api/games/scratch/play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+        body: JSON.stringify({ currencyMode: state.currencyMode, amount }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Could not buy Golden Scratch card.', true);
+        if (el.scratchStatusBadge) el.scratchStatusBadge.textContent = 'Ready';
+        return;
+      }
+      state.scratch = {
+        active: true,
+        cells: Array.isArray(data.cells) ? data.cells : [],
+        scratched: new Array(9).fill(false),
+        matchSymbol: data.matchSymbol || '',
+        won: Boolean(data.won),
+        mult: Number(data.multiplier || 0),
+        payout: Number(data.payout || 0),
+        currencyMode: data.currencyMode || state.currencyMode,
+        pendingUser: data.user || null,
+        pendingHistory: Array.isArray(data.scratchHistory) ? data.scratchHistory : null,
+        busy: false,
+      };
+      audio.playClick();
+      el.scratchRevealAllBtn?.classList.remove('hidden');
+      if (el.scratchStatusBadge) el.scratchStatusBadge.textContent = 'Tap Foil to Scratch!';
+      if (el.scratchResultSub) el.scratchResultSub.textContent = 'Tap each gold foil tile or click REVEAL ALL!';
+      renderScratchGrid();
+    } catch {
+      showToast('Network error purchasing Golden Scratch card.', true);
+    } finally {
+      state.scratch.busy = false;
+      el.scratchBuyBtn.disabled = false;
+    }
+  });
+
+  el.scratchRevealAllBtn?.addEventListener('click', () => {
+    if (!state.scratch.active) return;
+    audio.playScratchReveal(4);
+    state.scratch.scratched = new Array(9).fill(true);
+    finalizeScratchCardIfDone();
+  });
+
+  // ==========================================================================
+  // VIP Loyalty Tiers, Rewards & WhatsApp Referral Share & Earn (15%)
   // ==========================================================================
   function getReferralShareUrl() {
     const code = state.user?.referralCode || '';
     return `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
   }
 
-  async function shareOrCopyReferralLink(triggerBtn = null) {
+  function handleWhatsappShareClick(e, triggerBtn = null) {
     if (!state.user?.referralCode) {
+      e?.preventDefault?.();
       openAuthModal('register');
       return;
     }
     const shareUrl = getReferralShareUrl();
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'SkyWing Arena — Play & Earn Commission',
-          text: 'Join me on SkyWing Crash, Cyber Plinko & Golden Mines! Register with my link for welcome credits:',
-          url: shareUrl,
-        });
-        showToast('Referral link shared! Earn up to 15% commission on deposits.');
-        return;
-      } catch (err) {
-        if (err && err.name === 'AbortError') return;
-      }
+    const waUrl = buildWhatsAppShareUrl();
+    if (triggerBtn && triggerBtn.tagName === 'A') {
+      triggerBtn.href = waUrl;
     }
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      if (triggerBtn) {
-        const span = triggerBtn.querySelector('span');
-        if (span) {
-          const prev = span.textContent;
-          span.textContent = 'Copied!';
-          setTimeout(() => {
-            span.textContent = prev;
-          }, 1600);
-        }
-      }
-      showToast('Referral link copied! Share & earn up to 15% commission.');
-    } catch {
-      showToast(`Share your link: ${shareUrl}`);
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(shareUrl).catch(() => {});
     }
+    showToast('Opening WhatsApp to share your 15% referral invite link!');
   }
 
-  el.shareHeaderBtn?.addEventListener('click', () => shareOrCopyReferralLink(el.shareHeaderBtn));
-  el.drawerShareBtn?.addEventListener('click', () => shareOrCopyReferralLink(el.drawerShareBtn));
+  el.shareHeaderBtn?.addEventListener('click', (e) => handleWhatsappShareClick(e, el.shareHeaderBtn));
+  el.homeWhatsappShareBtn?.addEventListener('click', (e) => handleWhatsappShareClick(e, el.homeWhatsappShareBtn));
+  el.drawerShareBtn?.addEventListener('click', (e) => handleWhatsappShareClick(e, el.drawerShareBtn));
 
   el.profileCopyRefBtn?.addEventListener('click', () => {
     if (!state.user?.referralCode) return;
@@ -5895,7 +7289,7 @@
       soundPreset: el.playerAudioPreset?.value || 'aviator-jet',
       masterVolume: Number(el.playerAudioVolume?.value ?? 75),
     };
-    localStorage.setItem('skywing_player_audio', JSON.stringify(cfg));
+    lsSet('skywing_player_audio', JSON.stringify(cfg));
     if (el.playerAudioBgmLabel) el.playerAudioBgmLabel.textContent = cfg.bgmEnabled ? 'ON' : 'OFF';
     if (el.playerAudioVolVal) el.playerAudioVolVal.textContent = `${cfg.masterVolume}%`;
     audio.setConfig(cfg, state.soundEnabled);
@@ -5906,7 +7300,7 @@
   el.playerAudioPreset?.addEventListener('change', saveAndApplyLocalAudio);
   el.playerAudioVolume?.addEventListener('input', saveAndApplyLocalAudio);
   el.playerAudioResetBtn?.addEventListener('click', () => {
-    localStorage.removeItem('skywing_player_audio');
+    lsRemove('skywing_player_audio');
     const serverCfg = state.publicSettings.audioConfig;
     audio.setConfig(serverCfg, state.soundEnabled);
     syncPlayerAudioDrawerUI();
