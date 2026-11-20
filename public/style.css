@@ -1952,14 +1952,17 @@ select:focus-visible {
 }
 
 .admin-header-stack {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 60;
+  left: 0;
+  right: 0;
+  z-index: 80;
   width: 100%;
-  background: rgba(6, 9, 19, 0.96);
+  background: rgba(6, 9, 19, 0.97);
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--border-strong);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
 }
 
 .admin-topbar {
@@ -2077,7 +2080,7 @@ select:focus-visible {
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 20px 22px 56px;
+  padding: calc(var(--admin-header-h, 148px) + 14px) 22px 56px;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -2085,9 +2088,23 @@ select:focus-visible {
 }
 
 .admin-section {
-  scroll-margin-top: 148px;
+  scroll-margin-top: calc(var(--admin-header-h, 148px) + 14px);
   min-width: 0;
   max-width: 100%;
+}
+
+@keyframes adminSectionPulse {
+  0% {
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.55), 0 0 26px rgba(56, 189, 248, 0.25);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+.admin-section-highlight {
+  animation: adminSectionPulse 1.15s ease-out;
+  border-radius: 14px;
 }
 
 .kpi-grid {
@@ -2307,14 +2324,22 @@ select:focus-visible {
   }
   .admin-top-menu {
     padding: 6px 12px 8px;
-    gap: 5px;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .admin-top-menu::-webkit-scrollbar {
+    display: none;
   }
   .admin-nav-link {
-    padding: 6px 9px;
-    font-size: 0.72rem;
+    padding: 6px 10px;
+    font-size: 0.73rem;
+    flex-shrink: 0;
   }
   .admin-shell {
-    padding: 14px 12px 36px;
+    padding: calc(var(--admin-header-h, 128px) + 10px) 12px 36px;
     gap: 14px;
   }
   .panel-card {
@@ -3886,80 +3911,259 @@ select:focus-visible {
   white-space: nowrap;
 }
 
-/* Limbo X Stage */
-.limbo-stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 24px 16px;
-  border-radius: 14px;
-  background: radial-gradient(circle at top, rgba(14, 165, 233, 0.14), rgba(6, 9, 19, 0.92));
-  border: 1px solid var(--border-hairline);
-}
-
-.limbo-readout {
-  font-family: var(--font-mono);
-  font-size: 3.1rem;
-  font-weight: 800;
-  line-height: 1.05;
-  color: #38bdf8;
-  transition: color 0.2s ease, transform 0.2s ease;
-}
-
-.limbo-readout.win {
-  color: #34d399;
-  transform: scale(1.06);
-}
-
-.limbo-readout.loss {
-  color: #f87171;
-}
-
-/* Neon Coin Flip Stage */
-.coinflip-stage {
+/* Limbo X Stage — Pro Telemetry Altitude Hub */
+.limbo-stage,
+.pro-stage-limbo {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
   padding: 22px 16px;
-  border-radius: 14px;
-  background: radial-gradient(circle at center, rgba(245, 158, 11, 0.12), rgba(6, 9, 19, 0.92));
-  border: 1px solid var(--border-hairline);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(14, 165, 233, 0.2), rgba(6, 9, 19, 0.96) 72%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.85), rgba(4, 7, 16, 0.98));
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 30px rgba(0, 0, 0, 0.42);
 }
 
-.cyber-coin {
-  width: 112px;
-  height: 112px;
-  border-radius: 50%;
+.limbo-telemetry-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74px;
+  align-items: center;
+  gap: 16px;
+}
+
+.limbo-center-hub {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 3px solid #fbbf24;
-  background: linear-gradient(145deg, #1e293b, #0f172a);
-  color: #fde68a;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 1.25rem;
-  letter-spacing: 0.05em;
-  box-shadow: 0 0 28px rgba(245, 158, 11, 0.28);
-  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease;
+  gap: 8px;
+  padding: 18px 12px;
+  min-height: 142px;
+  border-radius: 14px;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.92), rgba(6, 9, 19, 0.94));
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  overflow: hidden;
 }
 
-.cyber-coin.flipping {
-  transform: rotateY(720deg) scale(1.08);
-  border-color: #38bdf8;
+.limbo-halo {
+  position: absolute;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.22), transparent 68%);
+  pointer-events: none;
+  filter: blur(4px);
+}
+
+.limbo-readout {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.05;
+  color: #38bdf8;
+  text-shadow: 0 0 24px rgba(56, 189, 248, 0.42);
+  transition: color 0.2s ease, transform 0.22s ease, text-shadow 0.22s ease;
+}
+
+.limbo-readout.win,
+.limbo-readout.won {
+  color: #34d399;
+  transform: scale(1.06);
+  text-shadow: 0 0 28px rgba(52, 211, 153, 0.55);
+}
+
+.limbo-readout.loss,
+.limbo-readout.lost {
+  color: #f87171;
+  text-shadow: 0 0 24px rgba(248, 113, 113, 0.45);
+}
+
+.limbo-altitude-meter {
+  display: flex;
+  justify-content: center;
+  height: 142px;
+}
+
+.limbo-meter-track {
+  position: relative;
+  width: 28px;
+  height: 100%;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
+  overflow: visible;
+}
+
+.limbo-meter-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #34d399 0%, #38bdf8 60%, #2563eb 100%);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.5);
+  transition: height 0.36s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s ease;
+}
+
+.limbo-meter-fill.lost {
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+  box-shadow: 0 0 14px rgba(248, 113, 113, 0.45);
+}
+
+.limbo-meter-target-line {
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  height: 2px;
+  background: #fbbf24;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.8);
+  transition: bottom 0.22s ease;
+  z-index: 3;
+}
+
+.limbo-meter-target-line span {
+  position: absolute;
+  right: 36px;
+  top: -8px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fde047;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+/* Neon Coin Flip Stage — 3D Double-Sided Metallic Coin */
+.coinflip-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 16px 20px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(245, 158, 11, 0.16), rgba(6, 9, 19, 0.96) 72%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(5, 8, 17, 0.98));
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 14px 32px rgba(0, 0, 0, 0.45);
+}
+
+.coin-3d-pedestal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  perspective: 920px;
+  padding: 10px 0 16px;
+}
+
+.cyber-coin {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  transform-style: preserve-3d;
+  transition: transform 0.72s cubic-bezier(0.22, 1, 0.36, 1);
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
 .cyber-coin.heads {
-  border-color: #fbbf24;
-  color: #fde68a;
+  transform: rotateY(0deg);
 }
 
 .cyber-coin.tails {
-  border-color: #38bdf8;
-  color: #7dd3fc;
+  transform: rotateY(180deg);
+}
+
+@keyframes coinFlipToHeads {
+  0% { transform: rotateY(0deg) scale(1); }
+  50% { transform: rotateY(540deg) translateY(-18px) scale(1.14); }
+  100% { transform: rotateY(1080deg) scale(1); }
+}
+
+@keyframes coinFlipToTails {
+  0% { transform: rotateY(0deg) scale(1); }
+  50% { transform: rotateY(630deg) translateY(-18px) scale(1.14); }
+  100% { transform: rotateY(1260deg) scale(1); }
+}
+
+.cyber-coin.flipping-heads {
+  animation: coinFlipToHeads 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.cyber-coin.flipping-tails {
+  animation: coinFlipToTails 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.coin-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.coin-face-heads {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(254, 240, 138, 0.36), transparent 55%),
+    linear-gradient(145deg, #b45309 0%, #f59e0b 32%, #78350f 100%);
+  border: 4px solid #fde047;
+  color: #fef3c7;
+  box-shadow:
+    inset 0 0 18px rgba(0, 0, 0, 0.45),
+    0 0 32px rgba(245, 158, 11, 0.42);
+}
+
+.coin-face-tails {
+  transform: rotateY(180deg);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(125, 211, 252, 0.34), transparent 55%),
+    linear-gradient(145deg, #0369a1 0%, #0ea5e9 34%, #0f172a 100%);
+  border: 4px solid #7dd3fc;
+  color: #e0f2fe;
+  box-shadow:
+    inset 0 0 18px rgba(0, 0, 0, 0.45),
+    0 0 32px rgba(56, 189, 248, 0.42);
+}
+
+.coin-crest-svg {
+  width: 62px;
+  height: 62px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
+}
+
+.coin-face-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.coin-floor-shadow {
+  width: 96px;
+  height: 12px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.72), transparent 72%);
 }
 
 .coin-pick-row {
@@ -3968,57 +4172,98 @@ select:focus-visible {
   gap: 8px;
 }
 
-/* Lucky Wheel Stage */
+/* Lucky Wheel Stage — Casino Bezel + Chasing LED Rim */
 .wheel-stage {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 18px 16px;
-  border-radius: 14px;
-  background: rgba(6, 9, 19, 0.9);
-  border: 1px solid var(--border-hairline);
+  gap: 14px;
+  padding: 22px 16px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at center, rgba(245, 158, 11, 0.14), rgba(6, 9, 19, 0.96) 72%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(4, 7, 16, 0.98));
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 14px 32px rgba(0, 0, 0, 0.45);
 }
 
-.wheel-canvas-wrap {
+.wheel-canvas-wrap,
+.pro-wheel-wrap {
   position: relative;
-  width: 260px;
-  height: 260px;
+  width: 326px;
+  height: 326px;
   max-width: 100%;
   display: grid;
   place-items: center;
 }
 
+.wheel-bezel-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 62%, #1e293b 66%, #0f172a 100%);
+  border: 3px solid rgba(251, 191, 36, 0.55);
+  box-shadow:
+    inset 0 0 18px rgba(0, 0, 0, 0.8),
+    0 0 32px rgba(245, 158, 11, 0.22);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.wheel-led-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: rgba(253, 224, 71, 0.35);
+  box-shadow: 0 0 4px rgba(253, 224, 71, 0.3);
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.wheel-led-dot.lit {
+  background: #fde047;
+  box-shadow: 0 0 10px #fde047, 0 0 18px rgba(245, 158, 11, 0.9);
+}
+
 .wheel-pointer {
   position: absolute;
-  top: -6px;
+  top: -8px;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 11px solid transparent;
-  border-right: 11px solid transparent;
-  border-top: 20px solid #fbbf24;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7));
-  z-index: 3;
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-top: 24px solid #fde047;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.85));
+  z-index: 4;
 }
 
 #luckyWheelCanvas {
-  width: 250px;
-  height: 250px;
-  max-width: 100%;
+  position: relative;
+  z-index: 2;
+  width: 300px;
+  height: 300px;
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 50%;
 }
 
-/* Dragon Hi-Lo Stage */
+/* Dragon Hi-Lo Stage — Luxury Felt Card Table */
 .hilo-stage {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  padding: 20px 16px;
-  border-radius: 14px;
-  background: rgba(6, 9, 19, 0.9);
-  border: 1px solid var(--border-hairline);
+  gap: 16px;
+  padding: 22px 16px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at center, rgba(16, 185, 129, 0.18), rgba(6, 14, 24, 0.96) 75%);
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 14px 30px rgba(0, 0, 0, 0.45);
 }
 
 .hilo-cards-row {
@@ -4029,33 +4274,96 @@ select:focus-visible {
   flex-wrap: wrap;
 }
 
-.playing-card-tile {
-  width: 96px;
-  height: 132px;
-  border-radius: 12px;
-  background: #f8fafc;
-  color: #0f172a;
-  border: 2px solid rgba(148, 163, 184, 0.45);
+.hilo-card-slot {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 8px;
+}
+
+.hilo-slot-label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.hilo-vs-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #fde047;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.22);
+}
+
+.playing-card-tile {
+  position: relative;
+  width: 112px;
+  height: 156px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #ffffff 0%, #e2e8f0 100%);
+  color: #0f172a;
+  border: 2px solid rgba(203, 213, 225, 0.85);
+  display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 4px;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.85rem;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+  transition: transform 0.28s ease, box-shadow 0.28s ease;
 }
 
 .playing-card-tile.red {
   color: #dc2626;
 }
 
+.playing-card-tile.black {
+  color: #0f172a;
+}
+
+.card-corner-top {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font-size: 1.05rem;
+  line-height: 1.05;
+  font-weight: 800;
+}
+
+.card-corner-bot {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  font-size: 1.05rem;
+  line-height: 1.05;
+  font-weight: 800;
+  transform: rotate(180deg);
+}
+
+.card-center-pip {
+  font-size: 2.8rem;
+  line-height: 1;
+}
+
 .playing-card-tile.back {
-  background: linear-gradient(145deg, #1e293b, #0f172a);
-  color: #38bdf8;
-  border-color: rgba(56, 189, 248, 0.45);
-  font-size: 1.3rem;
+  background:
+    repeating-linear-gradient(45deg, rgba(56, 189, 248, 0.1) 0 6px, rgba(15, 23, 42, 0.2) 6px 12px),
+    linear-gradient(145deg, #1e293b 0%, #091224 100%);
+  color: #fde047;
+  border: 2px solid rgba(251, 191, 36, 0.52);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.55), inset 0 0 14px rgba(56, 189, 248, 0.2);
+}
+
+.playing-card-tile.back .card-corner-top,
+.playing-card-tile.back .card-corner-bot {
+  opacity: 0;
 }
 
 .hilo-choices-grid {
@@ -4064,47 +4372,119 @@ select:focus-visible {
   gap: 8px;
 }
 
+.hilo-choice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 8px;
+}
+
+.hilo-choice-btn small {
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
 @media (max-width: 560px) {
   .hilo-choices-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-/* Emerald 777 Slots Stage */
+/* Emerald 777 Slots Stage — Vegas Cabinet */
 .slots-stage {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  padding: 22px 16px;
-  border-radius: 14px;
-  background: radial-gradient(circle at top, rgba(16, 185, 129, 0.15), rgba(6, 9, 19, 0.92));
-  border: 1px solid rgba(52, 211, 153, 0.28);
+  padding: 20px 14px;
+  border-radius: 16px;
+  background: radial-gradient(circle at top, rgba(16, 185, 129, 0.18), rgba(6, 9, 19, 0.96));
+  border: 1px solid rgba(52, 211, 153, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 14px 32px rgba(0, 0, 0, 0.45);
+}
+
+.slots-cabinet {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 16px;
+  padding: 10px 12px 14px;
+  background: linear-gradient(180deg, #1e293b 0%, #0b1325 100%);
+  border: 2px solid rgba(251, 191, 36, 0.45);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(254, 240, 138, 0.22);
+}
+
+.slots-cabinet-marquee {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #fde047;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.18), rgba(245, 158, 11, 0.28), rgba(16, 185, 129, 0.18));
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 8px;
+  padding: 5px 10px;
+  margin-bottom: 10px;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.45);
+}
+
+.slots-reels-window {
+  position: relative;
+  padding: 8px;
+  border-radius: 12px;
+  background: #040710;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.9);
+}
+
+.slots-payline-laser {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.65), transparent);
+  pointer-events: none;
+  z-index: 3;
 }
 
 .slots-reels-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(76px, 108px));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .slot-reel-box {
-  height: 98px;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #0b1325 0%, #16223c 50%, #0b1325 100%);
-  border: 2px solid rgba(52, 211, 153, 0.42);
+  position: relative;
+  z-index: 2;
+  height: 104px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #060b16 0%, #172542 26%, #1f3358 50%, #172542 74%, #060b16 100%);
+  border: 2px solid rgba(52, 211, 153, 0.45);
   display: grid;
   place-items: center;
-  font-size: 2.2rem;
+  font-size: 2.3rem;
   font-weight: 800;
   color: #fde68a;
-  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.65);
-  transition: transform 0.16s ease, border-color 0.2s ease;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  box-shadow: inset 0 8px 14px rgba(0, 0, 0, 0.72), inset 0 -8px 14px rgba(0, 0, 0, 0.72);
+  transition: transform 0.14s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .slot-reel-box.spinning {
   border-color: #fbbf24;
-  transform: scale(0.96);
+  transform: scale(0.95);
+  filter: blur(0.6px);
+}
+
+.slot-reel-box.reel-won {
+  border-color: #fde047;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.55), inset 0 0 12px rgba(52, 211, 153, 0.35);
+  transform: scale(1.03);
 }
 
 .slots-paytable {
@@ -4119,8 +4499,126 @@ select:focus-visible {
 .slots-pay-pill {
   padding: 4px 8px;
   border-radius: 6px;
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(15, 23, 42, 0.85);
   border: 1px solid var(--border-hairline);
 }
+
+/* Daily Login Streak Card (Calendar Grid + Progress Bar) */
+.streak-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(155deg, rgba(245, 158, 11, 0.1), rgba(16, 185, 129, 0.08) 55%, rgba(15, 23, 42, 0.88));
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.streak-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.streak-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(251, 191, 36, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  color: #fde047;
+}
+
+.streak-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.streak-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f59e0b, #34d399);
+  transition: width 0.35s ease;
+}
+
+.streak-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.streak-day-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.86);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  text-align: center;
+}
+
+.streak-day-num {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.streak-day-fc {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #fde68a;
+}
+
+.streak-day-state {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.streak-day-cell.completed {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(52, 211, 153, 0.45);
+}
+
+.streak-day-cell.completed .streak-day-state {
+  color: #34d399;
+}
+
+.streak-day-cell.is-today {
+  border-color: #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+}
+
+.streak-day-cell.is-ready {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: #fde047;
+}
+
+.streak-day-cell.is-ready .streak-day-state {
+  color: #fde047;
+}
+
+.streak-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 560px) {
+  .streak-calendar-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 
 

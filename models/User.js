@@ -137,6 +137,21 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    loginStreakCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    lastLoginStreakDate: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    streakTotalFunEarned: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     savedPayoutAccounts: {
       type: [payoutAccountSchema],
       default: [],

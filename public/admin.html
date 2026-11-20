@@ -676,8 +676,13 @@
                   <input type="text" class="form-input" id="epTitle" placeholder="Account Holder Name" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label" for="epNumber">Account Number</label>
+                  <label class="form-label" for="epNumber">Account Number (03XX)</label>
                   <input type="text" class="form-input" id="epNumber" placeholder="03XX-XXXXXXX" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="epIban">EasyPaisa IBAN (Any Bank → EasyPaisa QR)</label>
+                  <input type="text" class="form-input" id="epIban" placeholder="PKxxTMFB... (Recommended for All-Bank QR)" />
+                  <span class="form-hint">Find in EasyPaisa App → Account Details. Lets ANY Pakistani bank scan &amp; pay directly.</span>
                 </div>
               </div>
 
@@ -697,8 +702,12 @@
                   <input type="text" class="form-input" id="jcTitle" placeholder="Account Holder Name" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label" for="jcNumber">Account Number</label>
+                  <label class="form-label" for="jcNumber">Account Number (03XX)</label>
                   <input type="text" class="form-input" id="jcNumber" placeholder="03XX-XXXXXXX" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="jcIban">JazzCash IBAN (Any Bank → JazzCash QR)</label>
+                  <input type="text" class="form-input" id="jcIban" placeholder="PKxxJCMA... (Optional for All-Bank QR)" />
                 </div>
               </div>
 
@@ -1599,20 +1608,27 @@
         }
 
         function updateStickyScrollMargin() {
-          const headerH = headerStackEl ? headerStackEl.getBoundingClientRect().height : 120;
-          const margin = `${Math.round(headerH + 14)}px`;
+          const headerH = headerStackEl ? Math.ceil(headerStackEl.getBoundingClientRect().height) : 124;
+          document.documentElement.style.setProperty('--admin-header-h', `${headerH + 14}px`);
+          const margin = `${headerH + 14}px`;
           document.querySelectorAll('.admin-section').forEach((sec) => {
             sec.style.scrollMarginTop = margin;
           });
         }
         window.addEventListener('resize', updateStickyScrollMargin);
+        if (window.ResizeObserver && headerStackEl) {
+          new ResizeObserver(updateStickyScrollMargin).observe(headerStackEl);
+        }
 
         function setActiveNavLink(targetId) {
           navLinks.forEach((btn) => {
             const match = btn.dataset.target === targetId;
             btn.classList.toggle('active', match);
-            if (match && topbarTitleEl && btn.dataset.title) {
-              topbarTitleEl.textContent = btn.dataset.title;
+            if (match) {
+              if (topbarTitleEl && btn.dataset.title) {
+                topbarTitleEl.textContent = btn.dataset.title;
+              }
+              btn.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
             }
           });
         }
@@ -1622,8 +1638,14 @@
             updateStickyScrollMargin();
             const target = document.getElementById(btn.dataset.target);
             if (target) {
-              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              const headerH = headerStackEl ? Math.ceil(headerStackEl.getBoundingClientRect().height) : 124;
+              const topY = Math.max(0, target.getBoundingClientRect().top + window.scrollY - headerH - 12);
+              window.scrollTo({ top: topY, behavior: 'smooth' });
               setActiveNavLink(btn.dataset.target);
+              target.classList.remove('admin-section-highlight');
+              void target.offsetWidth;
+              target.classList.add('admin-section-highlight');
+              setTimeout(() => target.classList.remove('admin-section-highlight'), 1200);
             }
           });
         });
@@ -1633,7 +1655,7 @@
             .map((btn) => document.getElementById(btn.dataset.target))
             .filter(Boolean);
           if (!sections.length) return;
-          const headerH = headerStackEl ? headerStackEl.getBoundingClientRect().height : 120;
+          const headerH = headerStackEl ? Math.ceil(headerStackEl.getBoundingClientRect().height) : 124;
           const threshold = headerH + 28;
           let activeId = sections[0].id;
           for (const sec of sections) {
@@ -1659,6 +1681,7 @@
           loginView.classList.add('hidden');
           dashView.classList.remove('hidden');
           requestAnimationFrame(updateStickyScrollMargin);
+          setTimeout(updateStickyScrollMargin, 120);
           connectAdminSocket();
           loadDashboard({ force: true });
           loadTransactions();
@@ -1994,10 +2017,12 @@
             setCheckSafe('epEnabled', pa.easypaisa?.enabled !== false, force);
             setFieldSafe('epTitle', pa.easypaisa?.accountTitle || '', force);
             setFieldSafe('epNumber', pa.easypaisa?.accountNumber || '', force);
+            setFieldSafe('epIban', pa.easypaisa?.iban || '', force);
 
             setCheckSafe('jcEnabled', pa.jazzcash?.enabled !== false, force);
             setFieldSafe('jcTitle', pa.jazzcash?.accountTitle || '', force);
             setFieldSafe('jcNumber', pa.jazzcash?.accountNumber || '', force);
+            setFieldSafe('jcIban', pa.jazzcash?.iban || '', force);
 
             setCheckSafe('bkEnabled', pa.bank?.enabled !== false, force);
             setFieldSafe('bkName', pa.bank?.bankName || '', force);
@@ -2431,11 +2456,13 @@
                     enabled: document.getElementById('epEnabled').checked,
                     accountTitle: document.getElementById('epTitle').value.trim(),
                     accountNumber: document.getElementById('epNumber').value.trim(),
+                    iban: document.getElementById('epIban').value.trim().toUpperCase(),
                   },
                   jazzcash: {
                     enabled: document.getElementById('jcEnabled').checked,
                     accountTitle: document.getElementById('jcTitle').value.trim(),
                     accountNumber: document.getElementById('jcNumber').value.trim(),
+                    iban: document.getElementById('jcIban').value.trim().toUpperCase(),
                   },
                   bank: {
                     enabled: document.getElementById('bkEnabled').checked,
@@ -2456,8 +2483,8 @@
               'setWhatsappSupportEnabled', 'setSupportPhone',
               'setWhatsappChannelEnabled', 'setChannelUrl',
               'setTelegramEnabled', 'setTelegramUrl',
-              'epEnabled', 'epTitle', 'epNumber',
-              'jcEnabled', 'jcTitle', 'jcNumber',
+              'epEnabled', 'epTitle', 'epNumber', 'epIban',
+              'jcEnabled', 'jcTitle', 'jcNumber', 'jcIban',
               'bkEnabled', 'bkName', 'bkTitle', 'bkNumber',
             ]);
             showToast('Setting saved to database!');

@@ -706,19 +706,32 @@
             </div>
           </div>
 
-          <!-- 5th Unified-Pool Game: Limbo X -->
+          <!-- 5th Unified-Pool Game: Limbo X (Pro Telemetry Altitude Stage) -->
           <div id="limboArena" class="arcade-panel-card hidden">
               <div class="arcade-header-row">
                 <div>
                   <h2 style="margin: 0; font-family: var(--font-display); font-size: 1.12rem;">Limbo X</h2>
-                  <span style="font-size: 0.78rem; color: var(--text-muted);">Set a Target Multiplier (1.05x – 100x) and beat the Limbo roll</span>
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">Set a Target Multiplier (1.05x – 100x) and beat the altitude launch</span>
                 </div>
                 <span class="badge-pill" id="limboStatusBadge">Ready</span>
               </div>
 
-              <div class="limbo-stage">
-                <div class="limbo-readout tabular-nums" id="limboResultValue">1.00x</div>
-                <div class="dice-roll-sub" id="limboResultSub">Win if rolled multiplier meets or exceeds your target</div>
+              <div class="limbo-stage pro-stage-limbo">
+                <div class="limbo-telemetry-grid">
+                  <div class="limbo-center-hub">
+                    <div class="limbo-halo" aria-hidden="true"></div>
+                    <div class="limbo-readout tabular-nums" id="limboResultValue">1.00x</div>
+                    <div class="dice-roll-sub" id="limboResultSub">Win if rolled multiplier meets or exceeds your target</div>
+                  </div>
+                  <div class="limbo-altitude-meter" aria-hidden="true">
+                    <div class="limbo-meter-track">
+                      <div class="limbo-meter-fill" id="limboGaugeBar" style="height: 12%;"></div>
+                      <div class="limbo-meter-target-line" id="limboTargetMarker" style="bottom: 24%;">
+                        <span>TARGET</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div class="dice-metrics-bar">
                   <div class="dice-metric-cell">
                     <span>Target</span>
@@ -766,7 +779,7 @@
               </div>
             </div>
 
-            <!-- 6th Unified-Pool Game: Neon Coin Flip -->
+            <!-- 6th Unified-Pool Game: Neon Coin Flip (3D Metallic Double-Sided Coin) -->
             <div id="coinflipArena" class="arcade-panel-card hidden">
               <div class="arcade-header-row">
                 <div>
@@ -777,8 +790,26 @@
               </div>
 
               <div class="coinflip-stage">
-                <div class="cyber-coin heads" id="cyberCoinEl">
-                  <span id="cyberCoinFace">HEADS</span>
+                <div class="coin-3d-pedestal">
+                  <div class="cyber-coin heads" id="cyberCoinEl">
+                    <div class="coin-face coin-face-heads">
+                      <svg class="coin-crest-svg" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                        <circle cx="32" cy="32" r="27" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3" opacity="0.65"/>
+                        <path d="M16 41L20 22L28 30L32 18L36 30L44 22L48 41H16Z" fill="currentColor" opacity="0.92"/>
+                        <rect x="17" y="44" width="30" height="4" rx="2" fill="currentColor" opacity="0.85"/>
+                      </svg>
+                      <span class="coin-face-label" id="cyberCoinFace">HEADS</span>
+                    </div>
+                    <div class="coin-face coin-face-tails">
+                      <svg class="coin-crest-svg" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                        <circle cx="32" cy="32" r="27" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3" opacity="0.65"/>
+                        <path d="M32 14L46 21V33C46 42 40 48.5 32 52C24 48.5 18 42 18 33V21L32 14Z" stroke="currentColor" stroke-width="3" fill="currentColor" fill-opacity="0.18"/>
+                        <polygon points="32,23 39,32 32,41 25,32" fill="currentColor"/>
+                      </svg>
+                      <span class="coin-face-label">TAILS</span>
+                    </div>
+                  </div>
+                  <div class="coin-floor-shadow" aria-hidden="true"></div>
                 </div>
                 <div class="dice-roll-sub" id="coinflipResultSub">Select Heads or Tails and flip for 1.92x payout</div>
               </div>
@@ -798,8 +829,8 @@
                 <div class="form-group">
                   <span class="form-label">Pick Coin Side</span>
                   <div class="coin-pick-row">
-                    <button type="button" class="seg-btn coinflip-pick-btn active" data-pick="heads">HEADS</button>
-                    <button type="button" class="seg-btn coinflip-pick-btn" data-pick="tails">TAILS</button>
+                    <button type="button" class="seg-btn coinflip-pick-btn active" data-pick="heads">👑 HEADS</button>
+                    <button type="button" class="seg-btn coinflip-pick-btn" data-pick="tails">🛡️ TAILS</button>
                   </div>
                   <span class="form-hint" id="coinflipEstWinHint">Potential Win: 96.00 FC</span>
                 </div>
@@ -812,7 +843,7 @@
               </div>
             </div>
 
-            <!-- 7th Unified-Pool Game: Lucky Wheel -->
+            <!-- 7th Unified-Pool Game: Lucky Wheel (Casino Bezel + Chasing LED Rim) -->
             <div id="wheelArena" class="arcade-panel-card hidden">
               <div class="arcade-header-row">
                 <div>
@@ -823,11 +854,18 @@
               </div>
 
               <div class="wheel-stage">
-                <div class="wheel-canvas-wrap">
+                <div class="wheel-canvas-wrap pro-wheel-wrap">
+                  <div class="wheel-bezel-ring" id="wheelBezelRing" aria-hidden="true"></div>
                   <div class="wheel-pointer" aria-hidden="true"></div>
-                  <canvas id="luckyWheelCanvas" width="250" height="250"></canvas>
+                  <canvas id="luckyWheelCanvas" width="310" height="310"></canvas>
                 </div>
                 <div class="dice-roll-sub" id="wheelResultSub">Spin the wheel to land on up to 10.0x prizes!</div>
+                <div class="slots-paytable tabular-nums">
+                  <span class="slots-pay-pill" style="color:#fde047;">10.0x Jackpot</span>
+                  <span class="slots-pay-pill" style="color:#f472b6;">5.0x Mega</span>
+                  <span class="slots-pay-pill" style="color:#34d399;">3.0x · 2.0x · 1.5x</span>
+                  <span class="slots-pay-pill" style="color:#7dd3fc;">1.2x · 0.5x</span>
+                </div>
               </div>
 
               <div class="arcade-bottom-controls">
@@ -850,7 +888,7 @@
               </div>
             </div>
 
-            <!-- 8th Unified-Pool Game: Dragon Hi-Lo -->
+            <!-- 8th Unified-Pool Game: Dragon Hi-Lo (Luxury Casino Card Table) -->
             <div id="hiloArena" class="arcade-panel-card hidden">
               <div class="arcade-header-row">
                 <div>
@@ -862,14 +900,22 @@
 
               <div class="hilo-stage">
                 <div class="hilo-cards-row">
-                  <div style="text-align: center;">
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px;">CURRENT CARD</div>
-                    <div class="playing-card-tile" id="hiloBaseCardEl">7♠</div>
+                  <div class="hilo-card-slot">
+                    <div class="hilo-slot-label">CURRENT CARD</div>
+                    <div class="playing-card-tile black" id="hiloBaseCardEl">
+                      <span class="card-corner-top" id="hiloBaseCornerTop">7♠</span>
+                      <span class="card-center-pip" id="hiloBaseCenterPip">♠</span>
+                      <span class="card-corner-bot" id="hiloBaseCornerBot">7♠</span>
+                    </div>
                   </div>
-                  <div style="font-size: 1.4rem; color: var(--text-muted); font-weight: 800;">VS</div>
-                  <div style="text-align: center;">
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px;">NEXT DRAW</div>
-                    <div class="playing-card-tile back" id="hiloNextCardEl">?</div>
+                  <div class="hilo-vs-badge" aria-hidden="true">VS</div>
+                  <div class="hilo-card-slot">
+                    <div class="hilo-slot-label">NEXT DRAW</div>
+                    <div class="playing-card-tile back" id="hiloNextCardEl">
+                      <span class="card-corner-top" id="hiloNextCornerTop"></span>
+                      <span class="card-center-pip" id="hiloNextCenterPip">★</span>
+                      <span class="card-corner-bot" id="hiloNextCornerBot"></span>
+                    </div>
                   </div>
                 </div>
                 <div class="dice-roll-sub" id="hiloResultSub">Choose your prediction and deal the next card</div>
@@ -890,40 +936,58 @@
                 <div class="form-group" style="grid-column: span 2;">
                   <span class="form-label">Select Prediction &amp; Deal</span>
                   <div class="hilo-choices-grid">
-                    <button type="button" class="btn btn-emerald hilo-choice-btn" data-choice="high">HIGHER</button>
-                    <button type="button" class="btn btn-primary hilo-choice-btn" data-choice="low">LOWER</button>
-                    <button type="button" class="btn btn-danger hilo-choice-btn" data-choice="red">RED ♥♦ (1.92x)</button>
-                    <button type="button" class="btn btn-secondary hilo-choice-btn" data-choice="black">BLACK ♠♣ (1.92x)</button>
+                    <button type="button" class="btn btn-emerald hilo-choice-btn" data-choice="high">
+                      <span>▲ HIGHER</span>
+                      <small class="tabular-nums" id="hiloHigherOdds">1.78x</small>
+                    </button>
+                    <button type="button" class="btn btn-primary hilo-choice-btn" data-choice="low">
+                      <span>▼ LOWER</span>
+                      <small class="tabular-nums" id="hiloLowerOdds">1.78x</small>
+                    </button>
+                    <button type="button" class="btn btn-danger hilo-choice-btn" data-choice="red">
+                      <span>♥♦ RED</span>
+                      <small class="tabular-nums">1.92x</small>
+                    </button>
+                    <button type="button" class="btn btn-secondary hilo-choice-btn" data-choice="black">
+                      <span>♠♣ BLACK</span>
+                      <small class="tabular-nums">1.92x</small>
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- 9th Unified-Pool Game: Emerald 777 Slots -->
+            <!-- 9th Unified-Pool Game: Emerald 777 Slots (Luxury Vegas Cabinet) -->
             <div id="slotsArena" class="arcade-panel-card hidden">
               <div class="arcade-header-row">
                 <div>
                   <h2 style="margin: 0; font-family: var(--font-display); font-size: 1.12rem;">Emerald 777 Slots</h2>
-                  <span style="font-size: 0.78rem; color: var(--text-muted);">3-Reel Jackpot Spin · Triple 777 pays 25x</span>
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">3-Reel Jackpot Cabinet · Triple 777 pays 25x</span>
                 </div>
                 <span class="badge-pill" id="slotsStatusBadge">Ready</span>
               </div>
 
               <div class="slots-stage">
-                <div class="slots-reels-row">
-                  <div class="slot-reel-box" id="slotReel0">777</div>
-                  <div class="slot-reel-box" id="slotReel1">💎</div>
-                  <div class="slot-reel-box" id="slotReel2">👑</div>
+                <div class="slots-cabinet">
+                  <div class="slots-cabinet-marquee">★ EMERALD 777 JACKPOT ★</div>
+                  <div class="slots-reels-window">
+                    <div class="slots-payline-laser" aria-hidden="true"></div>
+                    <div class="slots-reels-row">
+                      <div class="slot-reel-box" id="slotReel0">777</div>
+                      <div class="slot-reel-box" id="slotReel1">💎</div>
+                      <div class="slot-reel-box" id="slotReel2">👑</div>
+                    </div>
+                  </div>
                 </div>
-                <div class="dice-roll-sub" id="slotsResultSub">Match 3 symbols for mega payouts or 2 matching for 1.2x!</div>
+                <div class="dice-roll-sub" id="slotsResultSub">Match 3 symbols on the center payline for mega payouts or any 2 for 1.2x!</div>
                 <div class="slots-paytable tabular-nums">
-                  <span class="slots-pay-pill">777×3 = 25x</span>
-                  <span class="slots-pay-pill">💎×3 = 12x</span>
-                  <span class="slots-pay-pill">👑×3 = 6x</span>
+                  <span class="slots-pay-pill" style="color:#fde047; border-color:rgba(251,191,36,0.4);">777×3 = 25x</span>
+                  <span class="slots-pay-pill" style="color:#7dd3fc;">💎×3 = 12x</span>
+                  <span class="slots-pay-pill" style="color:#fbbf24;">👑×3 = 6x</span>
                   <span class="slots-pay-pill">⚡×3 = 3.5x</span>
                   <span class="slots-pay-pill">🍒×3 = 2.5x</span>
                   <span class="slots-pay-pill">🍋×3 = 1.8x</span>
-                  <span class="slots-pay-pill">Any 2 = 1.2x</span>
+                  <span class="slots-pay-pill" style="color:#34d399;">Any 2 = 1.2x</span>
                 </div>
               </div>
 
@@ -1344,10 +1408,10 @@
             <button type="button" class="preset-btn dep-amt-chip" data-amt="5000">5,000 PKR</button>
           </div>
 
-          <!-- Dynamic Live QR Code Card (No Merchant Numbers Exposed) -->
+          <!-- Dynamic Live QR Code Card (SBP Raast Universal QR · No Merchant Numbers Exposed) -->
           <div id="depLiveQrCard" class="qr-live-card">
             <div class="qr-meta-row">
-              <span class="masked-pill" id="depQrGatewayBadge">EasyPaisa · QR Only</span>
+              <span class="masked-pill" id="depQrGatewayBadge">EasyPaisa · Raast QR</span>
               <span class="masked-pill tabular-nums" id="depQrAmountBadge" style="color: #34d399; border-color: rgba(52,211,153,0.4);">500 PKR</span>
               <span class="masked-pill tabular-nums" id="depQrRefBadge">REF: ---</span>
             </div>
@@ -1359,11 +1423,11 @@
               </div>
             </div>
 
-            <div style="font-size: 0.78rem; color: var(--text-secondary);">
-              Scan this privacy-protected dynamic QR code directly in your wallet app to pay exact PKR, then submit your TID / screenshot below.
+            <div id="depQrScanHint" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+              Scan via <strong>EasyPaisa, JazzCash, SadaPay, NayaPay, Meezan, HBL, UBL</strong> or any Pakistani Bank Raast scanner, then submit your TID / screenshot below.
             </div>
             <button type="button" class="btn btn-secondary btn-xs hidden" id="depSaveQrBtn">
-              Save / Download QR
+              Save / Download QR PNG
             </button>
             <span class="form-hint" id="depMicroHint" style="color: #34d399;"></span>
           </div>
@@ -1705,6 +1769,31 @@
             <div class="vip-progress-fill" id="rewardsVipProgress" style="width: 0%;"></div>
           </div>
           <span class="form-hint" id="rewardsEligibilityHint">Make an approved Real PKR deposit to unlock Daily Login &amp; Weekly Cashback rewards.</span>
+        </div>
+
+        <!-- 7-Day Daily Login Streak Counter (Calendar Grid + Progress Bar) -->
+        <div class="streak-card" id="rewardsStreakCard">
+          <div class="streak-card-head">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <strong style="color: #fde047; font-size: 0.96rem;">Daily Login Streak</strong>
+              <span class="streak-badge tabular-nums" id="rewardsStreakBadge">0-Day Streak</span>
+            </div>
+            <span class="tabular-nums" style="font-size: 0.76rem; color: #34d399; font-weight: 700;" id="rewardsStreakEarned">Earned: 0 FC</span>
+          </div>
+
+          <div class="streak-progress-row">
+            <div class="vip-progress-track" style="flex: 1;">
+              <div class="streak-progress-fill" id="rewardsStreakProgressBar" style="width: 0%;"></div>
+            </div>
+            <span class="tabular-nums" style="font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap;" id="rewardsStreakProgressText">0 / 7 Days</span>
+          </div>
+
+          <div class="streak-calendar-grid" id="rewardsStreakCalendar"></div>
+
+          <div class="streak-footer-row">
+            <span class="form-hint" id="rewardsStreakHint" style="margin: 0;">Log in &amp; claim daily to grow your consecutive Fun Credits streak!</span>
+            <button type="button" class="btn btn-emerald btn-xs" id="claimStreakRewardBtn">Claim Today's +50 FC</button>
+          </div>
         </div>
 
         <div class="rewards-grid">

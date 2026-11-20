@@ -78,16 +78,22 @@ const settingsSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    settingsUpdatedAt: {
+      type: Date,
+      default: null,
+    },
     paymentAccounts: {
       easypaisa: {
         enabled: { type: Boolean, default: true },
         accountTitle: { type: String, default: 'SkyWing Official', trim: true },
         accountNumber: { type: String, default: '03451234567', trim: true },
+        iban: { type: String, default: '', trim: true },
       },
       jazzcash: {
         enabled: { type: Boolean, default: true },
         accountTitle: { type: String, default: 'SkyWing Official', trim: true },
         accountNumber: { type: String, default: '03001234567', trim: true },
+        iban: { type: String, default: '', trim: true },
       },
       bank: {
         enabled: { type: Boolean, default: true },

@@ -61,17 +61,26 @@ function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function normalizePakIban(raw = '') {
+  return String(raw || '')
+    .replace(/[\s\-_]+/g, '')
+    .toUpperCase()
+    .slice(0, 34);
+}
+
 function defaultPaymentAccounts() {
   return {
     easypaisa: {
       enabled: true,
       accountTitle: 'SkyWing Official',
       accountNumber: '03451234567',
+      iban: '',
     },
     jazzcash: {
       enabled: true,
       accountTitle: 'SkyWing Official',
       accountNumber: '03001234567',
+      iban: '',
     },
     bank: {
       enabled: true,
@@ -326,6 +335,7 @@ function defaultSettingsObj() {
     telegramChannelEnabled: true,
     telegramChannelUrl: 'https://t.me/SkyWingOfficial',
     maskMasterAccounts: true,
+    settingsUpdatedAt: null,
     paymentAccounts: defaultPaymentAccounts(),
     financialLimits: defaultFinancialLimits(),
     withdrawalHours: defaultWithdrawalHours(),
@@ -354,6 +364,7 @@ function defaultSettingsObj() {
 }
 
 function hydrateSettingsObj(raw = {}) {
+  const defPay = defaultPaymentAccounts();
   const unifiedPool =
     raw.profitDistributionPool !== undefined
       ? Math.max(0, Number(raw.profitDistributionPool) || 0)
@@ -367,8 +378,18 @@ function hydrateSettingsObj(raw = {}) {
     carryForwardPool: unifiedPool,
     poolStatsByGame: hydratePoolStatsByGame(raw.poolStatsByGame),
     paymentAccounts: {
-      ...defaultPaymentAccounts(),
-      ...(raw.paymentAccounts || {}),
+      easypaisa: {
+        ...defPay.easypaisa,
+        ...(raw.paymentAccounts?.easypaisa || {}),
+      },
+      jazzcash: {
+        ...defPay.jazzcash,
+        ...(raw.paymentAccounts?.jazzcash || {}),
+      },
+      bank: {
+        ...defPay.bank,
+        ...(raw.paymentAccounts?.bank || {}),
+      },
     },
     financialLimits: {
       ...defaultFinancialLimits(),
@@ -448,9 +469,91 @@ function loadLocalStore() {
 function saveLocalStore() {
   try {
     fs.mkdirSync(path.dirname(LOCAL_DB_PATH), { recursive: true });
-    fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(localStore, null, 2), 'utf8');
+    const tmpPath = `${LOCAL_DB_PATH}.${process.pid}.tmp`;
+    fs.writeFileSync(tmpPath, JSON.stringify(localStore, null, 2), 'utf8');
+    fs.renameSync(tmpPath, LOCAL_DB_PATH);
   } catch (err) {
     console.warn('[LocalDB] Save warning:', err.message);
+  }
+}
+
+const PERSISTENT_CONFIG_KEYS = [
+  'whatsappSupportEnabled',
+  'whatsappSupportNumber',
+  'whatsappChannelEnabled',
+  'whatsappChannelUrl',
+  'telegramChannelEnabled',
+  'telegramChannelUrl',
+  'maskMasterAccounts',
+  'paymentAccounts',
+  'financialLimits',
+  'withdrawalHours',
+  'platformStatus',
+  'audioConfig',
+  'profitControl',
+  'profitDistributionPool',
+  'carryForwardPool',
+  'rtpRiskConfig',
+  'gamesConfig',
+  'security',
+  'telegramBot',
+  'syncConfig',
+  'dailyProfitTarget',
+  'varianceTolerancePct',
+  'welcomeBonusCredits',
+];
+
+function extractPersistentConfigPatch(settingsObj) {
+  const hydrated = hydrateSettingsObj(settingsObj || {});
+  const out = {};
+  for (const k of PERSISTENT_CONFIG_KEYS) {
+    out[k] = hydrated[k];
+  }
+  out.settingsUpdatedAt = hydrated.settingsUpdatedAt || new Date();
+  return out;
+}
+
+async function reconcileSettingsWithMongo() {
+  if (!isMongoReady()) return;
+  try {
+    let doc = await Settings.findOne({ key: 'global' });
+    const localHydrated = hydrateSettingsObj(localStore.settings || {});
+    const localTs = localHydrated.settingsUpdatedAt
+      ? new Date(localHydrated.settingsUpdatedAt).getTime()
+      : 0;
+
+    if (!doc) {
+      const seed = { ...localHydrated, key: 'global' };
+      delete seed._id;
+      delete seed.__v;
+      doc = await Settings.create(seed);
+      localStore.settings = hydrateSettingsObj(doc.toObject());
+      saveLocalStore();
+      return;
+    }
+
+    const mongoObj = hydrateSettingsObj(doc.toObject());
+    const mongoTs = mongoObj.settingsUpdatedAt
+      ? new Date(mongoObj.settingsUpdatedAt).getTime()
+      : 0;
+
+    if (localTs > mongoTs) {
+      const pushPatch = extractPersistentConfigPatch(localHydrated);
+      const updated = await Settings.findOneAndUpdate(
+        { key: 'global' },
+        { $set: pushPatch },
+        { new: true }
+      );
+      if (updated) {
+        localStore.settings = hydrateSettingsObj(updated.toObject());
+        saveLocalStore();
+      }
+    } else {
+      localStore.settings = mongoObj;
+      saveLocalStore();
+    }
+  } catch (err) {
+    console.warn('[Settings Reconcile Warning]', err.message);
   }
 }
 
@@ -478,7 +581,8 @@ async function attemptMongoConnect(isRetry = false) {
     await Settings.init();
     await Transaction.init();
     await SupportTicket.init();
-    console.log('[MongoDB] Connected to MongoDB Atlas');
+    await reconcileSettingsWithMongo();
+    console.log('[MongoDB] Connected to MongoDB Atlas (settings synced)');
   } catch (err) {
     useMongo = false;
     lastMongoError = err?.message || 'Unable to reach MongoDB Atlas';
@@ -493,11 +597,13 @@ async function attemptMongoConnect(isRetry = false) {
 }
 
 async function connectDatabase() {
+  // Always hydrate persistent local store first so offline/saved settings are never lost
+  loadLocalStore();
+
   if (!MONGODB_URI) {
     console.warn(
       '[DB] MONGODB_URI is not set. Running with persistent local JSON store (./data/local-db.json). Set MONGODB_URI in environment to use MongoDB Atlas.'
     );
-    loadLocalStore();
     useMongo = false;
     return;
   }
@@ -528,6 +634,7 @@ async function connectDatabase() {
       console.log('[MongoDB] Reconnected successfully');
       useMongo = true;
       lastMongoError = '';
+      reconcileSettingsWithMongo().catch(() => {});
     });
   }
 
@@ -539,7 +646,10 @@ const db = {
     if (isMongoReady()) {
       let doc = await Settings.findOne({ key: 'global' });
       if (!doc) {
-        doc = await Settings.create(defaultSettingsObj());
+        const seed = { ...hydrateSettingsObj(localStore.settings || {}), key: 'global' };
+        delete seed._id;
+        delete seed.__v;
+        doc = await Settings.create(seed);
       }
       const today = getTodayKey();
       if (doc.dailyDateKey !== today) {
@@ -552,6 +662,7 @@ const db = {
         await doc.save();
       }
       const obj = hydrateSettingsObj(doc.toObject());
+      localStore.settings = obj;
       return obj;
     }
 
@@ -572,15 +683,28 @@ const db = {
   },
 
   async updateSettings(patch) {
+    const safePatch = { ...(patch || {}) };
+    const touchesPersistentConfig = Object.keys(safePatch).some((k) =>
+      PERSISTENT_CONFIG_KEYS.includes(k)
+    );
+    if (touchesPersistentConfig) {
+      safePatch.settingsUpdatedAt = new Date();
+    }
+
     if (isMongoReady()) {
       const doc = await Settings.findOneAndUpdate(
         { key: 'global' },
-        { $set: patch },
+        { $set: safePatch },
         { new: true, upsert: true }
       );
-      return doc.toObject();
+      const hydrated = hydrateSettingsObj(doc.toObject());
+      localStore.settings = hydrated;
+      if (touchesPersistentConfig) {
+        saveLocalStore();
+      }
+      return hydrated;
     }
-    localStore.settings = { ...localStore.settings, ...patch };
+    localStore.settings = hydrateSettingsObj({ ...localStore.settings, ...safePatch });
     saveLocalStore();
     return { ...localStore.settings };
   },
@@ -842,6 +966,9 @@ const db = {
       referralEarnings: 0,
       lastDailyClaimAt: null,
       lastWeeklyClaimAt: null,
+      loginStreakCount: 0,
+      lastLoginStreakDate: '',
+      streakTotalFunEarned: 0,
       savedPayoutAccounts: [],
       registrationIp,
       lastLoginIp: registrationIp,
@@ -1275,17 +1402,21 @@ function maskMerchantNumber(num, maskEnabled = true) {
 
 function maskPaymentAccountsForPublic(paymentAccounts) {
   const pa = paymentAccounts || defaultPaymentAccounts();
+  const epIban = normalizePakIban(pa.easypaisa?.iban || '');
+  const jcIban = normalizePakIban(pa.jazzcash?.iban || '');
   return {
     easypaisa: {
       enabled: pa.easypaisa?.enabled !== false,
       label: 'EasyPaisa',
       accountTitle: pa.easypaisa?.accountTitle || 'SkyWing Official',
+      supportsAllBanks: Boolean(epIban && epIban.startsWith('PK')) || /^PK/i.test(pa.easypaisa?.accountNumber || ''),
       qrOnly: true,
     },
     jazzcash: {
       enabled: pa.jazzcash?.enabled !== false,
       label: 'JazzCash',
       accountTitle: pa.jazzcash?.accountTitle || 'SkyWing Official',
+      supportsAllBanks: Boolean(jcIban && jcIban.startsWith('PK')) || /^PK/i.test(pa.jazzcash?.accountNumber || ''),
       qrOnly: true,
     },
     bank: {
@@ -1293,6 +1424,7 @@ function maskPaymentAccountsForPublic(paymentAccounts) {
       label: 'E-Wallet / Bank Transfer',
       bankName: pa.bank?.bankName || 'Pakistani Bank / Raast',
       accountTitle: pa.bank?.accountTitle || 'SkyWing Enterprises',
+      supportsAllBanks: true,
       qrOnly: true,
     },
   };
@@ -1546,6 +1678,9 @@ function sanitizeUser(user) {
     lastLoginIp: user.lastLoginIp || '',
     deviceFingerprint: user.deviceFingerprint || '',
     vip,
+    loginStreakCount: Number(user.loginStreakCount || 0),
+    lastLoginStreakDate: user.lastLoginStreakDate || '',
+    streakTotalFunEarned: Math.round(Number(user.streakTotalFunEarned || 0) * 100) / 100,
     isBanned: Boolean(user.isBanned),
     recentBets: (user.recentBets || []).slice(0, 20),
     createdAt: user.createdAt,
@@ -2304,7 +2439,7 @@ app.delete('/api/payout-accounts/:id', requireAuth, async (req, res) => {
 });
 
 // ============================================================================
-// Automated QR Deposit Gateway, Account Masking & Micro-Deposit Auto-Approval
+// Universal Pakistani SBP Raast / EMVCo QR Code Gateway & Safe PNG Download
 // ============================================================================
 function emvTlv(tag, val) {
   const s = String(val || '').replace(/[^\x20-\x7E]/g, '').trim();
@@ -2328,18 +2463,71 @@ function crc16CcittFalse(str) {
   return crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
-function buildEmvcoRaastQrPayload({ accountNumber, accountTitle, amount, qrReference }) {
+function normalizePakMobileAlias(raw = '') {
+  const digits = String(raw || '').replace(/[^0-9]/g, '');
+  if (/^923[0-9]{9}$/.test(digits)) return `0${digits.slice(2)}`;
+  if (/^00923[0-9]{9}$/.test(digits)) return `0${digits.slice(4)}`;
+  if (/^3[0-9]{9}$/.test(digits)) return `0${digits}`;
+  return digits;
+}
+
+function resolveGatewayRoutingInfo(settings, method, qrRoute = 'auto') {
+  const pa = settings.paymentAccounts || defaultPaymentAccounts();
+  const acct =
+    method === 'EasyPaisa' ? pa.easypaisa : method === 'JazzCash' ? pa.jazzcash : pa.bank;
+  if (!acct || acct.enabled === false) {
+    return { error: `${method} deposits are currently disabled by Admin.` };
+  }
+
+  const rawNumber = String(acct.accountNumber || '').trim();
+  const cleanIban = normalizePakIban(acct.iban || (rawNumber.toUpperCase().startsWith('PK') ? rawNumber : ''));
+  const cleanMobile = normalizePakMobileAlias(rawNumber);
+  const hasValidIban = /^PK[0-9]{2}[A-Z]{4}[A-Z0-9]{16}$/.test(cleanIban) || (cleanIban.startsWith('PK') && cleanIban.length >= 18);
+
+  // Use IBAN whenever configured (so ANY Pakistani Bank app -> EasyPaisa/JazzCash/Bank via Raast scans directly)
+  let destinationId = '';
+  let routeType = 'mobile';
+
+  if (qrRoute === 'mobile' && cleanMobile && !rawNumber.toUpperCase().startsWith('PK')) {
+    destinationId = cleanMobile;
+    routeType = 'mobile';
+  } else if (hasValidIban) {
+    destinationId = cleanIban;
+    routeType = 'iban';
+  } else if (cleanMobile) {
+    destinationId = cleanMobile;
+    routeType = 'mobile';
+  } else {
+    destinationId = rawNumber.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 34);
+    routeType = destinationId.startsWith('PK') ? 'iban' : 'account';
+  }
+
+  if (!destinationId) {
+    return { error: `${method} account number is not configured yet.` };
+  }
+
+  return {
+    acct,
+    destinationId,
+    routeType,
+    hasValidIban,
+    bankName: acct.bankName || (method === 'EasyPaisa' ? 'EasyPaisa / Telenor Microfinance Bank' : method === 'JazzCash' ? 'JazzCash / Mobilink Microfinance Bank' : 'Pakistani Bank'),
+  };
+}
+
+function buildEmvcoRaastQrPayload({ destinationId, accountTitle, amount, qrReference }) {
   const cleanTitle =
     String(accountTitle || 'SkyWing Official')
       .replace(/[^A-Za-z0-9 .-]/g, '')
       .trim()
       .slice(0, 25) || 'SkyWing Official';
-  const cleanAcct = String(accountNumber || '')
+  const cleanAcct = String(destinationId || '')
     .replace(/[^A-Za-z0-9]/g, '')
     .toUpperCase()
     .slice(0, 34);
   const amountStr = Number(amount).toFixed(2);
-  const mai = emvTlv('00', 'PK.RAAST.P2P') + emvTlv('01', cleanAcct);
+  // SBP Raast EMVCo MPM Standard: Tag 26 with GUID 'pk.gov.sbp.raast' + Sub-tag 01 IBAN / Raast Alias
+  const mai = emvTlv('00', 'pk.gov.sbp.raast') + emvTlv('01', cleanAcct);
   const cleanRef = String(qrReference || '')
     .replace(/[^A-Za-z0-9-]/g, '')
     .slice(0, 25);
@@ -2359,6 +2547,39 @@ function buildEmvcoRaastQrPayload({ accountNumber, accountTitle, amount, qrRefer
   return bodyWithoutCrc + crc16CcittFalse(bodyWithoutCrc);
 }
 
+function signQrDownloadToken({ method, amount, qrReference, qrRoute = 'auto' }) {
+  const payload = {
+    t: 'qr_dl',
+    method,
+    amount,
+    qrReference,
+    qrRoute,
+    exp: Date.now() + 30 * 60 * 1000,
+  };
+  const b64 = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const sig = crypto.createHmac('sha256', JWT_SECRET).update(b64).digest('base64url');
+  return `${b64}.${sig}`;
+}
+
+function verifyQrDownloadToken(token) {
+  const raw = String(token || '').trim();
+  const parts = raw.split('.');
+  if (parts.length !== 2) return null;
+  const [b64, sig] = parts;
+  const expectedSig = crypto.createHmac('sha256', JWT_SECRET).update(b64).digest('base64url');
+  if (sig.length !== expectedSig.length) return null;
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(b64, 'base64url').toString('utf8'));
+    if (!parsed || parsed.t !== 'qr_dl' || !parsed.exp || Date.now() > Number(parsed.exp)) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 app.post('/api/transactions/deposit/qr', requireAuth, async (req, res) => {
   try {
     const settings = await db.getSettings();
@@ -2367,6 +2588,7 @@ app.post('/api/transactions/deposit/qr', requireAuth, async (req, res) => {
 
     const amount = Math.round(Number(req.body.amount) * 100) / 100;
     const method = String(req.body.method || '').trim();
+    const qrRoute = ['auto', 'iban', 'mobile'].includes(req.body.qrRoute) ? req.body.qrRoute : 'auto';
 
     if (!['EasyPaisa', 'JazzCash', 'Bank Account'].includes(method)) {
       return res.status(400).json({ error: 'Select a valid payment gateway.' });
@@ -2377,15 +2599,9 @@ app.post('/api/transactions/deposit/qr', requireAuth, async (req, res) => {
       });
     }
 
-    const pa = settings.paymentAccounts || defaultPaymentAccounts();
-    const acct =
-      method === 'EasyPaisa' ? pa.easypaisa : method === 'JazzCash' ? pa.jazzcash : pa.bank;
-    if (!acct || acct.enabled === false) {
-      return res.status(400).json({ error: `${method} deposits are currently disabled by Admin.` });
-    }
-    const cleanAcctCheck = String(acct.accountNumber || '').replace(/[^A-Za-z0-9]/g, '');
-    if (!cleanAcctCheck) {
-      return res.status(400).json({ error: `${method} account number is not configured yet.` });
+    const routed = resolveGatewayRoutingInfo(settings, method, qrRoute);
+    if (routed.error) {
+      return res.status(400).json({ error: routed.error });
     }
 
     const qrReference = `SW-${Date.now().toString(36).toUpperCase()}-${crypto
@@ -2393,37 +2609,100 @@ app.post('/api/transactions/deposit/qr', requireAuth, async (req, res) => {
       .toString('hex')
       .toUpperCase()}`;
 
-    // Encode merchant payment instruction & exact amount in standard EMVCo / Raast TLV format (raw numbers kept off JSON response)
     const qrPayload = buildEmvcoRaastQrPayload({
-      accountNumber: acct.accountNumber,
-      accountTitle: acct.accountTitle,
+      destinationId: routed.destinationId,
+      accountTitle: routed.acct.accountTitle,
       amount,
       qrReference,
     });
 
     const qrDataUrl = await QRCode.toDataURL(qrPayload, {
-      errorCorrectionLevel: 'Q',
-      width: 400,
+      errorCorrectionLevel: 'M',
+      width: 520,
       margin: 4,
       color: { dark: '#000000', light: '#ffffff' },
+    });
+
+    const dlToken = signQrDownloadToken({
+      method,
+      amount,
+      qrReference,
+      qrRoute,
     });
 
     res.json({
       qrReference,
       qrDataUrl,
-      qrFormat: 'EMVCo-Raast-Dynamic',
+      downloadUrl: `/api/transactions/deposit/qr/download?token=${encodeURIComponent(dlToken)}`,
+      qrFormat: 'EMVCo-SBP-Raast',
+      qrRouteType: routed.routeType,
+      supportsAllBanks: routed.routeType === 'iban',
       qrPayloadLength: qrPayload.length,
       method,
-      displayMethod: method === 'Bank Account' ? 'E-Wallet / Bank Transfer' : method,
+      displayMethod:
+        method === 'Bank Account'
+          ? 'All Pakistani Banks / Raast'
+          : routed.routeType === 'iban'
+            ? `${method} · All Banks Raast QR`
+            : `${method} · Raast Wallet QR`,
       amount,
-      accountTitle: acct.accountTitle,
-      bankName: acct.bankName || '',
+      accountTitle: routed.acct.accountTitle,
+      bankName: routed.bankName,
       privacyProtected: true,
       microAutoApproveLimit: Number(limits.microDepositAutoApproveLimit || 0),
     });
   } catch (err) {
     console.error('[Deposit QR Error]', err);
     res.status(500).json({ error: 'Failed to generate payment QR code.' });
+  }
+});
+
+app.get('/api/transactions/deposit/qr/download', async (req, res) => {
+  try {
+    const tokenData = verifyQrDownloadToken(req.query.token);
+    if (!tokenData) {
+      return res.status(400).json({ error: 'QR download link expired. Please refresh QR and try again.' });
+    }
+    const method = String(tokenData.method || '');
+    const amount = Math.round(Number(tokenData.amount) * 100) / 100;
+    const qrReference = String(tokenData.qrReference || '');
+    const qrRoute = String(tokenData.qrRoute || 'auto');
+
+    if (!['EasyPaisa', 'JazzCash', 'Bank Account'].includes(method) || !Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'Invalid QR parameters.' });
+    }
+
+    const settings = await db.getSettings();
+    const routed = resolveGatewayRoutingInfo(settings, method, qrRoute);
+    if (routed.error) {
+      return res.status(400).json({ error: routed.error });
+    }
+
+    const qrPayload = buildEmvcoRaastQrPayload({
+      destinationId: routed.destinationId,
+      accountTitle: routed.acct.accountTitle,
+      amount,
+      qrReference,
+    });
+
+    const pngBuffer = await QRCode.toBuffer(qrPayload, {
+      type: 'png',
+      errorCorrectionLevel: 'M',
+      width: 600,
+      margin: 4,
+      color: { dark: '#000000', light: '#ffffff' },
+    });
+
+    const safeAmtLabel = Math.round(amount);
+    const filename = `SkyWing-Deposit-QR-${safeAmtLabel}PKR.png`;
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(pngBuffer);
+  } catch (err) {
+    console.error('[Deposit QR Download Error]', err);
+    res.status(500).json({ error: 'Failed to download QR PNG.' });
   }
 });
 
@@ -2688,8 +2967,60 @@ app.get('/api/transactions/my', requireAuth, async (req, res) => {
 });
 
 // ============================================================================
-// VIP Loyalty Tiers, Daily Login & Cashback + Referral System
+// VIP Loyalty Tiers, Daily Login & Cashback + Daily Login Streak + Referrals
 // ============================================================================
+const DAILY_STREAK_REWARDS = [50, 100, 150, 250, 400, 600, 1000];
+
+function getYesterdayKey() {
+  return new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+}
+
+function computeLoginStreakState(user) {
+  const todayKey = getTodayKey();
+  const yesterdayKey = getYesterdayKey();
+  const rawStreak = Math.max(0, Number(user?.loginStreakCount || 0));
+  const lastDate = String(user?.lastLoginStreakDate || '');
+  const claimedToday = lastDate === todayKey && rawStreak > 0;
+  const continuedFromYesterday = lastDate === yesterdayKey && rawStreak > 0;
+  const effectiveStreak = claimedToday || continuedFromYesterday ? rawStreak : 0;
+
+  let cycleDay = 1;
+  if (claimedToday) {
+    cycleDay = ((rawStreak - 1) % 7) + 1;
+  } else if (continuedFromYesterday) {
+    cycleDay = (rawStreak % 7) + 1;
+  }
+
+  const nextRewardFun = DAILY_STREAK_REWARDS[cycleDay - 1] || 50;
+  const readyToClaim = !claimedToday && !user?.bonusRestricted;
+  const completedCount = claimedToday ? cycleDay : effectiveStreak > 0 ? (rawStreak % 7) : 0;
+
+  const days = DAILY_STREAK_REWARDS.map((rewardFun, idx) => {
+    const day = idx + 1;
+    const isCompleted = claimedToday ? day <= cycleDay : day <= completedCount;
+    const isToday = day === cycleDay;
+    return {
+      day,
+      rewardFun,
+      completed: isCompleted,
+      isToday,
+      claimed: claimedToday && day === cycleDay,
+    };
+  });
+
+  return {
+    streakCount: effectiveStreak,
+    cycleDay,
+    completedCount,
+    claimedToday,
+    readyToClaim,
+    nextRewardFun,
+    totalEarnedFun: Math.round(Number(user?.streakTotalFunEarned || 0) * 100) / 100,
+    todayKey,
+    days,
+  };
+}
+
 app.get('/api/rewards/status', requireAuth, async (req, res) => {
   const user = req.user;
   const vip = computeVipTier(user.totalWageredReal);
@@ -2717,9 +3048,60 @@ app.get('/api/rewards/status', requireAuth, async (req, res) => {
     weeklyReady: eligible && weeklyCooldownMs === 0 && estimatedCashback > 0,
     weeklyCooldownMs,
     estimatedCashback,
+    loginStreak: computeLoginStreakState(user),
     referralCode: user.referralCode || '',
     referralEarnings: Number(user.referralEarnings || 0),
   });
+});
+
+app.post('/api/rewards/streak', requireAuth, async (req, res) => {
+  try {
+    const user = await db.findUserById(req.user._id);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    if (user.bonusRestricted) {
+      return res.status(403).json({
+        error: 'Account is restricted from promotional bonuses due to multi-account detection.',
+      });
+    }
+
+    const todayKey = getTodayKey();
+    const yesterdayKey = getYesterdayKey();
+    const lastDate = String(user.lastLoginStreakDate || '');
+
+    if (lastDate === todayKey && Number(user.loginStreakCount || 0) > 0) {
+      return res.status(429).json({
+        error: "Today's Daily Login Streak bonus is already claimed. Come back tomorrow!",
+      });
+    }
+
+    const nextStreak = (lastDate === yesterdayKey ? Number(user.loginStreakCount || 0) : 0) + 1;
+    const cycleDay = ((nextStreak - 1) % 7) + 1;
+    const rewardFun = DAILY_STREAK_REWARDS[cycleDay - 1] || 50;
+
+    await db.adjustBalanceAtomic(user._id, 'fun', rewardFun);
+    const updated = await db.updateUserById(user._id, {
+      $set: {
+        loginStreakCount: nextStreak,
+        lastLoginStreakDate: todayKey,
+      },
+      $inc: {
+        streakTotalFunEarned: rewardFun,
+      },
+    });
+
+    if (updated) emitUserBalances(updated);
+    res.json({
+      ok: true,
+      awardedFun: rewardFun,
+      streakCount: nextStreak,
+      cycleDay,
+      loginStreak: computeLoginStreakState(updated),
+      user: sanitizeUser(updated),
+    });
+  } catch (err) {
+    console.error('[Daily Streak Error]', err);
+    res.status(500).json({ error: 'Failed to claim daily streak reward.' });
+  }
 });
 
 app.post('/api/rewards/daily', requireAuth, async (req, res) => {
@@ -4248,6 +4630,11 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
         accountNumber: String(
           incomingPay.easypaisa?.accountNumber ?? curPay.easypaisa?.accountNumber ?? ''
         ).trim(),
+        iban: normalizePakIban(
+          incomingPay.easypaisa?.iban !== undefined
+            ? incomingPay.easypaisa.iban
+            : curPay.easypaisa?.iban ?? ''
+        ),
       },
       jazzcash: {
         enabled:
@@ -4260,6 +4647,11 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
         accountNumber: String(
           incomingPay.jazzcash?.accountNumber ?? curPay.jazzcash?.accountNumber ?? ''
         ).trim(),
+        iban: normalizePakIban(
+          incomingPay.jazzcash?.iban !== undefined
+            ? incomingPay.jazzcash.iban
+            : curPay.jazzcash?.iban ?? ''
+        ),
       },
       bank: {
         enabled:

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skywing-pwa-v4';
+const CACHE_NAME = 'skywing-pwa-v5';
 const APP_SHELL = [
   '/',
   '/index.html',

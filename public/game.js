@@ -270,6 +270,7 @@
     depositScreenshotData: '',
     qrDepositRef: '',
     lastQrDataUrl: '',
+    qrDownloadUrl: '',
     deferredInstallPrompt: null,
     supportTickets: [],
     activeTicketId: '',
@@ -449,6 +450,8 @@
     limboStatusBadge: document.getElementById('limboStatusBadge'),
     limboResultValue: document.getElementById('limboResultValue'),
     limboResultSub: document.getElementById('limboResultSub'),
+    limboGaugeBar: document.getElementById('limboGaugeBar'),
+    limboTargetMarker: document.getElementById('limboTargetMarker'),
     limboTargetBadge: document.getElementById('limboTargetBadge'),
     limboChanceVal: document.getElementById('limboChanceVal'),
     limboEstPayoutVal: document.getElementById('limboEstPayoutVal'),
@@ -467,6 +470,7 @@
 
     // Lucky Wheel
     wheelStatusBadge: document.getElementById('wheelStatusBadge'),
+    wheelBezelRing: document.getElementById('wheelBezelRing'),
     luckyWheelCanvas: document.getElementById('luckyWheelCanvas'),
     wheelResultSub: document.getElementById('wheelResultSub'),
     wheelAmount: document.getElementById('wheelAmount'),
@@ -475,7 +479,15 @@
     // Dragon Hi-Lo
     hiloStatusBadge: document.getElementById('hiloStatusBadge'),
     hiloBaseCardEl: document.getElementById('hiloBaseCardEl'),
+    hiloBaseCornerTop: document.getElementById('hiloBaseCornerTop'),
+    hiloBaseCenterPip: document.getElementById('hiloBaseCenterPip'),
+    hiloBaseCornerBot: document.getElementById('hiloBaseCornerBot'),
     hiloNextCardEl: document.getElementById('hiloNextCardEl'),
+    hiloNextCornerTop: document.getElementById('hiloNextCornerTop'),
+    hiloNextCenterPip: document.getElementById('hiloNextCenterPip'),
+    hiloNextCornerBot: document.getElementById('hiloNextCornerBot'),
+    hiloHigherOdds: document.getElementById('hiloHigherOdds'),
+    hiloLowerOdds: document.getElementById('hiloLowerOdds'),
     hiloResultSub: document.getElementById('hiloResultSub'),
     hiloAmount: document.getElementById('hiloAmount'),
 
@@ -588,6 +600,7 @@
     depQrImg: document.getElementById('depQrImg'),
     depQrPlaceholder: document.getElementById('depQrPlaceholder'),
     depQrLoadingText: document.getElementById('depQrLoadingText'),
+    depQrScanHint: document.getElementById('depQrScanHint'),
     depSaveQrBtn: document.getElementById('depSaveQrBtn'),
     depMicroHint: document.getElementById('depMicroHint'),
     depTid: document.getElementById('depTid'),
@@ -638,6 +651,13 @@
     rewardsRefCodeText: document.getElementById('rewardsRefCodeText'),
     rewardsRefEarnedText: document.getElementById('rewardsRefEarnedText'),
     copyReferralLinkBtn: document.getElementById('copyReferralLinkBtn'),
+    rewardsStreakBadge: document.getElementById('rewardsStreakBadge'),
+    rewardsStreakEarned: document.getElementById('rewardsStreakEarned'),
+    rewardsStreakProgressBar: document.getElementById('rewardsStreakProgressBar'),
+    rewardsStreakProgressText: document.getElementById('rewardsStreakProgressText'),
+    rewardsStreakCalendar: document.getElementById('rewardsStreakCalendar'),
+    rewardsStreakHint: document.getElementById('rewardsStreakHint'),
+    claimStreakRewardBtn: document.getElementById('claimStreakRewardBtn'),
 
     playerAudioBgm: document.getElementById('playerAudioBgm'),
     playerAudioBgmLabel: document.getElementById('playerAudioBgmLabel'),
@@ -1150,7 +1170,10 @@
       } else if (gameId === 'neon-flip') {
         updateCoinflipMetrics();
       } else if (gameId === 'lucky-wheel') {
+        initWheelBezelLeds();
         renderWheelCanvas(state.wheelRotation);
+      } else if (gameId === 'dragon-hilo') {
+        updateHiLoOddsUI();
       }
     }
   }
@@ -1328,21 +1351,21 @@
       cards.push({
         meta: getGatewayBrandMeta('EasyPaisa'),
         label: 'EasyPaisa',
-        subtitle: 'Verified · QR Only',
+        subtitle: acc.easypaisa.supportsAllBanks ? 'All Banks Raast · QR Only' : 'Verified · QR Only',
       });
     }
     if (acc.jazzcash?.enabled) {
       cards.push({
         meta: getGatewayBrandMeta('JazzCash'),
         label: 'JazzCash',
-        subtitle: 'Verified · QR Only',
+        subtitle: acc.jazzcash.supportsAllBanks ? 'All Banks Raast · QR Only' : 'Verified · QR Only',
       });
     }
     if (acc.bank?.enabled) {
       cards.push({
         meta: getGatewayBrandMeta('Bank Account'),
         label: 'E-Wallet / Bank Transfer',
-        subtitle: acc.bank.bankName ? `${acc.bank.bankName} · QR Only` : 'Verified · QR Only',
+        subtitle: acc.bank.bankName ? `${acc.bank.bankName} · All Banks Raast QR` : 'All Banks Raast · QR Only',
       });
     }
 
@@ -2417,6 +2440,7 @@
   function setQrLoadingState(message, clearRef = true) {
     if (clearRef) state.qrDepositRef = '';
     state.lastQrDataUrl = '';
+    state.qrDownloadUrl = '';
     if (el.depQrImg) {
       el.depQrImg.classList.add('hidden');
       el.depQrImg.removeAttribute('src');
@@ -2427,34 +2451,32 @@
     if (clearRef && el.depQrRefBadge) el.depQrRefBadge.textContent = 'REF: ---';
   }
 
-  el.depSaveQrBtn?.addEventListener('click', async () => {
-    const src = state.lastQrDataUrl || el.depQrImg?.src;
-    if (!src) {
+  el.depSaveQrBtn?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!state.qrDownloadUrl) {
+      await requestDynamicDepositQr();
+    }
+    if (!state.qrDownloadUrl) {
       showToast('Generate a valid deposit QR code first.', true);
       return;
     }
-    const amt = Number(el.depAmount?.value || 0) || 0;
+    const amt = Math.round(Number(el.depAmount?.value || 0) || 0);
     const filename = `SkyWing-Deposit-QR-${amt}PKR.png`;
     try {
-      const resp = await fetch(src);
-      const blob = await resp.blob();
-      const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = filename;
+      a.href = state.qrDownloadUrl;
+      a.setAttribute('download', filename);
+      a.rel = 'noopener';
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
-      showToast(`Saved ${filename} to your device!`);
-    } catch {
-      const a = document.createElement('a');
-      a.href = src;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      setTimeout(() => {
+        if (a.parentNode) a.parentNode.removeChild(a);
+      }, 250);
       showToast(`Downloading ${filename}...`);
+    } catch {
+      showToast('Unable to start download automatically. Please screenshot the QR code.', true);
     }
   });
 
@@ -2465,7 +2487,7 @@
     const minDep = Number(state.publicSettings.financialLimits?.minDeposit || 50);
     const meta = getGatewayBrandMeta(method);
 
-    if (el.depQrGatewayBadge) el.depQrGatewayBadge.textContent = `${meta.name} · QR Only`;
+    if (el.depQrGatewayBadge) el.depQrGatewayBadge.textContent = `${meta.name} · Raast QR`;
     if (el.depQrAmountBadge) {
       el.depQrAmountBadge.textContent = Number.isFinite(amount) && amount > 0 ? `${amount.toLocaleString()} PKR` : '0 PKR';
     }
@@ -2498,17 +2520,28 @@
 
       state.qrDepositRef = data.qrReference;
       state.lastQrDataUrl = data.qrDataUrl || '';
+      state.qrDownloadUrl = data.downloadUrl || '';
       if (el.depQrImg) {
         el.depQrImg.src = data.qrDataUrl;
         el.depQrImg.classList.remove('hidden');
       }
-      if (el.depSaveQrBtn && data.qrDataUrl) {
+      if (el.depSaveQrBtn && data.qrDataUrl && data.downloadUrl) {
         el.depSaveQrBtn.classList.remove('hidden');
       }
       if (el.depQrPlaceholder) el.depQrPlaceholder.classList.add('hidden');
       if (el.depQrRefBadge) el.depQrRefBadge.textContent = `REF: ${data.qrReference}`;
-      if (el.depQrGatewayBadge) el.depQrGatewayBadge.textContent = `${meta.name} · QR Only`;
+      if (el.depQrGatewayBadge) {
+        el.depQrGatewayBadge.textContent = data.displayMethod || `${meta.name} · Raast QR`;
+      }
       if (el.depQrAmountBadge) el.depQrAmountBadge.textContent = `${Number(data.amount).toLocaleString()} PKR`;
+      if (el.depQrScanHint) {
+        if (data.supportsAllBanks || method === 'Bank Account') {
+          el.depQrScanHint.innerHTML =
+            'Scan via <strong>EasyPaisa, JazzCash, SadaPay, NayaPay, Meezan, HBL, UBL</strong> or any Pakistani Bank Raast scanner, then submit your TID / screenshot below.';
+        } else {
+          el.depQrScanHint.innerHTML = `Scan via <strong>${escapeHtml(method)}</strong> (or set an IBAN in Admin Panel to allow any Pakistani Bank app), then submit your TID / screenshot below.`;
+        }
+      }
       if (el.depMicroHint) {
         const isMicro = data.microAutoApproveLimit > 0 && amount <= data.microAutoApproveLimit;
         el.depMicroHint.textContent = isMicro
@@ -4954,8 +4987,13 @@
   });
 
   // ==========================================================================
-  // 5) Limbo X Controller
+  // 5) Limbo X Controller (Pro Telemetry Gauge & Animated Altitude Counter)
   // ==========================================================================
+  function calcLogAltitudePct(multVal) {
+    const safe = Math.max(1, Math.min(100, Number(multVal || 1)));
+    return Math.min(98, Math.max(5, (Math.log10(safe) / 2) * 95 + 4));
+  }
+
   function updateLimboMetrics() {
     const targetMult = Math.min(100, Math.max(1.05, Number(el.limboTargetInput?.value || 2)));
     const amt = Math.max(0, Number(el.limboAmount?.value || 0));
@@ -4967,6 +5005,9 @@
     if (el.limboTargetBadge) el.limboTargetBadge.textContent = `${targetMult.toFixed(2)}x`;
     if (el.limboChanceVal) el.limboChanceVal.textContent = `${chance.toFixed(2)}%`;
     if (el.limboEstPayoutVal) el.limboEstPayoutVal.textContent = fmtMoney(estPayout, state.currencyMode);
+    if (el.limboTargetMarker) {
+      el.limboTargetMarker.style.bottom = `${calcLogAltitudePct(targetMult)}%`;
+    }
   }
 
   document.querySelectorAll('.limbo-chip').forEach((btn) => {
@@ -4998,6 +5039,8 @@
     state.limboBusy = true;
     el.limboPlayBtn.disabled = true;
     if (el.limboStatusBadge) el.limboStatusBadge.textContent = 'Launching...';
+    if (el.limboResultValue) el.limboResultValue.classList.remove('won', 'win', 'lost', 'loss');
+    if (el.limboGaugeBar) el.limboGaugeBar.classList.remove('lost');
     audio.ensureContext();
     audio.playLimboLaunch();
 
@@ -5021,15 +5064,39 @@
         return;
       }
 
-      if (el.limboResultValue) {
-        el.limboResultValue.textContent = `${Number(data.rolled).toFixed(2)}x`;
-        el.limboResultValue.classList.toggle('won', Boolean(data.won));
-        el.limboResultValue.classList.toggle('lost', !data.won);
-      }
+      const finalVal = Number(data.rolled || 1);
+      const tStart = performance.now();
+      const tweenDuration = 280;
+      const stepNum = (now) => {
+        const p = Math.min(1, (now - tStart) / tweenDuration);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const cur = 1 + (finalVal - 1) * eased;
+        if (el.limboResultValue) {
+          el.limboResultValue.textContent = `${cur.toFixed(2)}x`;
+        }
+        if (el.limboGaugeBar) {
+          el.limboGaugeBar.style.height = `${calcLogAltitudePct(cur)}%`;
+        }
+        if (p < 1) {
+          requestAnimationFrame(stepNum);
+        } else {
+          if (el.limboResultValue) {
+            el.limboResultValue.textContent = `${finalVal.toFixed(2)}x`;
+            el.limboResultValue.classList.toggle('won', Boolean(data.won));
+            el.limboResultValue.classList.toggle('lost', !data.won);
+          }
+          if (el.limboGaugeBar) {
+            el.limboGaugeBar.style.height = `${calcLogAltitudePct(finalVal)}%`;
+            el.limboGaugeBar.classList.toggle('lost', !data.won);
+          }
+        }
+      };
+      requestAnimationFrame(stepNum);
+
       if (el.limboResultSub) {
         el.limboResultSub.textContent = data.won
           ? `HIT ${Number(data.targetMultiplier).toFixed(2)}x! Won +${fmtMoney(data.payout, data.currencyMode)}`
-          : `Stopped at ${Number(data.rolled).toFixed(2)}x (Below target ${Number(data.targetMultiplier).toFixed(2)}x)`;
+          : `Stopped at ${finalVal.toFixed(2)}x (Below target ${Number(data.targetMultiplier).toFixed(2)}x)`;
       }
       if (el.limboStatusBadge) {
         el.limboStatusBadge.textContent = data.won ? `WON ${Number(data.multiplier).toFixed(2)}x` : 'Missed';
@@ -5051,7 +5118,7 @@
   });
 
   // ==========================================================================
-  // 6) Neon Coin Flip Controller
+  // 6) Neon Coin Flip Controller (3D Metallic Double-Sided Flip)
   // ==========================================================================
   function updateCoinflipMetrics() {
     const amt = Math.max(0, Number(el.coinflipAmount?.value || 0));
@@ -5089,7 +5156,9 @@
     state.coinflipBusy = true;
     el.coinflipPlayBtn.disabled = true;
     if (el.coinflipStatusBadge) el.coinflipStatusBadge.textContent = 'Flipping...';
-    el.cyberCoinEl?.classList.add('flipping');
+    if (el.cyberCoinEl) {
+      el.cyberCoinEl.classList.remove('flipping-heads', 'flipping-tails');
+    }
     audio.ensureContext();
     audio.playCoinFlip();
 
@@ -5107,7 +5176,6 @@
         }),
       });
       const data = await res.json();
-      setTimeout(() => el.cyberCoinEl?.classList.remove('flipping'), 280);
       if (!res.ok) {
         showToast(data.error || 'Coin flip failed.', true);
         if (el.coinflipStatusBadge) el.coinflipStatusBadge.textContent = 'Ready';
@@ -5116,10 +5184,18 @@
 
       const isHeads = data.outcome === 'heads';
       if (el.cyberCoinEl) {
-        el.cyberCoinEl.classList.toggle('heads', isHeads);
-        el.cyberCoinEl.classList.toggle('tails', !isHeads);
+        el.cyberCoinEl.classList.remove('heads', 'tails', 'flipping-heads', 'flipping-tails');
+        void el.cyberCoinEl.offsetWidth;
+        el.cyberCoinEl.classList.add(isHeads ? 'flipping-heads' : 'flipping-tails');
+        setTimeout(() => {
+          if (el.cyberCoinEl) {
+            el.cyberCoinEl.classList.remove('flipping-heads', 'flipping-tails');
+            el.cyberCoinEl.classList.toggle('heads', isHeads);
+            el.cyberCoinEl.classList.toggle('tails', !isHeads);
+          }
+        }, 760);
       }
-      if (el.cyberCoinFace) el.cyberCoinFace.textContent = String(data.outcome || 'heads').toUpperCase();
+
       if (el.coinflipResultSub) {
         el.coinflipResultSub.textContent = data.won
           ? `${String(data.outcome).toUpperCase()}! Won +${fmtMoney(data.payout, data.currencyMode)}`
@@ -5137,7 +5213,7 @@
       renderHistory();
       renderSidebar();
     } catch {
-      el.cyberCoinEl?.classList.remove('flipping');
+      el.cyberCoinEl?.classList.remove('flipping-heads', 'flipping-tails');
       showToast('Network error flipping coin.', true);
     } finally {
       state.coinflipBusy = false;
@@ -5146,20 +5222,56 @@
   });
 
   // ==========================================================================
-  // 7) Lucky Wheel Controller (Canvas 12-Segment Fortune Wheel)
+  // 7) Lucky Wheel Controller (Casino Bezel + Chasing LED Rim)
   // ==========================================================================
+  function initWheelBezelLeds() {
+    const ring = el.wheelBezelRing;
+    if (!ring || ring.dataset.ledsReady === '1') return;
+    ring.dataset.ledsReady = '1';
+    const bulbCount = 24;
+    const radiusPx = 152;
+    let html = '';
+    for (let i = 0; i < bulbCount; i += 1) {
+      const angle = (i / bulbCount) * Math.PI * 2;
+      const x = Math.round(Math.cos(angle) * radiusPx);
+      const y = Math.round(Math.sin(angle) * radiusPx);
+      html += `<span class="wheel-led-dot ${i % 2 === 0 ? 'lit' : ''}" style="transform: translate(${x}px, ${y}px);"></span>`;
+    }
+    ring.innerHTML = html;
+  }
+
+  function updateWheelBezelLeds(stepOffset = 0) {
+    const ring = el.wheelBezelRing;
+    if (!ring) return;
+    const dots = ring.querySelectorAll('.wheel-led-dot');
+    dots.forEach((dot, idx) => {
+      dot.classList.toggle('lit', (idx + stepOffset) % 2 === 0);
+    });
+  }
+
   function renderWheelCanvas(rotRad = 0) {
     const canvas = el.luckyWheelCanvas;
     if (!canvas) return;
+    initWheelBezelLeds();
     const wCtx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
     const cx = w / 2;
     const cy = h / 2;
-    const radius = Math.min(cx, cy) - 8;
+    const radius = Math.min(cx, cy) - 10;
     const segAngle = (Math.PI * 2) / WHEEL_SEGMENTS.length;
 
     wCtx.clearRect(0, 0, w, h);
+
+    // Outer metallic collar ring
+    wCtx.beginPath();
+    wCtx.arc(cx, cy, radius + 5, 0, Math.PI * 2);
+    wCtx.fillStyle = '#0a1020';
+    wCtx.fill();
+    wCtx.lineWidth = 3;
+    wCtx.strokeStyle = '#fbbf24';
+    wCtx.stroke();
+
     WHEEL_SEGMENTS.forEach((seg, i) => {
       const start = rotRad + i * segAngle;
       const end = start + segAngle;
@@ -5167,11 +5279,24 @@
       wCtx.moveTo(cx, cy);
       wCtx.arc(cx, cy, radius, start, end);
       wCtx.closePath();
-      wCtx.fillStyle = seg.color;
+
+      const grad = wCtx.createRadialGradient(cx, cy, 18, cx, cy, radius);
+      grad.addColorStop(0, '#0f172a');
+      grad.addColorStop(0.28, seg.color);
+      grad.addColorStop(1, seg.color);
+      wCtx.fillStyle = grad;
       wCtx.fill();
       wCtx.lineWidth = 2;
-      wCtx.strokeStyle = 'rgba(5, 8, 17, 0.85)';
+      wCtx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
       wCtx.stroke();
+
+      // Gold rim peg pin at segment boundary
+      const pegX = cx + Math.cos(start) * (radius - 5);
+      const pegY = cy + Math.sin(start) * (radius - 5);
+      wCtx.beginPath();
+      wCtx.arc(pegX, pegY, 3, 0, Math.PI * 2);
+      wCtx.fillStyle = '#fde68a';
+      wCtx.fill();
 
       wCtx.save();
       wCtx.translate(cx, cy);
@@ -5179,21 +5304,23 @@
       wCtx.textAlign = 'right';
       wCtx.textBaseline = 'middle';
       wCtx.fillStyle = '#ffffff';
-      wCtx.font = '800 12px "Outfit", sans-serif';
-      wCtx.fillText(seg.label, radius - 14, 0);
+      wCtx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+      wCtx.shadowBlur = 4;
+      wCtx.font = '800 13px "Outfit", sans-serif';
+      wCtx.fillText(seg.label, radius - 16, 0);
       wCtx.restore();
     });
 
-    // Center Hub
+    // Center Luxury Medallion Hub
     wCtx.beginPath();
-    wCtx.arc(cx, cy, 24, 0, Math.PI * 2);
-    wCtx.fillStyle = '#0a1020';
+    wCtx.arc(cx, cy, 29, 0, Math.PI * 2);
+    wCtx.fillStyle = '#070b18';
     wCtx.fill();
-    wCtx.lineWidth = 3;
-    wCtx.strokeStyle = '#fbbf24';
+    wCtx.lineWidth = 3.5;
+    wCtx.strokeStyle = '#fde047';
     wCtx.stroke();
-    wCtx.fillStyle = '#fbbf24';
-    wCtx.font = '800 11px "Outfit", sans-serif';
+    wCtx.fillStyle = '#fde047';
+    wCtx.font = '800 12px "Outfit", sans-serif';
     wCtx.textAlign = 'center';
     wCtx.textBaseline = 'middle';
     wCtx.fillText('SPIN', cx, cy);
@@ -5235,7 +5362,6 @@
 
       const segIdx = Number(data.segmentIndex ?? 0);
       const segAngle = (Math.PI * 2) / WHEEL_SEGMENTS.length;
-      // Align segment center at top pointer (-Math.PI / 2)
       const desiredMod = -Math.PI / 2 - (segIdx + 0.5) * segAngle;
       const twoPi = Math.PI * 2;
       const startRot = state.wheelRotation;
@@ -5244,7 +5370,7 @@
       if (delta <= 0) delta += twoPi;
       const targetRot = startRot + delta + twoPi * 4;
 
-      const durationMs = 2200;
+      const durationMs = 2300;
       const t0 = performance.now();
       let lastSegTick = -1;
 
@@ -5258,6 +5384,7 @@
         const segTick = Math.floor(curRot / segAngle);
         if (segTick !== lastSegTick) {
           lastSegTick = segTick;
+          updateWheelBezelLeds(segTick);
           audio.playWheelTick();
         }
 
@@ -5292,8 +5419,46 @@
   });
 
   // ==========================================================================
-  // 8) Dragon Hi-Lo Controller
+  // 8) Dragon Hi-Lo Controller (Pro Casino Card Table + Live Odds)
   // ==========================================================================
+  function parseCardStr(cardStr) {
+    const raw = String(cardStr || '7♠');
+    const suit = raw.slice(-1);
+    const rank = raw.slice(0, -1) || '7';
+    return { rank, suit };
+  }
+
+  function renderPlayingCardTile(tileEl, topEl, pipEl, botEl, cardStr, isRed, isBack = false) {
+    if (!tileEl) return;
+    tileEl.classList.toggle('back', Boolean(isBack));
+    if (isBack) {
+      if (topEl) topEl.textContent = '';
+      if (pipEl) pipEl.textContent = '★';
+      if (botEl) botEl.textContent = '';
+      tileEl.classList.remove('red', 'black');
+      return;
+    }
+    const { rank, suit } = parseCardStr(cardStr);
+    if (topEl) topEl.textContent = `${rank}${suit}`;
+    if (pipEl) pipEl.textContent = suit;
+    if (botEl) botEl.textContent = `${rank}${suit}`;
+    tileEl.classList.toggle('red', Boolean(isRed));
+    tileEl.classList.toggle('black', !isRed);
+  }
+
+  function updateHiLoOddsUI() {
+    const cfg = getGameConfig('dragon-hilo');
+    const edgePct = Math.min(25, Math.max(0, Number(cfg?.houseEdgePct ?? 4)));
+    const rtp = Math.max(0.75, 1 - edgePct / 100);
+    const baseIdx = Math.min(12, Math.max(0, Number(state.hiloBaseRankIdx ?? 5)));
+    const highCount = Math.max(1, 13 - baseIdx);
+    const lowCount = Math.max(1, baseIdx + 1);
+    const highMult = Math.max(1.04, Math.floor((13 / highCount) * rtp * 100) / 100);
+    const lowMult = Math.max(1.04, Math.floor((13 / lowCount) * rtp * 100) / 100);
+    if (el.hiloHigherOdds) el.hiloHigherOdds.textContent = `${highMult.toFixed(2)}x`;
+    if (el.hiloLowerOdds) el.hiloLowerOdds.textContent = `${lowMult.toFixed(2)}x`;
+  }
+
   document.querySelectorAll('.hilo-chip').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (el.hiloAmount && !state.hiloBusy) el.hiloAmount.value = btn.dataset.amt;
@@ -5308,6 +5473,15 @@
       const amount = Number(el.hiloAmount?.value || 0);
       state.hiloBusy = true;
       if (el.hiloStatusBadge) el.hiloStatusBadge.textContent = 'Dealing...';
+      renderPlayingCardTile(
+        el.hiloNextCardEl,
+        el.hiloNextCornerTop,
+        el.hiloNextCenterPip,
+        el.hiloNextCornerBot,
+        '',
+        false,
+        true
+      );
       audio.ensureContext();
       audio.playCardDeal();
 
@@ -5333,12 +5507,16 @@
         }
 
         const isRed = data.nextSuitIdx === 1 || data.nextSuitIdx === 2;
-        if (el.hiloNextCardEl) {
-          el.hiloNextCardEl.textContent = data.nextCard || '?';
-          el.hiloNextCardEl.classList.remove('back');
-          el.hiloNextCardEl.classList.toggle('red', isRed);
-          el.hiloNextCardEl.classList.toggle('black', !isRed);
-        }
+        renderPlayingCardTile(
+          el.hiloNextCardEl,
+          el.hiloNextCornerTop,
+          el.hiloNextCenterPip,
+          el.hiloNextCornerBot,
+          data.nextCard || '7♠',
+          isRed,
+          false
+        );
+
         if (el.hiloResultSub) {
           el.hiloResultSub.textContent = data.won
             ? `Drew ${data.nextCard}! Won ${data.multiplier}x (+${fmtMoney(data.payout, data.currencyMode)})`
@@ -5349,14 +5527,18 @@
         }
         if (data.won) audio.playArcadeWin('dragon-hilo');
 
-        // Advance current base card to the drawn card for sequential Hi-Lo play
         if (typeof data.nextRankIdx === 'number') {
           state.hiloBaseRankIdx = data.nextRankIdx;
-          if (el.hiloBaseCardEl) {
-            el.hiloBaseCardEl.textContent = data.nextCard;
-            el.hiloBaseCardEl.classList.toggle('red', isRed);
-            el.hiloBaseCardEl.classList.toggle('black', !isRed);
-          }
+          renderPlayingCardTile(
+            el.hiloBaseCardEl,
+            el.hiloBaseCornerTop,
+            el.hiloBaseCenterPip,
+            el.hiloBaseCornerBot,
+            data.nextCard || '7♠',
+            isRed,
+            false
+          );
+          updateHiLoOddsUI();
         }
         if (Array.isArray(data.hiloHistory)) state.arcade.hiloHistory = data.hiloHistory;
         if (data.user) {
@@ -5374,7 +5556,7 @@
   });
 
   // ==========================================================================
-  // 9) Emerald 777 Slots Controller
+  // 9) Emerald 777 Slots Controller (Staggered Vegas Reel Locks + Win Pulse)
   // ==========================================================================
   document.querySelectorAll('.slots-chip').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -5389,6 +5571,8 @@
     state.slotsBusy = true;
     el.slotsSpinBtn.disabled = true;
     if (el.slotsStatusBadge) el.slotsStatusBadge.textContent = 'Spinning...';
+    const reelEls = [el.slotReel0, el.slotReel1, el.slotReel2];
+    reelEls.forEach((r) => r?.classList.remove('reel-won'));
     audio.ensureContext();
 
     try {
@@ -5409,13 +5593,13 @@
         return;
       }
 
-      const reelEls = [el.slotReel0, el.slotReel1, el.slotReel2];
       let step = 0;
       const spinTimer = setInterval(() => {
         audio.playSlotReel(step);
         reelEls.forEach((rEl, idx) => {
-          if (rEl && step < 7 + idx * 3) {
-            rEl.textContent = SLOT_SYMBOLS[(step + idx) % SLOT_SYMBOLS.length];
+          const stopStep = 8 + idx * 4;
+          if (rEl && step < stopStep) {
+            rEl.textContent = SLOT_SYMBOLS[(step + idx * 2) % SLOT_SYMBOLS.length];
             rEl.classList.add('spinning');
           } else if (rEl && Array.isArray(data.reels)) {
             rEl.textContent = data.reels[idx] || '💎';
@@ -5423,24 +5607,25 @@
           }
         });
         step += 1;
-        if (step > 14) {
+        if (step > 17) {
           clearInterval(spinTimer);
+          const won = Number(data.multiplier || 0) > 0;
           reelEls.forEach((rEl, idx) => {
             if (rEl && Array.isArray(data.reels)) {
               rEl.textContent = data.reels[idx] || '💎';
               rEl.classList.remove('spinning');
+              rEl.classList.toggle('reel-won', won);
             }
           });
           if (el.slotsResultSub) {
-            el.slotsResultSub.textContent =
-              data.multiplier > 0
-                ? `JACKPOT MATCH ${data.multiplier}x! Won +${fmtMoney(data.payout, data.currencyMode)}`
-                : `[${(data.reels || []).join(' | ')}] — Spin again!`;
+            el.slotsResultSub.textContent = won
+              ? `JACKPOT MATCH ${data.multiplier}x! Won +${fmtMoney(data.payout, data.currencyMode)}`
+              : `[${(data.reels || []).join(' | ')}] — Spin again!`;
           }
           if (el.slotsStatusBadge) {
-            el.slotsStatusBadge.textContent = data.multiplier > 0 ? `WIN ${data.multiplier}x` : 'No Match';
+            el.slotsStatusBadge.textContent = won ? `WIN ${data.multiplier}x` : 'No Match';
           }
-          if (data.multiplier > 0) audio.playArcadeWin('emerald-slots');
+          if (won) audio.playArcadeWin('emerald-slots');
           if (Array.isArray(data.slotsHistory)) state.arcade.slotsHistory = data.slotsHistory;
           if (data.user) {
             state.user = data.user;
@@ -5451,8 +5636,9 @@
           state.slotsBusy = false;
           el.slotsSpinBtn.disabled = false;
         }
-      }, 65);
+      }, 62);
     } catch {
+      reelEls.forEach((r) => r?.classList.remove('spinning'));
       showToast('Network error spinning slots.', true);
       state.slotsBusy = false;
       el.slotsSpinBtn.disabled = false;
@@ -5517,6 +5703,64 @@
     copyValueWithButton(el.copyReferralLinkBtn, getReferralShareUrl(), 'Copied!');
   });
 
+  function renderLoginStreakUI(streak) {
+    if (!streak || typeof streak !== 'object') return;
+    const count = Number(streak.streakCount || 0);
+    const completed = Number(streak.completedCount || 0);
+    const totalEarned = Number(streak.totalEarnedFun || 0);
+    const pct = Math.min(100, Math.round((completed / 7) * 100));
+
+    if (el.rewardsStreakBadge) {
+      el.rewardsStreakBadge.textContent = `${count}-Day Streak`;
+    }
+    if (el.rewardsStreakEarned) {
+      el.rewardsStreakEarned.textContent = `Earned: ${totalEarned.toLocaleString()} FC`;
+    }
+    if (el.rewardsStreakProgressBar) {
+      el.rewardsStreakProgressBar.style.width = `${pct}%`;
+    }
+    if (el.rewardsStreakProgressText) {
+      el.rewardsStreakProgressText.textContent = `${completed} / 7 Days`;
+    }
+    if (el.rewardsStreakCalendar && Array.isArray(streak.days)) {
+      el.rewardsStreakCalendar.innerHTML = streak.days
+        .map((d) => {
+          const cls = [
+            'streak-day-cell',
+            d.completed ? 'completed' : '',
+            d.isToday ? 'is-today' : '',
+            d.isToday && streak.readyToClaim ? 'is-ready' : '',
+          ]
+            .filter(Boolean)
+            .join(' ');
+          const stateText = d.claimed || d.completed ? 'Claimed' : d.isToday && streak.readyToClaim ? 'Ready!' : 'Locked';
+          return `
+            <div class="${cls}">
+              <span class="streak-day-num">Day ${d.day}</span>
+              <span class="streak-day-fc">+${d.rewardFun} FC</span>
+              <span class="streak-day-state">${stateText}</span>
+            </div>
+          `;
+        })
+        .join('');
+    }
+    if (el.rewardsStreakHint) {
+      if (streak.claimedToday) {
+        el.rewardsStreakHint.textContent = `Day ${streak.cycleDay} claimed! Log in tomorrow to continue your ${count + 1}-day streak.`;
+      } else if (streak.readyToClaim) {
+        el.rewardsStreakHint.textContent = `Day ${streak.cycleDay} bonus (+${streak.nextRewardFun} FC) is ready to claim now!`;
+      } else {
+        el.rewardsStreakHint.textContent = 'Streak claims are currently restricted on this account.';
+      }
+    }
+    if (el.claimStreakRewardBtn) {
+      el.claimStreakRewardBtn.disabled = !streak.readyToClaim;
+      el.claimStreakRewardBtn.textContent = streak.claimedToday
+        ? `Day ${streak.cycleDay} Claimed`
+        : `Claim Day ${streak.cycleDay} (+${streak.nextRewardFun} FC)`;
+    }
+  }
+
   async function openRewardsFlow() {
     if (!state.user) {
       openAuthModal(urlRefCode ? 'register' : 'login');
@@ -5540,6 +5784,10 @@
       el.rewardsRefCodeText.textContent = data.referralCode || '---';
       el.rewardsRefEarnedText.textContent = `${Number(data.referralEarnings || 0).toLocaleString()} PKR`;
 
+      if (data.loginStreak) {
+        renderLoginStreakUI(data.loginStreak);
+      }
+
       if (data.bonusRestricted) {
         el.rewardsEligibilityHint.textContent = 'Bonus rewards disabled due to multi-account/device restriction.';
         el.rewardsEligibilityHint.style.color = '#f87171';
@@ -5561,6 +5809,35 @@
   el.profileRewardsBtn?.addEventListener('click', () => {
     closeModal('profileModal');
     openRewardsFlow();
+  });
+
+  el.claimStreakRewardBtn?.addEventListener('click', async () => {
+    if (!state.token) return;
+    el.claimStreakRewardBtn.disabled = true;
+    try {
+      const res = await fetch('/api/rewards/streak', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${state.token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Could not claim streak bonus.', true);
+        openRewardsFlow();
+        return;
+      }
+      if (data.user) {
+        state.user = data.user;
+        updateUserUI();
+      }
+      if (data.loginStreak) {
+        renderLoginStreakUI(data.loginStreak);
+      }
+      audio.playCashout();
+      showToast(`Day ${data.cycleDay} Login Streak Claimed! +${data.awardedFun} FC`);
+    } catch {
+      showToast('Failed to claim daily streak reward.', true);
+      openRewardsFlow();
+    }
   });
 
   el.claimDailyRewardBtn?.addEventListener('click', async () => {
